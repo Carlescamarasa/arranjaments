@@ -73,6 +73,26 @@ func carpetaDelProjecte(_ opcions: Opcions) -> URL? {
 
 // MARK: - Model
 
+/// Barra de progrés pròpia: el ProgressView del sistema es torna grisa quan la finestra no està activa
+/// (per exemple en acabar, amb el mode fosc) i no es veu que ha acabat. Esta sempre és verda (roja si hi ha error).
+struct BarraProgres: View {
+    let valor: Double
+    let error: Bool
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.secondary.opacity(0.25))
+                Capsule().fill(error ? Color.red : Color.green)
+                    .frame(width: max(0, min(1, valor)) * g.size.width)
+            }
+        }
+        .frame(height: 8)
+        .accessibilityElement()
+        .accessibilityLabel("Progrés de la instal·lació")
+        .accessibilityValue("\(Int(max(0, min(1, valor)) * 100)) per cent")
+    }
+}
+
 enum EstatPas { case pendent, enMarxa, fet, falla }
 
 struct Pas: Identifiable {
@@ -86,7 +106,7 @@ enum Fase { case inici, installant, acabat, error, senseCarpeta }
 
 final class Model: ObservableObject {
     @Published var passos: [Pas] = [
-        Pas(id: "uv", titol: "uv", detall: "El programa que prepara les eines musicals"),
+        Pas(id: "uv", titol: "Preparació", detall: "El programa que prepara les eines musicals"),
         Pas(id: "opencode", titol: "OpenCode", detall: "L'aplicació amb la qual parles amb l'ajudant"),
         Pas(id: "musescore", titol: "MuseScore", detall: "Per a revisar partitures i fer PDF"),
         Pas(id: "eines", titol: "Eines musicals", detall: "Queden guardades dins de l'ordinador, com les de qualsevol aplicació"),
@@ -356,7 +376,7 @@ struct Contingut: View {
 
             if model.fase == .installant || model.fase == .acabat || model.fase == .error {
                 VStack(alignment: .leading, spacing: 6) {
-                    ProgressView(value: model.progres)
+                    BarraProgres(valor: model.progres, error: model.fase == .error)
                     if model.fase == .installant {
                         Text(model.estat.isEmpty ? " " : model.estat)
                             .font(.callout).foregroundColor(.secondary)

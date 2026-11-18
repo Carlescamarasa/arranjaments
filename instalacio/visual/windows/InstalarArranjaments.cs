@@ -98,7 +98,7 @@ namespace Arranjaments
         public Finestra(Opcions o)
         {
             opcions = o;
-            passos.Add(new Pas("uv", "uv", "El programa que prepara les eines musicals"));
+            passos.Add(new Pas("uv", "Preparació", "El programa que prepara les eines musicals"));
             passos.Add(new Pas("opencode", "OpenCode", "L'aplicació amb la qual parles amb l'ajudant"));
             passos.Add(new Pas("musescore", "MuseScore", "Per a revisar partitures i fer PDF"));
             passos.Add(new Pas("eines", "Eines musicals", "Queden guardades dins de l'ordinador, com les de qualsevol aplicació"));
