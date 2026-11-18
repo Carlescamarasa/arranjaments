@@ -14,7 +14,7 @@ Explica en dues frases: el programa «llig» la imatge i la converteix en notes,
 1. Comprova que el PDF està a `entrada/` (`ls entrada`). Si no, demana a la persona que el deixe allí.
 2. Executa: `uv run partitures importar "entrada/nom.pdf"`. Pot tardar de 1 a 10 minuts. Avisa-la que cal esperar.
 3. Si va bé, l'ordre diu on ha deixat el fitxer `.mxl` (dins `eixida/`). Escriu la ruta completa.
-4. Si l'ordre diu que no troba Audiveris, llig el missatge sencer a la persona: explica com instal·lar-lo (hi ha un instal·lador al README del projecte). No intentes instal·lar res tu.
+4. Si l'ordre diu que no troba Audiveris, llig el missatge sencer a la persona: carrega la skill `preparar-ordinador`.
 5. Si falla perquè la qualitat del PDF és baixa, proposa buscar la partitura en MusicXML (skill `buscar-partitura`) o un PDF millor.
 
 ## Revisió obligatòria

@@ -107,6 +107,18 @@ def cmd_corpus(a):
         print(_ruta_final(ruta))
 
 
+def cmd_comprovar(a):
+    from . import eines
+    falten = 0
+    for nom, ok, msg in eines.comprovar():
+        print(f"  [{'fet' if ok else 'falta'}]  {nom}" + ("" if ok else f": {msg}"))
+        falten += 0 if ok else 1
+    if falten:
+        print(f"\nFalten {falten} cosa(es). Executa l'instal·lador del projecte (carpeta instal·lar) o mira el README.")
+        raise ErrorUsuari("L'ordinador encara no està preparat del tot.")
+    print("\nTot a punt.")
+
+
 def crear_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="partitures", description="Eines per a fer arranjaments de cambra.")
     sub = p.add_subparsers(dest="ordre", required=True)
@@ -145,6 +157,9 @@ def crear_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("exportar", help="Partitura completa i parts soltes en PDF amb MuseScore")
     s.add_argument("fitxer"); s.add_argument("--sense-parts", action="store_true", dest="sense_parts")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_exportar)
+
+    s = sub.add_parser("comprovar", help="Comprova que tot el programari necessari està instal·lat")
+    s.set_defaults(f=cmd_comprovar)
 
     s = sub.add_parser("corpus", help="Busca en el corpus de música lliure que ve amb music21")
     s.add_argument("text", nargs="?"); s.add_argument("--maxim", type=int, default=15)

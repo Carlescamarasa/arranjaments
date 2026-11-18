@@ -1,67 +1,82 @@
 #!/usr/bin/env bash
 # Instal·lació per a Mac. Es pot repetir sense problema: només fa el que falta.
-# Ús: obri el Terminal, escriu "bash " i arrossega este fitxer, i prem Retorn.
+# No cal Homebrew: baixa els instal·ladors oficials directament.
+# Ús: bash "instal·lar/instalar-mac.sh"      (o  --prova  per a només comprovar)
 set -u
 
 CARPETA="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$CARPETA" || exit 1
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 
-ok()   { printf '  [fet]  %s\n' "$1"; }
-falta() { printf '  [falta] %s\n' "$1"; }
-pas()  { printf '\n== %s ==\n' "$1"; }
+PROVA=0
+[ "${1:-}" = "--prova" ] && PROVA=1
 
-if [ "${1:-}" = "--prova" ]; then
-  echo "Mode prova: només es comprova què hi ha instal·lat, no es canvia res."
-  PROVA=1
+ok()    { printf '  [fet]    %s\n' "$1"; }
+falta() { printf '  [falta]  %s\n' "$1"; }
+pas()   { printf '\n== %s ==\n' "$1"; }
+
+# Baixa l'últim instal·lador .dmg d'un repositori de GitHub i copia l'aplicació a /Applications.
+# $1 = repositori (propietari/nom)  $2 = patró del nom de fitxer
+instal_dmg() {
+  local repo="$1" patro="$2" url tmp punt app res
+  echo "  Buscant l'última versió..."
+  url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+        | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*: *"//; s/"$//' | grep -E "$patro" | head -1)
+  if [ -z "$url" ]; then echo "  No he pogut trobar el instal·lador (sense internet?)."; return 1; fi
+  tmp="$(mktemp -d)"
+  echo "  Baixant $(basename "$url") (pot tardar uns minuts)..."
+  curl -fL --progress-bar -o "$tmp/instalador.dmg" "$url" || { rm -rf "$tmp"; return 1; }
+  punt="$tmp/volum"; mkdir -p "$punt"
+  hdiutil attach -nobrowse -quiet -mountpoint "$punt" "$tmp/instalador.dmg" || { rm -rf "$tmp"; return 1; }
+  app=$(ls -d "$punt"/*.app 2>/dev/null | head -1)
+  if [ -z "$app" ]; then echo "  No trobe cap aplicació dins de l'instal·lador."; hdiutil detach -quiet "$punt"; rm -rf "$tmp"; return 1; fi
+  if cp -R "$app" /Applications/ 2>/dev/null; then
+    res=0
+  else
+    echo "  Cal permís d'administrador per a copiar a Aplicacions. Escriu la contrasenya del Mac si te la demana."
+    sudo cp -R "$app" /Applications/; res=$?
+  fi
+  hdiutil detach -quiet "$punt"; rm -rf "$tmp"
+  return $res
+}
+
+[ "$PROVA" = 1 ] && echo "Mode prova: només es comprova què hi ha instal·lat, no es canvia res."
+
+pas "1. uv (prepara les eines musicals)"
+if command -v uv >/dev/null 2>&1; then ok "uv ja està instal·lat"
+elif [ "$PROVA" = 1 ]; then falta "uv"
 else
-  PROVA=0
-fi
-
-pas "1. uv (el gestor que prepara les eines musicals)"
-if command -v uv >/dev/null 2>&1; then
-  ok "uv ja està instal·lat"
-elif [ "$PROVA" = 1 ]; then
-  falta "uv no està instal·lat (s'instal·laria des d'astral.sh/uv)"
-else
-  echo "  Instal·lant uv..."
+  echo "  Instal·lant uv (instal·lador oficial d'astral.sh)..."
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-  command -v uv >/dev/null 2>&1 && ok "uv instal·lat" || { echo "  No s'ha pogut instal·lar uv. Pregunta a algú de suport."; exit 1; }
+  command -v uv >/dev/null 2>&1 && ok "uv instal·lat" || { echo "  No s'ha pogut instal·lar uv."; exit 1; }
 fi
 
-pas "2. MuseScore 4 (per a revisar partitures i fer PDF)"
-if [ -d "/Applications/MuseScore 4.app" ] || [ -n "${MUSESCORE_PATH:-}" ]; then
-  ok "MuseScore 4 trobat"
+pas "2. MuseScore 4 (revisar partitures i fer PDF)"
+if [ -d "/Applications/MuseScore 4.app" ] || [ -n "${MUSESCORE_PATH:-}" ]; then ok "MuseScore 4 ja està instal·lat"
+elif [ "$PROVA" = 1 ]; then falta "MuseScore 4"
+elif instal_dmg "musescore/MuseScore" '\.dmg$'; then ok "MuseScore 4 instal·lat"
 else
-  falta "MuseScore 4 no està instal·lat."
-  echo "  Baixa'l i instal·la'l (és gratuït) des de: https://musescore.org/ca/download"
-  echo "  Arrossega la icona a la carpeta Aplicacions."
+  falta "No he pogut instal·lar MuseScore automàticament."
+  echo "  Fes-ho a mà: baixa'l des de https://musescore.org/ca/download i arrossega la icona a Aplicacions."
 fi
 
-pas "3. Audiveris (per a convertir PDF en partitura editable)"
-if [ -d "/Applications/Audiveris.app" ] || [ -n "${AUDIVERIS_PATH:-}" ]; then
-  ok "Audiveris trobat"
+pas "3. Audiveris (convertir PDF en partitura; porta Java inclòs)"
+if [ -d "/Applications/Audiveris.app" ] || [ -n "${AUDIVERIS_PATH:-}" ]; then ok "Audiveris ja està instal·lat"
+elif [ "$PROVA" = 1 ]; then falta "Audiveris"
 else
-  falta "Audiveris no està instal·lat (només cal si has de treballar amb PDF)."
-  echo "  Baixa l'instal·lador per a Mac (.dmg) des de: https://github.com/Audiveris/audiveris/releases"
-  echo "  Si el teu Mac és recent (M1, M2, M3...) tria «macosx-arm64»; si és antic, «macosx-x86_64»."
-  echo "  Obri el .dmg i arrossega Audiveris a Aplicacions."
+  if [ "$(uname -m)" = "arm64" ]; then ARQ="macosx-arm64"; else ARQ="macosx-x86_64"; fi
+  if instal_dmg "Audiveris/audiveris" "$ARQ\\.dmg$"; then ok "Audiveris instal·lat"
+  else
+    falta "No he pogut instal·lar Audiveris automàticament."
+    echo "  Fes-ho a mà: baixa el .dmg «$ARQ» de https://github.com/Audiveris/audiveris/releases i arrossega Audiveris a Aplicacions."
+  fi
 fi
 
-pas "4. OpenCode (l'ajudant)"
-if command -v opencode >/dev/null 2>&1 || [ -x "$HOME/.opencode/bin/opencode" ]; then
-  ok "OpenCode ja està instal·lat"
-else
-  falta "OpenCode no està instal·lat."
-  echo "  Instal·la'l amb esta ordre al Terminal: curl -fsSL https://opencode.ai/install | bash"
-  echo "  (més informació a https://opencode.ai)"
-fi
-
-pas "5. Eines musicals del projecte"
-if [ "$PROVA" = 1 ]; then
-  falta "no s'ha executat «uv sync» (mode prova)"
+pas "4. Eines musicals d'este projecte"
+if [ "$PROVA" = 1 ]; then falta "uv sync (no es fa en mode prova)"
 elif command -v uv >/dev/null 2>&1; then
-  if uv sync; then ok "eines musicals preparades"; else echo "  Ha fallat «uv sync». Torna-ho a provar amb internet."; exit 1; fi
+  uv sync && ok "eines musicals preparades" || { echo "  Ha fallat «uv sync». Comprova internet i torna-ho a provar."; }
 fi
 
-printf '\nFet. Per a començar: obri el Terminal, escriu «cd » i arrossega esta carpeta (%s), prem Retorn i escriu «opencode».\n' "$CARPETA"
+pas "5. Comprovació final"
+if command -v uv >/dev/null 2>&1; then uv run partitures comprovar; else falta "uv no disponible: tanca el Terminal, obri'l de nou i repeteix"; fi

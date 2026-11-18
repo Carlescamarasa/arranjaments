@@ -209,3 +209,16 @@ def test_cicle_pdf_a_musicxml(coral, tmp_path):
     mxl = next((tmp_path / "omr").rglob("*.mxl"))
     d = musica.info(musica.carregar(mxl))
     assert len(d["parts"]) == 4
+
+
+def test_comprovar_llista_tot_i_falla_si_manca_algo(monkeypatch, capsys):
+    monkeypatch.setattr(eines, "comprovar", lambda: [("MuseScore 4", True, "ok"), ("Audiveris", False, "falta")])
+    assert executar("comprovar") == 1
+    eixida = capsys.readouterr()
+    assert "[falta]  Audiveris" in eixida.out and "[fet]  MuseScore 4" in eixida.out
+
+
+def test_comprovar_tot_be(monkeypatch, capsys):
+    monkeypatch.setattr(eines, "comprovar", lambda: [("MuseScore 4", True, "ok")])
+    assert executar("comprovar") == 0
+    assert "Tot a punt." in capsys.readouterr().out

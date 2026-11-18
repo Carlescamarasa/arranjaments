@@ -96,3 +96,32 @@ def trobar_audiveris() -> str:
             "Si el tens en un altre lloc, indica la ruta amb la variable d'entorn AUDIVERIS_PATH."
         )
     return ruta
+
+
+def trobar_opencode() -> str | None:
+    home = Path.home()
+    candidats = [home / ".opencode" / "bin" / "opencode", home / ".opencode" / "bin" / "opencode.exe",
+                 home / ".opencode" / "bin" / "opencode.cmd"]
+    for c in candidats:
+        if c.exists():
+            return str(c)
+    return shutil.which("opencode")
+
+
+def comprovar() -> list[tuple[str, bool, str]]:
+    """Retorna [(nom, està_bé, missatge)] per a tot el que cal tindre instal·lat."""
+    res: list[tuple[str, bool, str]] = []
+    try:
+        import music21  # noqa: F401
+        res.append(("Eines musicals (music21)", True, "preparades"))
+    except ImportError:
+        res.append(("Eines musicals (music21)", False, "falten; executa l'instal·lador d'este projecte"))
+    for nom, fn, ajuda in (("MuseScore 4", trobar_musescore, "Revisar partitures i fer PDF"),
+                           ("Audiveris", trobar_audiveris, "Convertir PDF en partitura editable")):
+        try:
+            res.append((nom, True, fn()))
+        except ErrorUsuari as e:
+            res.append((nom, False, str(e)))
+    oc = trobar_opencode()
+    res.append(("OpenCode", bool(oc), oc or "no trobat"))
+    return res
