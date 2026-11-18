@@ -387,9 +387,9 @@ jobs:
       - name: Preparar un ordinador de professora (carpetes en castellà, sense FUSE) i descomprimir el ZIP
         run: |
           set -x
-          # Només per a la prova (sudo): carpetes Documentos i Escritorio, com un escriptori en castellà, i xvfb per a mirar que OpenCode arrenca
+          # Només per a la prova (sudo): libegl1 i libopengl0 vénen amb qualsevol escriptori (el servidor del CI no els porta); carpetes Documentos i Escritorio, com un escriptori en castellà, i xvfb per a mirar que OpenCode arrenca
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xdg-user-dirs xvfb desktop-file-utils
+          sudo apt-get install -y -qq xdg-user-dirs xvfb desktop-file-utils libegl1 libopengl0
           sudo apt-get purge -y libfuse2 libfuse2t64 fuse 2>/dev/null || true
           ldconfig -p | grep 'libfuse.so.2' || echo "Sense libfuse2: com un Ubuntu net"
           mkdir -p "$HOME/.config" "$HOME/Documentos" "$HOME/Escritorio"
