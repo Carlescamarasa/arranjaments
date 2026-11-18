@@ -389,7 +389,7 @@ jobs:
           set -x
           # Només per a la prova (sudo): libegl1 i libopengl0 vénen amb qualsevol escriptori (el servidor del CI no els porta); carpetes Documentos i Escritorio, com un escriptori en castellà, i xvfb per a mirar que OpenCode arrenca
           sudo apt-get update -qq
-          sudo apt-get install -y -qq xdg-user-dirs xvfb desktop-file-utils libegl1 libopengl0
+          sudo apt-get install -y -qq xdg-user-dirs xvfb desktop-file-utils libegl1 libopengl0 libxcb-cursor0
           sudo apt-get purge -y libfuse2 libfuse2t64 fuse 2>/dev/null || true
           ldconfig -p | grep 'libfuse.so.2' || echo "Sense libfuse2: com un Ubuntu net"
           mkdir -p "$HOME/.config" "$HOME/Documentos" "$HOME/Escritorio"
@@ -488,7 +488,9 @@ jobs:
           P transport "entrada/bwv101.7.musicxml" --semitons 2
           test -f "eixida/bwv101.7-transportat.musicxml"
           # PDF amb MuseScore, sense finestra i amb la plataforma de Qt «offscreen»
-          env -i HOME="$HOME" PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen "$HOME/.local/bin/partitures" exportar "entrada/bwv101.7.musicxml"
+          grep -n "QT_QPA\|platform" "$HOME/.local/share/Arranjaments/MuseScore/AppRun" || true
+          env -i HOME="$HOME" PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen "$HOME/.local/bin/partitures" exportar "entrada/bwv101.7.musicxml" \
+            || { echo "SENSE PANTALLA FALLA; es prova amb una pantalla virtual (xvfb)"; xvfb-run -a sh -c 'env -i HOME="$HOME" PATH=/usr/bin:/bin DISPLAY="$DISPLAY" "$HOME/.local/bin/partitures" exportar entrada/bwv101.7.musicxml'; }
           find eixida -name '*.pdf' | tee "$RUNNER_TEMP/pdfs.txt"
           test -s "$RUNNER_TEMP/pdfs.txt"
           test "$(find eixida -name '*.pdf' -size 0 | wc -l)" = 0
