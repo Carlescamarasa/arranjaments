@@ -102,6 +102,35 @@ def trobar_audiveris() -> str:
     return ruta
 
 
+COSES_INSTALABLES = ("musescore", "audiveris", "opencode", "icona", "eines", "carpeta", "uv")
+
+
+def instalar(cosa: str | None, prova: bool = False) -> int:
+    """Executa l'instal·lador del sistema (el mateix que fa servir «Instal·lar Arranjaments») per a una sola cosa.
+
+    L'instal·lador viu al costat d'estes eines (carpeta instalacio/). Retorna el seu codi d'eixida.
+    """
+    import subprocess
+    carpeta = Path(__file__).resolve().parents[2] / "instalacio"
+    if _es_windows():
+        guio = carpeta / "instalar-windows.ps1"
+        arrel_sistema = os.environ.get("SystemRoot", r"C:\Windows")
+        ordre = [str(Path(arrel_sistema) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"),
+                 "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(guio), "-SensePreguntes"]
+        ordre += ["-Prova"] if prova else ["-Nomes", cosa]
+    elif _es_mac():
+        guio = carpeta / "instalar-mac.sh"
+        ordre = ["/bin/bash", str(guio), "--sense-preguntes"] + (["--prova"] if prova else ["--nomes", cosa])
+    else:
+        raise ErrorUsuari("L'instal·lador automàtic només existeix per a Mac i Windows.")
+    if not guio.exists():
+        raise ErrorUsuari("No trobe l'instal·lador. Torna a obrir «Instal·lar Arranjaments» (el programa amb què vas "
+                          "instal·lar-ho tot) i prova-ho de nou.")
+    entorn = {k: v for k, v in os.environ.items() if k not in ("ARRANJAMENTS_PROGRES", "PSModulePath")}
+    sys.stdout.flush()
+    return subprocess.run(ordre, env=entorn, stdin=subprocess.DEVNULL).returncode
+
+
 def comprovar() -> list[tuple[str, bool, str]]:
     """Retorna [(nom, està_bé, missatge)] per a tot el que cal tindre instal·lat."""
     res: list[tuple[str, bool, str]] = []
@@ -109,7 +138,7 @@ def comprovar() -> list[tuple[str, bool, str]]:
         import music21  # noqa: F401
         res.append(("Eines musicals (music21)", True, "preparades"))
     except ImportError:
-        res.append(("Eines musicals (music21)", False, "falten; executa l'instal·lador d'este projecte"))
+        res.append(("Eines musicals (music21)", False, "falten; torna a obrir «Instal·lar Arranjaments»"))
     for nom, fn, ajuda in (("MuseScore", trobar_musescore, "Revisar partitures i fer PDF"),
                            ("Audiveris (opcional, només per a PDF)", trobar_audiveris, "Convertir PDF en partitura editable")):
         try:

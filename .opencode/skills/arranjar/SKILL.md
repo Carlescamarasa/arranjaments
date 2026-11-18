@@ -16,16 +16,16 @@ Tot es fa amb ordres. Tu no edites cap fitxer. Les ordres NO modifiquen l'origin
 
 ## Ordres
 
-1. Veure què té el fitxer: `uv run partitures info "entrada/nom.musicxml"`
-2. Llista d'instruments (i els noms que accepta): `uv run partitures instruments`
+1. Veure què té el fitxer: `partitures info "entrada/nom.musicxml"`
+2. Llista d'instruments (i els noms que accepta): `partitures instruments`
 3. Assignar parts a instruments (número de part = instrument):
-   `uv run partitures instruments "entrada/nom.musicxml" --assigna "1=trompeta-sib,2=trompeta-sib,3=trompa-fa,4=trombo"`
+   `partitures instruments "entrada/nom.musicxml" --assigna "1=trompeta-sib,2=trompeta-sib,3=trompa-fa,4=trombo"`
    Això crea `eixida/nom-instruments.musicxml`.
 4. Comprovar tessitures (amb l'altura escrita de cada instrument):
-   `uv run partitures tessitura "eixida/nom-instruments.musicxml"`
+   `partitures tessitura "eixida/nom-instruments.musicxml"`
    Si el fitxer no diu quins instruments són: afegir `--instruments "1=trompeta-sib,..."`.
-5. Transportar tot el conjunt: `uv run partitures transport "<fitxer>" --semitons -2` o `--interval m-3`. Només una part una octava més amunt: `--octava 1 --part 3`.
-6. Quedar-se només amb algunes parts: `uv run partitures reduir "<fitxer>" --mantin "1,4"`.
+5. Transportar tot el conjunt: `partitures transport "<fitxer>" --semitons -2` o `--interval m-3`. Només una part una octava més amunt: `--octava 1 --part 3`.
+6. Quedar-se només amb algunes parts: `partitures reduir "<fitxer>" --mantin "1,4"`.
 
 ## Com ordenar el treball (una pregunta cada vegada)
 
@@ -37,6 +37,6 @@ Tot es fa amb ordres. Tu no edites cap fitxer. Les ordres NO modifiquen l'origin
 
 ## No faces
 
-- No canvies notes concretes ni ritmes: l'eina no ho fa. Si la persona vol retocar notes, que òbriga el fitxer amb MuseScore (`uv run partitures obrir "<fitxer>"`).
+- No canvies notes concretes ni ritmes: l'eina no ho fa. Si la persona vol retocar notes, que òbriga el fitxer amb MuseScore (`partitures obrir "<fitxer>"`).
 - No inventes noms d'instrument: usa només els de la llista. Si falta un instrument, digues-ho.
 - No ofereixes reduccions a piano: ara mateix no es poden fer amb l'eina.

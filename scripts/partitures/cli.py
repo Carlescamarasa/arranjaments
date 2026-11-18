@@ -1,4 +1,4 @@
-"""Punt d'entrada únic: `uv run partitures <ordre> ...`"""
+"""Punt d'entrada únic: `partitures <ordre> ...` (dins del repositori, `uv run partitures <ordre> ...`)."""
 from __future__ import annotations
 
 import argparse
@@ -123,9 +123,20 @@ def cmd_comprovar(a):
             else:
                 falten += 1
     if falten:
-        print(f"\nFalten {falten} cosa(es). Executa l'instal·lador del projecte (carpeta instalacio) o mira el README.")
+        print(f"\nFalten {falten} cosa(es). Es poden instal·lar amb «partitures instalar musescore» "
+              "o tornant a obrir «Instal·lar Arranjaments».")
         raise ErrorUsuari("L'ordinador encara no està preparat del tot.")
     print("\nTot a punt." + (" (Audiveris només cal si vols convertir PDF.)" if opcionals else ""))
+
+
+def cmd_instalar(a):
+    from . import eines
+    if not a.prova and not a.cosa:
+        raise ErrorUsuari("Digues què cal instal·lar, per exemple: partitures instalar audiveris "
+                          "(o partitures instalar --prova per a només comprovar).")
+    codi = eines.instalar(a.cosa, prova=a.prova)
+    if codi != 0:
+        raise ErrorUsuari("La instal·lació no ha acabat bé. Llig els avisos [falta] de dalt.")
 
 
 class _Parser(argparse.ArgumentParser):
@@ -178,6 +189,12 @@ def crear_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("comprovar", help="Comprova que tot el programari necessari està instal·lat")
     s.set_defaults(f=cmd_comprovar)
+
+    s = sub.add_parser("instalar", help="Instal·la una cosa que falta (musescore, audiveris...) amb l'instal·lador oficial")
+    from .eines import COSES_INSTALABLES
+    s.add_argument("cosa", nargs="?", choices=COSES_INSTALABLES)
+    s.add_argument("--prova", action="store_true", help="Només comprova què hi ha instal·lat, no canvia res")
+    s.set_defaults(f=cmd_instalar)
 
     s = sub.add_parser("corpus", help="Busca en el corpus de música lliure que ve amb music21")
     s.add_argument("text", nargs="*", help="Què busques (compositor, títol o nom de fitxer)")

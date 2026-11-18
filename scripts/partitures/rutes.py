@@ -1,8 +1,10 @@
-"""Rutes segures: tot el que s'escriu va dins de la carpeta del projecte (eixida/ o entrada/).
+"""Rutes segures: tot el que s'escriu va dins de la carpeta de treball (eixida/ o entrada/).
 
-- Mai s'escriu fora del projecte.
+La carpeta de treball és aquella des d'on s'executa l'ordre (Documents/Arranjaments, en una instal·lació normal).
+
+- Mai s'escriu fora de la carpeta de treball.
 - Mai se sobreescriu res: si el nom ja existeix, s'afegeix -2, -3...
-- Per a provar-ho des d'un altre lloc, la variable d'entorn PARTITURES_ARREL fixa la carpeta del projecte.
+- Per a provar-ho des d'un altre lloc, la variable d'entorn PARTITURES_ARREL fixa la carpeta de treball.
 """
 from __future__ import annotations
 
@@ -24,7 +26,7 @@ def carpeta(nom: str) -> Path:
 
 
 def dins(ruta: str | Path, nom_carpeta: str) -> Path:
-    """Resol la ruta (relativa a la carpeta del projecte) i comprova que és dins de `nom_carpeta/`."""
+    """Resol la ruta (relativa a la carpeta de treball) i comprova que és dins de `nom_carpeta/`."""
     p = Path(ruta).expanduser()
     if not p.is_absolute():
         p = arrel() / p
@@ -34,7 +36,7 @@ def dins(ruta: str | Path, nom_carpeta: str) -> Path:
         p.relative_to(base)
     except ValueError:
         raise ErrorUsuari(
-            f"Només puc guardar fitxers dins de la carpeta «{nom_carpeta}/» del projecte, no en «{ruta}». "
+            f"Només puc guardar fitxers dins de la carpeta «{nom_carpeta}/» de la carpeta de treball, no en «{ruta}». "
             f"Deixa que decidisca jo el nom, o tria una ruta que comence per {nom_carpeta}/."
         ) from None
     return p

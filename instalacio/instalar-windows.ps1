@@ -2,23 +2,46 @@
 # - uv i OpenCode s'instal·len a la teua carpeta d'usuària: NO demanen permís d'administrador.
 # - MuseScore (i Audiveris, si el demanes) s'instal·len per a tots els usuaris amb el seu instal·lador MSI:
 #   Windows et demana permís d'administrador (finestra blava, UAC). Si l'ordinador no et deixa, consulta qui l'administra.
+# Què deixa a l'ordinador:
+#   - les eines musicals, amagades com les de qualsevol aplicació: %LOCALAPPDATA%\Arranjaments (fora d'OneDrive)
+#   - la carpeta de treball que veu la professora: Documents\Arranjaments (amb entrada\ i eixida\)
+#   - l'ordre «partitures» a la carpeta .local\bin de la usuària, que funciona des de la carpeta de treball
+#   - la icona «Arranjaments» a l'Escriptori
+# Després d'instal·lar, la carpeta des d'on s'ha executat (la del ZIP) ja no cal.
 # Ús: powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1"             (tot el que falta, i la icona «Arranjaments» a l'Escriptori)
-#     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv    (només una cosa: uv, opencode, musescore, audiveris, icona)
+#     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv    (només una cosa: uv, opencode, musescore, audiveris, eines, carpeta, icona)
 #     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Prova      (només comprova)
 #     ... -SensePreguntes   (no s'atura mai a esperar una tecla; per a proves)
 # Audiveris NO s'instal·la si no el demanes amb -Nomes audiveris (només cal per a convertir PDF).
-param([switch]$Prova, [switch]$SensePreguntes, [ValidateSet("", "uv", "opencode", "musescore", "audiveris", "icona")][string]$Nomes = "")
+# L'instal·lador visual («Instal·lar Arranjaments») executa este mateix fitxer amb la variable d'entorn
+# ARRANJAMENTS_PROGRES=1. Llavors, a més del text de sempre, s'escriuen línies «@@PAS nom inici|ok|falla»
+# i una «@@FI ok|falla» final, que la finestra llig per a marcar cada pas.
+param([switch]$Prova, [switch]$SensePreguntes, [ValidateSet("", "uv", "opencode", "musescore", "audiveris", "eines", "carpeta", "icona")][string]$Nomes = "")
 
 $ErrorActionPreference = "Continue"
 $ProgressPreference = "SilentlyContinue"
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 $Carpeta = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $Carpeta
+# On va cada cosa (les variables ARRANJAMENTS_* només són per a proves)
+$Dades = if ($env:ARRANJAMENTS_DADES) { $env:ARRANJAMENTS_DADES } else { Join-Path $env:LOCALAPPDATA "Arranjaments" }
+# GetFolderPath tria la carpeta Documents bona encara que OneDrive la moga (ací només hi haurà partitures)
+$Treball = if ($env:ARRANJAMENTS_TREBALL) { $env:ARRANJAMENTS_TREBALL } else { Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments" }
+$Bin = if ($env:ARRANJAMENTS_BIN) { $env:ARRANJAMENTS_BIN } else { Join-Path $env:USERPROFILE ".local\bin" }
+$Ordre = Join-Path $Bin "partitures.cmd"
+$PythonEines = Join-Path $Dades ".venv\Scripts\python.exe"
 $script:Falls = 0
+# Avisos de progrés per a l'instal·lador visual (només amb ARRANJAMENTS_PROGRES): IniciPas nom ... FiPas
+$script:PasId = ""; $script:PasMal = $false
+$Visual = [bool]$env:ARRANJAMENTS_PROGRES
+if ($Visual) { try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false } catch { } }
+function Progres($t) { if ($Visual) { Write-Host "@@$t" } }
+function IniciPas($id) { $script:PasId = $id; $script:PasMal = $false; Progres "PAS $id inici" }
+function FiPas { if ($script:PasMal) { Progres "PAS $($script:PasId) falla" } else { Progres "PAS $($script:PasId) ok" }; $script:PasId = "" }
 
 function Pas($t)   { Write-Host ""; Write-Host "== $t ==" }
 function Fet($t)   { Write-Host "  [fet]    $t" }
-function Falta($t) { Write-Host "  [falta]  $t" }
+function Falta($t) { $script:PasMal = $true; Write-Host "  [falta]  $t" }
 # fallada: no s'atura, però el resum final no dirà «Tot a punt»
 function Fallada($t, $manual) {
     $script:Falls++
@@ -92,12 +115,73 @@ function InstalMsi($url, $nom) {
     }
 }
 
+# Copia les eines musicals (i el que cal per a reinstal·lar) a la carpeta de dades de l'aplicació.
+# Si l'instal·lador ja s'executa des d'allí (ho fa l'ajudant amb «partitures instalar»), no cal copiar res.
+function CopiaEines {
+    try {
+        New-Item -ItemType Directory -Force $Dades, (Join-Path $Dades "instalacio"), (Join-Path $Dades ".opencode") | Out-Null
+        if ((Resolve-Path $Dades).Path -eq $Carpeta) { return $true }
+        foreach ($vella in @((Join-Path $Dades "scripts"), (Join-Path $Dades ".opencode\skills"))) {
+            if (Test-Path $vella) { Remove-Item $vella -Recurse -Force -ErrorAction Stop }
+        }
+        Copy-Item (Join-Path $Carpeta "scripts") (Join-Path $Dades "scripts") -Recurse -Force -ErrorAction Stop
+        foreach ($f in @("pyproject.toml", "uv.lock", ".python-version", "AGENTS.md", "opencode.json")) {
+            Copy-Item (Join-Path $Carpeta $f) (Join-Path $Dades $f) -Force -ErrorAction Stop
+        }
+        Copy-Item (Join-Path $Carpeta "instalacio\instalar-windows.ps1") (Join-Path $Dades "instalacio\instalar-windows.ps1") -Force -ErrorAction Stop
+        Copy-Item (Join-Path $Carpeta ".opencode\skills") (Join-Path $Dades ".opencode\skills") -Recurse -Force -ErrorAction Stop
+        Get-ChildItem (Join-Path $Dades "scripts") -Recurse -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        # Els fitxers venen d'un ZIP baixat d'internet: es trau la marca perquè Windows no avise més endavant
+        Get-ChildItem (Join-Path $Dades "scripts"), (Join-Path $Dades "instalacio"), (Join-Path $Dades ".opencode") -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+        return $true
+    } catch { Write-Host "  $($_.Exception.Message)"; return $false }
+}
+
+# L'ordre «partitures»: un fitxer menut que crida les eines instal·lades, des de la carpeta on s'estiga.
+function CreaOrdre {
+    try {
+        New-Item -ItemType Directory -Force $Bin | Out-Null
+        # Amb la carpeta habitual s'escriu amb la variable de Windows, i així el fitxer no porta accents
+        $python = if ($env:ARRANJAMENTS_DADES) { $PythonEines } else { '%LOCALAPPDATA%\Arranjaments\.venv\Scripts\python.exe' }
+        $text = "@echo off`r`nrem Creat per l'instalador d'Arranjaments. Executa les eines musicals des de la carpeta on estas.`r`n`"$python`" -m partitures.cli %*`r`n"
+        $oem = [Text.Encoding]::GetEncoding([Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage)
+        [IO.File]::WriteAllText($Ordre, $text, $oem)
+        # Perquè l'ordre «partitures» es trobe sense escriure la ruta: la carpeta ha d'estar al PATH de la usuària
+        if (-not $env:ARRANJAMENTS_BIN) {
+            $cami = [Environment]::GetEnvironmentVariable('Path', 'User')
+            if (-not $cami) { $cami = "" }
+            if (($cami -split ';') -notcontains $Bin) {
+                [Environment]::SetEnvironmentVariable('Path', ($cami.TrimEnd(';') + ';' + $Bin).TrimStart(';'), 'User')
+            }
+        }
+        return $true
+    } catch { Write-Host "  $($_.Exception.Message)"; return $false }
+}
+
+# La carpeta de treball. Només es renova la configuració amagada (.opencode): entrada\ i eixida\ no es toquen mai.
+function PreparaCarpeta {
+    try {
+        $cfg = Join-Path $Treball ".opencode"
+        New-Item -ItemType Directory -Force (Join-Path $Treball "entrada"), (Join-Path $Treball "eixida"), $cfg | Out-Null
+        $skills = Join-Path $cfg "skills"
+        if (Test-Path $skills) { Remove-Item $skills -Recurse -Force -ErrorAction Stop }
+        Copy-Item (Join-Path $Carpeta ".opencode\skills") $skills -Recurse -Force -ErrorAction Stop
+        Copy-Item (Join-Path $Carpeta "AGENTS.md") (Join-Path $cfg "AGENTS.md") -Force -ErrorAction Stop
+        Copy-Item (Join-Path $Carpeta "opencode.json") (Join-Path $cfg "opencode.json") -Force -ErrorAction Stop
+        Get-ChildItem $cfg -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+        # Amagada, perquè a la carpeta només es vegen entrada i eixida
+        $d = Get-Item $cfg -Force
+        $d.Attributes = $d.Attributes -bor [IO.FileAttributes]::Hidden
+        return $true
+    } catch { Write-Host "  $($_.Exception.Message)"; return $false }
+}
+
 if ($Prova) { Write-Host "Mode prova: només es comprova què hi ha instal·lat, no es canvia res." }
 ActualitzaPath
 
 # ---------------------------------------------------------------- 1. uv
 if (Vol "uv") {
-Pas "1. uv (prepara les eines musicals)"
+IniciPas "uv"; Pas "1. uv (prepara les eines musicals)"
 if (Get-Command uv -ErrorAction SilentlyContinue) { Fet "uv ja està instal·lat" }
 elseif ($Prova) { Falta "uv" }
 else {
@@ -108,11 +192,12 @@ else {
     if (Get-Command uv -ErrorAction SilentlyContinue) { Fet "uv instal·lat a $env:USERPROFILE\.local\bin\uv.exe" }
     else { Fallada "No s'ha pogut instal·lar uv." "https://docs.astral.sh/uv/getting-started/installation/" }
 }
+FiPas
 }
 
 # ---------------------------------------------------------------- 2. OpenCode
 if (Vol "opencode") {
-Pas "2. OpenCode (l'aplicació amb la qual parles amb l'ajudant)"
+IniciPas "opencode"; Pas "2. OpenCode (l'aplicació amb la qual parles amb l'ajudant)"
 if (TrobaOpenCode) { Fet "OpenCode ja està instal·lat" }
 elseif ($Prova) { Falta "OpenCode" }
 else {
@@ -126,11 +211,12 @@ else {
         else { Fallada "No he pogut instal·lar OpenCode automàticament." "https://opencode.ai/download (baixa la versió per a Windows i fes-hi doble clic)" }
     } else { Fallada "No he pogut baixar OpenCode (sense internet?)." "https://opencode.ai/download (baixa la versió per a Windows i fes-hi doble clic)" }
 }
+FiPas
 }
 
 # ---------------------------------------------------------------- 3. MuseScore
 if (Vol "musescore") {
-Pas "3. MuseScore (revisar partitures i fer PDF)"
+IniciPas "musescore"; Pas "3. MuseScore (revisar partitures i fer PDF)"
 if ($env:MUSESCORE_PATH -or (TrobaMuseScore).Count -gt 0) { Fet "MuseScore ja està instal·lat" }
 elseif ($Prova) { Falta "MuseScore 4" }
 else {
@@ -139,11 +225,12 @@ else {
     if ($url -and (InstalMsi $url "MuseScore") -and (TrobaMuseScore).Count -gt 0) { Fet "MuseScore instal·lat (sense MuseHub)" }
     else { Fallada "No he pogut instal·lar MuseScore automàticament." "https://musescore.org/ca/download (opció «sense MuseHub»)" }
 }
+FiPas
 }
 
 # ---------------------------------------------------------------- 4. Audiveris (només a demanda)
 if (Vol "audiveris") {
-Pas "4. Audiveris (convertir PDF en partitura; porta Java inclòs)"
+IniciPas "audiveris"; Pas "4. Audiveris (convertir PDF en partitura; porta Java inclòs)"
 if ($env:AUDIVERIS_PATH -or (TrobaAudiveris).Count -gt 0) { Fet "Audiveris ja està instal·lat" }
 elseif ($Prova) { Falta "Audiveris" }
 else {
@@ -151,21 +238,41 @@ else {
     if ($url -and (InstalMsi $url "Audiveris") -and (TrobaAudiveris).Count -gt 0) { Fet "Audiveris instal·lat" }
     else { Fallada "No he pogut instal·lar Audiveris automàticament." "https://github.com/Audiveris/audiveris/releases (fitxer windows-x86_64.msi)" }
 }
+FiPas
 }
 
 # ---------------------------------------------------------------- 5. Eines musicals
-if (Vol "uv") {
-Pas "5. Eines musicals d'este projecte"
-if ($Prova) { Falta "uv sync (no es fa en mode prova)" }
-elseif (Get-Command uv -ErrorAction SilentlyContinue) {
-    uv sync
-    if ($LASTEXITCODE -eq 0) { Fet "eines musicals preparades" } else { Fallada "Ha fallat «uv sync». Comprova internet i torna-ho a provar." }
+if ((Vol "eines") -or (Vol "uv")) {
+IniciPas "eines"; Pas "5. Eines musicals (a la carpeta de dades de l'aplicació)"
+if ($Prova) { if ((Test-Path $Ordre) -and (Test-Path $PythonEines)) { Fet "eines musicals instal·lades" } else { Falta "eines musicals" } }
+elseif (-not (Get-Command uv -ErrorAction SilentlyContinue)) { Fallada "No es poden preparar les eines musicals: falta uv." }
+elseif (-not (CopiaEines)) { Fallada "No he pogut copiar les eines musicals a $Dades." }
+else {
+    Push-Location $Dades
+    uv sync --frozen --no-dev
+    $codiSync = $LASTEXITCODE
+    Pop-Location
+    if ($codiSync -ne 0) { Fallada "Ha fallat la preparació de les eines musicals. Comprova internet i torna-ho a provar." }
+    elseif (-not (CreaOrdre)) { Fallada "No he pogut crear l'ordre «partitures» a $Bin." }
+    else { Fet "eines musicals preparades (ordre: $Ordre)" }
 }
+FiPas
 }
 
-# ---------------------------------------------------------------- 6. Icona «Arranjaments» a l'Escriptori
+# ---------------------------------------------------------------- 6. Carpeta de treball
+if (Vol "carpeta") {
+IniciPas "carpeta"; Pas "6. Carpeta de treball: $Treball"
+if ($Prova) {
+    if ((Test-Path (Join-Path $Treball "entrada")) -and (Test-Path (Join-Path $Treball "eixida")) -and (Test-Path (Join-Path $Treball ".opencode\opencode.json"))) { Fet "la carpeta de treball ja hi és" } else { Falta "carpeta de treball" }
+}
+elseif (PreparaCarpeta) { Fet "carpeta de treball preparada (les teues partitures no s'han tocat)" }
+else { Fallada "No he pogut preparar la carpeta de treball $Treball." }
+FiPas
+}
+
+# ---------------------------------------------------------------- 7. Icona «Arranjaments» a l'Escriptori
 if ((Vol "icona") -or (Vol "opencode")) {
-Pas "6. Icona «Arranjaments» a l'Escriptori"
+IniciPas "icona"; Pas "7. Icona «Arranjaments» a l'Escriptori"
 # GetFolderPath tria l'Escriptori bo encara que OneDrive el moga a una altra carpeta
 $escriptori = [Environment]::GetFolderPath('Desktop')
 $lnk = Join-Path $escriptori "Arranjaments.lnk"
@@ -177,22 +284,29 @@ else {
         $sh = New-Object -ComObject WScript.Shell
         $d = $sh.CreateShortcut($lnk)
         $d.TargetPath = $oc
-        $d.WorkingDirectory = $Carpeta
+        if (Test-Path $Treball) { $d.WorkingDirectory = $Treball }
         $d.IconLocation = "$oc,0"
         $d.Description = "Arranjaments: obri OpenCode"
         $d.Save()
         Fet "icona creada: $lnk"
     } catch { Fallada "No he pogut crear la icona a l'Escriptori ($($_.Exception.Message))." "obri OpenCode des del menú Inici" }
 }
+FiPas
 }
 
 # ---------------------------------------------------------------- Comprovació final
-Pas "Comprovació final"
+IniciPas "final"; Pas "Comprovació final"
 # Amb -Nomes només s'informa (la resta potser encara no toca); sense -Nomes compta per al resum.
-if (Get-Command uv -ErrorAction SilentlyContinue) {
-    uv run partitures comprovar
-    if ($LASTEXITCODE -ne 0 -and $Nomes -eq "") { $script:Falls++ }
-} else { Falta "uv no disponible (hauria d'estar a $env:USERPROFILE\.local\bin\uv.exe)"; if ($Nomes -eq "") { $script:Falls++ } }
+# Es fa des de la carpeta de treball i amb l'ordre «partitures», com ho farà l'ajudant.
+if ((Test-Path $Ordre) -and (Test-Path $Treball)) {
+    Push-Location $Treball
+    & $Ordre comprovar
+    $codiFinal = $LASTEXITCODE
+    Pop-Location
+    if ($codiFinal -ne 0 -and $Nomes -eq "") { $script:Falls++; $script:PasMal = $true }
+} else { Falta "les eines musicals encara no estan instal·lades"; if ($Nomes -eq "") { $script:Falls++ } }
+FiPas
+if ($script:Falls -eq 0) { Progres "FI ok" } else { Progres "FI falla $($script:Falls)" }
 
 Write-Host ""
 if ($Prova -or $Nomes -ne "") { Write-Host "Fet." }
@@ -200,6 +314,7 @@ elseif ($script:Falls -eq 0) {
     Write-Host "=============================================="
     Write-Host " Tot a punt."
     Write-Host " Obri la icona «Arranjaments» de l'Escriptori."
+    Write-Host " La teua carpeta de treball: $Treball"
     Write-Host "=============================================="
 } else {
     Write-Host "Hi ha $($script:Falls) cosa(es) que no s'han pogut fer (mira els avisos [falta] de dalt)."
