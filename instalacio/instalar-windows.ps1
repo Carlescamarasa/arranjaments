@@ -1,5 +1,7 @@
-# Instal·lació per a Windows. Es pot repetir sense problema: només fa el que falta.
-# Fa servir winget (ve amb Windows 10/11). Windows et demanarà permís (finestra blava): accepta.
+﻿# Instal·lació per a Windows. Es pot repetir sense problema: només fa el que falta.
+# Fa servir winget (ve amb Windows 10/11). MuseScore i Audiveris es desen per a tots els usuaris:
+# Windows demana permís d'administrador (finestra blava, UAC). Si l'ordinador no et deixa, consulta qui l'administra.
+# uv s'instal·la a la teua carpeta d'usuària i no demana permís.
 # Ús: powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1"             (tot el que falta)
 #     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv    (només una cosa: uv, musescore, audiveris)
 #     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Prova      (només comprova)
@@ -30,6 +32,7 @@ function InstalWinget($id, $nom, $urlManual) {
     winget install --id $id -e --accept-package-agreements --accept-source-agreements
     ActualitzaPath
     if ($LASTEXITCODE -ne 0) { Falta "No he pogut instal·lar $nom automàticament. Fes-ho a mà: $urlManual" }
+    else { Fet "$nom instal·lat" }
 }
 
 if (Vol "uv") {
@@ -40,22 +43,25 @@ else {
     Write-Host "  Instal·lant uv (instal·lador oficial d'astral.sh)..."
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     ActualitzaPath
-    if (Get-Command uv -ErrorAction SilentlyContinue) { Fet "uv instal·lat" }
+    if (Get-Command uv -ErrorAction SilentlyContinue) {
+        Fet "uv instal·lat a $env:USERPROFILE\.local\bin\uv.exe"
+        Write-Host "  Si OpenCode no el troba encara, crida'l amb la ruta completa (no cal reiniciar): & `"$env:USERPROFILE\.local\bin\uv.exe`" run partitures comprovar"
+    }
     else { Write-Host "  No s'ha pogut instal·lar uv. Tanca esta finestra, obri-la de nou i repeteix."; exit 1 }
 }
 }
 
 if (Vol "musescore") {
-Pas "2. MuseScore 4 (revisar partitures i fer PDF)"
-$ms = @("$env:ProgramFiles\MuseScore 4\bin\MuseScore4.exe", "${env:ProgramFiles(x86)}\MuseScore 4\bin\MuseScore4.exe")
-if ($env:MUSESCORE_PATH -or ($ms | Where-Object { Test-Path $_ })) { Fet "MuseScore 4 ja està instal·lat" }
+Pas "2. MuseScore (revisar partitures i fer PDF)"
+$ms = @(Get-ChildItem "$env:ProgramFiles\MuseScore*\bin\MuseScore*.exe", "${env:ProgramFiles(x86)}\MuseScore*\bin\MuseScore*.exe", "$env:LOCALAPPDATA\Programs\MuseScore*\bin\MuseScore*.exe" -ErrorAction SilentlyContinue)
+if ($env:MUSESCORE_PATH -or $ms.Count -gt 0) { Fet "MuseScore ja està instal·lat" }
 elseif ($Prova) { Falta "MuseScore 4" }
-else { InstalWinget "Musescore.Musescore" "MuseScore 4" "https://musescore.org/ca/download" }
+else { InstalWinget "Musescore.Musescore" "MuseScore" "https://musescore.org/ca/download (tria l'opció «sense MuseHub»)" }
 }
 
 if (Vol "audiveris") {
 Pas "3. Audiveris (convertir PDF en partitura; porta Java inclòs)"
-$av = @(Get-ChildItem "$env:ProgramFiles\Audiveris*\Audiveris*.exe" -ErrorAction SilentlyContinue)
+$av = @(Get-ChildItem "$env:ProgramFiles\Audiveris*\Audiveris*.exe", "$env:LOCALAPPDATA\Programs\Audiveris*\Audiveris*.exe", "$env:LOCALAPPDATA\Audiveris*\Audiveris*.exe" -ErrorAction SilentlyContinue)
 if ($env:AUDIVERIS_PATH -or $av.Count -gt 0) { Fet "Audiveris ja està instal·lat" }
 elseif ($Prova) { Falta "Audiveris" }
 else { InstalWinget "audiveris.org.Audiveris" "Audiveris" "https://github.com/Audiveris/audiveris/releases (fitxer windows-x86_64.msi)" }
@@ -71,4 +77,4 @@ elseif (Get-Command uv -ErrorAction SilentlyContinue) {
 }
 
 Pas "5. Comprovació final"
-if (Get-Command uv -ErrorAction SilentlyContinue) { uv run partitures comprovar } else { Falta "uv no disponible: tanca esta finestra, obri-la de nou i repeteix" }
+if (Get-Command uv -ErrorAction SilentlyContinue) { uv run partitures comprovar; if ($LASTEXITCODE -eq 0) { Write-Host "Instal·lació acabada: tot a punt." } } else { Falta "uv no disponible (hauria d'estar a $env:USERPROFILE\.local\bin\uv.exe)" }

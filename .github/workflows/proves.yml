@@ -1,0 +1,25 @@
+name: Proves
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  proves:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Eines musicals
+        run: uv sync
+      - name: Proves (les que necessiten MuseScore o Audiveris s'ometen si no hi són)
+        run: uv run pytest -q
+      - name: Ordre per una canonada amb consola cp1252 (cas de Windows)
+        env:
+          PYTHONIOENCODING: cp1252
+        run: uv run partitures --help

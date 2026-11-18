@@ -27,7 +27,8 @@ ok()    { printf '  [fet]    %s\n' "$1"; }
 falta() { printf '  [falta]  %s\n' "$1"; }
 pas()   { printf '\n== %s ==\n' "$1"; }
 
-# Baixa l'últim instal·lador .dmg d'un repositori de GitHub i copia l'aplicació a /Applications.
+# Baixa l'últim instal·lador .dmg d'un repositori de GitHub i copia l'aplicació a ~/Applications
+# (la carpeta Aplicacions de la teua usuària: no cal contrasenya d'administrador).
 # $1 = repositori (propietari/nom)  $2 = patró del nom de fitxer
 instal_dmg() {
   local repo="$1" patro="$2" url tmp punt app res
@@ -42,12 +43,8 @@ instal_dmg() {
   hdiutil attach -nobrowse -quiet -mountpoint "$punt" "$tmp/instalador.dmg" || { rm -rf "$tmp"; return 1; }
   app=$(ls -d "$punt"/*.app 2>/dev/null | head -1)
   if [ -z "$app" ]; then echo "  No trobe cap aplicació dins de l'instal·lador."; hdiutil detach -quiet "$punt"; rm -rf "$tmp"; return 1; fi
-  if cp -R "$app" /Applications/ 2>/dev/null; then
-    res=0
-  else
-    echo "  Cal permís d'administrador per a copiar a Aplicacions. Escriu la contrasenya del Mac si te la demana."
-    sudo cp -R "$app" /Applications/; res=$?
-  fi
+  mkdir -p "$HOME/Applications"
+  cp -R "$app" "$HOME/Applications/"; res=$?
   hdiutil detach -quiet "$punt"; rm -rf "$tmp"
   return $res
 }
@@ -62,24 +59,27 @@ else
   echo "  Instal·lant uv (instal·lador oficial d'astral.sh)..."
   curl -LsSf https://astral.sh/uv/install.sh | sh
   export PATH="$HOME/.local/bin:$PATH"
-  command -v uv >/dev/null 2>&1 && ok "uv instal·lat" || { echo "  No s'ha pogut instal·lar uv."; exit 1; }
+  if command -v uv >/dev/null 2>&1; then
+    ok "uv instal·lat a $HOME/.local/bin/uv"
+    echo "  Si OpenCode no el troba encara, crida'l amb la ruta completa: ~/.local/bin/uv (no cal reiniciar)."
+  else echo "  No s'ha pogut instal·lar uv."; exit 1; fi
 fi
 fi
 
 if vol musescore; then
-pas "2. MuseScore 4 (revisar partitures i fer PDF)"
-if [ -d "/Applications/MuseScore 4.app" ] || [ -n "${MUSESCORE_PATH:-}" ]; then ok "MuseScore 4 ja està instal·lat"
+pas "2. MuseScore (revisar partitures i fer PDF)"
+if ls -d /Applications/MuseScore*.app "$HOME"/Applications/MuseScore*.app >/dev/null 2>&1 || [ -n "${MUSESCORE_PATH:-}" ]; then ok "MuseScore ja està instal·lat"
 elif [ "$PROVA" = 1 ]; then falta "MuseScore 4"
-elif instal_dmg "musescore/MuseScore" '\.dmg$'; then ok "MuseScore 4 instal·lat"
+elif instal_dmg "musescore/MuseScore" '\.dmg$'; then ok "MuseScore instal·lat (a ~/Applications)"
 else
   falta "No he pogut instal·lar MuseScore automàticament."
-  echo "  Fes-ho a mà: baixa'l des de https://musescore.org/ca/download i arrossega la icona a Aplicacions."
+  echo "  Fes-ho a mà: baixa'l des de https://musescore.org/ca/download (tria l'opció «sense MuseHub») i arrossega la icona a Aplicacions."
 fi
 fi
 
 if vol audiveris; then
 pas "3. Audiveris (convertir PDF en partitura; porta Java inclòs)"
-if [ -d "/Applications/Audiveris.app" ] || [ -n "${AUDIVERIS_PATH:-}" ]; then ok "Audiveris ja està instal·lat"
+if ls -d /Applications/Audiveris*.app "$HOME"/Applications/Audiveris*.app >/dev/null 2>&1 || [ -n "${AUDIVERIS_PATH:-}" ]; then ok "Audiveris ja està instal·lat"
 elif [ "$PROVA" = 1 ]; then falta "Audiveris"
 else
   if [ "$(uname -m)" = "arm64" ]; then ARQ="macosx-arm64"; else ARQ="macosx-x86_64"; fi
@@ -100,4 +100,4 @@ fi
 fi
 
 pas "5. Comprovació final"
-if command -v uv >/dev/null 2>&1; then uv run partitures comprovar; else falta "uv no disponible: tanca el Terminal, obri'l de nou i repeteix"; fi
+if command -v uv >/dev/null 2>&1; then uv run partitures comprovar; else falta "uv no disponible (hauria d'estar a ~/.local/bin/uv)"; fi
