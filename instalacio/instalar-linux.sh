@@ -85,11 +85,11 @@ url_github() {
   local repo="$1" patro="$2" url tag auth=()
   [ -n "${GITHUB_TOKEN:-}" ] && auth=(-H "Authorization: Bearer $GITHUB_TOKEN")
   url=$(curl -fsSL "${auth[@]}" "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null \
-        | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*: *"//; s/"$//' | grep -E "$patro" | head -1)
+        | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*: *"//; s/"$//' | grep -E -e "$patro" | head -1)
   if [ -z "$url" ]; then
     tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$repo/releases/latest" 2>/dev/null | sed 's#.*/tag/##')
     [ -n "$tag" ] && url=$(curl -fsSL "https://github.com/$repo/releases/expanded_assets/$tag" 2>/dev/null \
-        | grep -o 'href="[^"]*"' | sed 's/href="//; s/"$//' | grep -E "$patro" | head -1 | sed 's#^/#https://github.com/#')
+        | grep -o 'href="[^"]*"' | sed 's/href="//; s/"$//' | grep -E -e "$patro" | head -1 | sed 's#^/#https://github.com/#')
   fi
   printf '%s' "$url"
 }
