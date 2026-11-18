@@ -6,6 +6,7 @@ on:
   pull_request:
 
 jobs:
+  # Proves de les eines musicals i construcció de l'instal·lador visual de cada sistema.
   proves:
     strategy:
       fail-fast: false
@@ -24,31 +25,147 @@ jobs:
           PYTHONIOENCODING: cp1252
         run: uv run partitures --help
 
+      - name: Construir «Instal·lar Arranjaments.app» (Mac, universal)
+        if: runner.os == 'macOS'
+        run: |
+          set -x
+          bash instalacio/visual/mac/construir.sh "$RUNNER_TEMP/visual"
+          APP="$RUNNER_TEMP/visual/Instal·lar Arranjaments.app"
+          lipo -archs "$APP/Contents/MacOS/InstalarArranjaments" | grep arm64 | grep x86_64
+          codesign --verify --deep --strict "$APP"
+          mkdir -p "$RUNNER_TEMP/captures"
+          # Prova de la finestra sense instal·lar res (passos simulats): un cas bo i un amb error
+          "$APP/Contents/MacOS/InstalarArranjaments" --prova --auto --captura "$RUNNER_TEMP/captures/mac-prova.png"
+          if "$APP/Contents/MacOS/InstalarArranjaments" --prova-error --auto --captura "$RUNNER_TEMP/captures/mac-prova-error.png"; then
+            echo "El mode amb error hauria d'eixir amb codi 1"; exit 1
+          fi
+          test -s "$RUNNER_TEMP/captures/mac-prova.png"
+          # tar i no ZIP: conserva els permisos d'execució de l'aplicació
+          tar -C "$RUNNER_TEMP/visual" -cf "$RUNNER_TEMP/instalador-mac.tar" "Instal·lar Arranjaments.app"
+      - name: Construir «Instal·lar Arranjaments.exe» (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & instalacio\visual\windows\construir.ps1 -Eixida "$env:RUNNER_TEMP\visual"
+          $exe = @(Get-ChildItem "$env:RUNNER_TEMP\visual\Instal*.exe")[0]
+          Write-Host "Construït: $($exe.Name) ($($exe.Length) bytes)"
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\captures" | Out-Null
+          # Prova de la finestra sense instal·lar res (passos simulats): un cas bo i un amb error
+          $p = Start-Process $exe.FullName -ArgumentList "--prova --auto --captura `"$env:RUNNER_TEMP\captures\windows-prova.png`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "El mode de prova ha eixit amb codi $($p.ExitCode)" }
+          $p = Start-Process $exe.FullName -ArgumentList "--prova-error --auto --captura `"$env:RUNNER_TEMP\captures\windows-prova-error.png`"" -Wait -PassThru
+          if ($p.ExitCode -ne 1) { throw "El mode amb error hauria d'eixir amb codi 1, no $($p.ExitCode)" }
+          if (-not (Test-Path "$env:RUNNER_TEMP\captures\windows-prova.png")) { throw "No s'ha guardat la captura" }
+          Copy-Item $exe.FullName "$env:RUNNER_TEMP\instalador-windows.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-${{ runner.os }}
+          path: |
+            ${{ runner.temp }}/instalador-mac.tar
+            ${{ runner.temp }}/instalador-windows.exe
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captures-prova-${{ runner.os }}
+          path: ${{ runner.temp }}/captures/
+          if-no-files-found: warn
+
+  # El ZIP que baixa la professora: el projecte amb els dos instal·ladors visuals a dins.
+  paquet:
+    needs: proves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: instalador-*
+          path: peces
+          merge-multiple: true
+      - name: Muntar la carpeta i fer el ZIP
+        run: |
+          set -x
+          mkdir muntatge
+          git archive HEAD | tar -x -C muntatge
+          tar -xf peces/instalador-mac.tar -C muntatge
+          cp peces/instalador-windows.exe "muntatge/Instal·lar Arranjaments.exe"
+          test -x "muntatge/Instal·lar Arranjaments.app/Contents/MacOS/InstalarArranjaments"
+          python3 instalacio/visual/empaqueta.py muntatge arranjaments.zip
+          unzip -l arranjaments.zip | head -40
+          ls -la arranjaments.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arranjaments-zip
+          path: arranjaments.zip
+          if-no-files-found: error
+
   # Prova real de l'experiència de la professora: baixar el ZIP, descomprimir-lo en una carpeta amb accents
-  # i espais i fer doble clic a l'instal·lador (aquí, executat sense preguntes). Després, mirar que tot hi és.
+  # i espais i obrir «Instal·lar Arranjaments» (aquí, amb --auto: instal·la sense prémer res). Després, mirar que tot hi és.
   instalacio-mac:
+    needs: paquet
     runs-on: macos-latest
     timeout-minutes: 40
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - name: ZIP com el de «Download ZIP», descomprimit com ho fa el Mac
+      - uses: actions/download-artifact@v4
+        with:
+          name: arranjaments-zip
+          path: ${{ runner.temp }}
+      - name: Descomprimir el ZIP com ho fa el Mac
         run: |
-          git archive --format=zip --prefix=arranjaments-main/ -o "$RUNNER_TEMP/arranjaments.zip" HEAD
+          set -x
           mkdir -p "$HOME/Prova àè amb espais"
           ditto -x -k "$RUNNER_TEMP/arranjaments.zip" "$HOME/Prova àè amb espais"
-          test -x "$HOME/Prova àè amb espais/arranjaments-main/Instalar-Mac.command"
-      - name: Instal·lar (el mateix fitxer que prem la professora)
+          cd "$HOME/Prova àè amb espais/arranjaments"
+          ls -la
+          APP="Instal·lar Arranjaments.app"
+          test -x "$APP/Contents/MacOS/InstalarArranjaments"
+          codesign --verify --deep --strict "$APP"
+          test -f "Instal·lar Arranjaments.exe"
+          test -x instalacio/Instalar-Mac.command
+          echo "ARRANJAMENTS=$PWD" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/captures"
+      - name: Instal·lar amb l'aplicació visual (la mateixa que obri la professora)
         run: |
-          cd "$HOME/Prova àè amb espais/arranjaments-main"
-          ./Instalar-Mac.command --sense-preguntes
-      - name: Repetir l'instal·lador no ha de fer res nou ni fallar
+          cd "$ARRANJAMENTS"
+          codi=0
+          "Instal·lar Arranjaments.app/Contents/MacOS/InstalarArranjaments" --auto \
+            --registre "$RUNNER_TEMP/captures/mac-registre.txt" --captura "$RUNNER_TEMP/captures/mac-instalacio.png" || codi=$?
+          echo "Codi d'eixida: $codi"
+          grep -q "RESULTAT: tot a punt" "$RUNNER_TEMP/captures/mac-registre.txt"
+          ! grep -q "@@" "$RUNNER_TEMP/captures/mac-registre.txt"
+          exit $codi
+      - name: La carpeta de treball només té entrada i eixida; les eines queden amagades a part
         run: |
-          cd "$HOME/Prova àè amb espais/arranjaments-main"
-          ./Instalar-Mac.command --sense-preguntes | tee segona.txt
+          set -x
+          W="$HOME/Documents/Arranjaments"
+          D="$HOME/Library/Application Support/Arranjaments"
+          ls -la "$W" "$W/.opencode" "$D"
+          test "$(ls "$W" | sort | tr '\n' ' ')" = "eixida entrada "
+          test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+          test -f "$W/.opencode/opencode.json"
+          cmp "$W/.opencode/AGENTS.md" "$ARRANJAMENTS/AGENTS.md"
+          test -f "$W/.opencode/skills/arranjar/SKILL.md"
+          test -x "$D/.venv/bin/python"
+          test -d "$D/scripts/partitures"
+          test -x "$HOME/.local/bin/partitures"
+          test ! -e "$ARRANJAMENTS/.venv"
+          # una partitura de la professora: en repetir l'instal·lador no s'ha de tocar
+          echo "partitura de la professora" > "$W/eixida/no-tocar.txt"
+          echo "vell" > "$W/.opencode/AGENTS.md"
+      - name: Repetir amb l'alternativa de Terminal no ha de fer res nou, ni fallar, ni tocar les partitures
+        run: |
+          cd "$ARRANJAMENTS"
+          ./instalacio/Instalar-Mac.command --sense-preguntes | tee segona.txt
           grep -q "OpenCode ja està instal·lat" segona.txt
           grep -q "MuseScore ja està instal·lat" segona.txt
+          ! grep -q "@@" segona.txt
+          W="$HOME/Documents/Arranjaments"
+          test "$(cat "$W/eixida/no-tocar.txt")" = "partitura de la professora"
+          test "$(ls -A "$W/eixida")" = "no-tocar.txt"
+          cmp "$W/.opencode/AGENTS.md" AGENTS.md
+          test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
       - name: Comprovar el resultat
         run: |
           set -x
@@ -60,9 +177,15 @@ jobs:
           codesign -v "$HOME/Desktop/Arranjaments.app"
           ! xattr -r "$HOME/Desktop/Arranjaments.app" | grep -q quarantine
           ! xattr "$HOME/Applications/OpenCode.app" | grep -q quarantine
-          export PATH="$HOME/.local/bin:$PATH"
-          cd "$HOME/Prova àè amb espais/arranjaments-main"
-          uv run partitures comprovar
+      - name: Obrir l'aplicació visual com amb doble clic (informatiu)
+        continue-on-error: true
+        run: |
+          cd "$ARRANJAMENTS"
+          open -n "Instal·lar Arranjaments.app" --args --auto --registre "$RUNNER_TEMP/captures/mac-registre-open.txt"
+          for i in $(seq 1 90); do [ -f "$RUNNER_TEMP/captures/mac-registre-open.txt" ] && break; sleep 2; done
+          pkill -x InstalarArranjaments || true
+          cat "$RUNNER_TEMP/captures/mac-registre-open.txt"
+          grep -q "RESULTAT: tot a punt" "$RUNNER_TEMP/captures/mac-registre-open.txt"
       - name: Obrir la icona de l'Escriptori i veure que arrenca OpenCode
         continue-on-error: true
         run: |
@@ -70,34 +193,121 @@ jobs:
           for i in $(seq 1 20); do pgrep -x OpenCode >/dev/null && break; sleep 2; done
           pgrep -x OpenCode
           pkill -x OpenCode || true
+      - name: Sense la carpeta del ZIP, les ordres funcionen des de la carpeta de treball
+        run: |
+          set -x
+          rm -rf "$HOME/Prova àè amb espais"
+          cd "$HOME/Documents/Arranjaments"
+          # com ho fa l'ajudant dins d'OpenCode: amb un entorn mínim, sense uv al PATH
+          P() { env -i HOME="$HOME" PATH=/usr/bin:/bin "$HOME/.local/bin/partitures" "$@"; }
+          P comprovar
+          P corpus bach --copia 1
+          ls entrada
+          P info "entrada/bwv101.7.musicxml"
+          P transport "entrada/bwv101.7.musicxml" --semitons 2
+          test -f "eixida/bwv101.7-transportat.musicxml"
+          # mai fora d'entrada i eixida
+          if P transport "entrada/bwv101.7.musicxml" --semitons 2 --eixida "../fora.musicxml"; then echo "Ha escrit fora"; exit 1; fi
+          test ! -e ../fora.musicxml
+          P instalar --prova
+          test "$(cat eixida/no-tocar.txt)" = "partitura de la professora"
+          test "$(ls -A | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captures-instalacio-macOS
+          path: ${{ runner.temp }}/captures/
+          if-no-files-found: warn
 
   instalacio-windows:
+    needs: paquet
     runs-on: windows-latest
     timeout-minutes: 40
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - name: ZIP com el de «Download ZIP», descomprimit en una carpeta amb accents i espais
+      - uses: actions/download-artifact@v4
+        with:
+          name: arranjaments-zip
+          path: ${{ runner.temp }}
+      - name: Descomprimir el ZIP com ho fa Windows («Extreure-ho tot»), en una carpeta amb accents i espais
         shell: pwsh
         run: |
-          git archive --format=zip --prefix=arranjaments-main/ -o "$env:RUNNER_TEMP\arranjaments.zip" HEAD
+          $zip = "$env:RUNNER_TEMP\arranjaments.zip"
           $dest = "C:\Prova àè amb espais"
-          Expand-Archive "$env:RUNNER_TEMP\arranjaments.zip" -DestinationPath $dest
-          Add-Content $env:GITHUB_ENV "ARRANJAMENTS=$dest\arranjaments-main"
-      - name: Instal·lar (el mateix fitxer .bat que prem la professora, des de cmd com ho fa Windows)
+          New-Item -ItemType Directory -Force $dest | Out-Null
+          # El mateix descompressor que fa servir l'Explorador de fitxers
+          try {
+              $shell = New-Object -ComObject Shell.Application
+              $shell.NameSpace($dest).CopyHere($shell.NameSpace($zip).Items(), 0x614)
+              # pot tornar abans d'acabar: s'espera que hi siguen l'últim fitxer i l'instal·lador
+              for ($i = 0; $i -lt 60 -and -not ((Test-Path "$dest\arranjaments\uv.lock") -and (Test-Path "$dest\arranjaments\Instal*.exe")); $i++) { Start-Sleep 1 }
+              Start-Sleep 3
+          } catch { Write-Host "Explorador: $($_.Exception.Message)" }
+          $exe = @(Get-ChildItem "$dest\arranjaments\Instal*.exe" -ErrorAction SilentlyContinue)
+          if ($exe.Count -eq 0) {
+              Write-Host "El descompressor de l'Explorador no ha funcionat ací; es fa amb Expand-Archive."
+              Remove-Item "$dest\*" -Recurse -Force -ErrorAction SilentlyContinue
+              Expand-Archive $zip -DestinationPath $dest
+              $exe = @(Get-ChildItem "$dest\arranjaments\Instal*.exe")
+          } else { Write-Host "Descomprimit amb el descompressor de l'Explorador." }
+          Get-ChildItem "$dest\arranjaments" | ForEach-Object { Write-Host $_.Name }
+          $esperat = "Instal" + [char]0xB7 + "lar Arranjaments.exe"
+          if ($exe[0].Name -ne $esperat) { throw "Nom inesperat: $($exe[0].Name)" }
+          if (-not (Test-Path "$dest\arranjaments\instalacio\Instalar-Windows.bat")) { throw "Falta l'alternativa .bat" }
+          Add-Content $env:GITHUB_ENV "ARRANJAMENTS=$dest\arranjaments"
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\captures" | Out-Null
+      - name: Instal·lar amb el programa visual (el mateix que obri la professora)
+        shell: pwsh
+        run: |
+          $exe = @(Get-ChildItem "$env:ARRANJAMENTS\Instal*.exe")[0]
+          $reg = "$env:RUNNER_TEMP\captures\windows-registre.txt"
+          $p = Start-Process $exe.FullName -ArgumentList "--auto --registre `"$reg`" --captura `"$env:RUNNER_TEMP\captures\windows-instalacio.png`"" -Wait -PassThru
+          if (Test-Path $reg) { Get-Content $reg -Encoding UTF8 }
+          Write-Host "Codi d'eixida: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "L'instal·lador visual ha eixit amb codi $($p.ExitCode)" }
+          $text = Get-Content $reg -Raw -Encoding UTF8
+          if ($text -notmatch "RESULTAT: tot a punt") { throw "El registre no diu «tot a punt»" }
+          if ($text -match "@@") { throw "Els avisos de progrés no s'han de veure al registre" }
+          if ($text -notmatch "instal·lat") { throw "Els accents del registre no s'han llegit bé" }
+      - name: La carpeta de treball només té entrada i eixida; les eines queden amagades a part
+        shell: pwsh
+        run: |
+          $W = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments"
+          $D = Join-Path $env:LOCALAPPDATA "Arranjaments"
+          Write-Host "Carpeta de treball: $W"
+          $visibles = (Get-ChildItem $W | Sort-Object Name | ForEach-Object Name) -join " "
+          $totes = (Get-ChildItem $W -Force | Sort-Object Name | ForEach-Object Name) -join " "
+          Write-Host "Visibles: $visibles / totes: $totes"
+          if ($visibles -ne "eixida entrada") { throw "A la carpeta de treball només s'han de veure entrada i eixida: $visibles" }
+          if ($totes -ne ".opencode eixida entrada") { throw "Contingut inesperat: $totes" }
+          if (-not ((Get-Item "$W\.opencode" -Force).Attributes -band [IO.FileAttributes]::Hidden)) { throw ".opencode no està amagada" }
+          foreach ($f in @("$W\.opencode\opencode.json", "$W\.opencode\AGENTS.md", "$W\.opencode\skills\arranjar\SKILL.md",
+                           "$D\.venv\Scripts\python.exe", "$D\scripts\partitures\cli.py", "$env:USERPROFILE\.local\bin\partitures.cmd")) {
+              if (-not (Test-Path $f)) { throw "Falta $f" }
+          }
+          if (Test-Path "$env:ARRANJAMENTS\.venv") { throw "Les eines no s'han d'instal·lar dins de la carpeta del ZIP" }
+          if (([Environment]::GetEnvironmentVariable('Path','User') -split ';') -notcontains "$env:USERPROFILE\.local\bin") { throw "La carpeta de l'ordre partitures no és al PATH de la usuària" }
+          # una partitura de la professora: en repetir l'instal·lador no s'ha de tocar
+          Set-Content "$W\eixida\no-tocar.txt" "partitura de la professora"
+          Set-Content "$W\.opencode\AGENTS.md" "vell"
+      - name: Repetir amb l'alternativa .bat (des de cmd, com ho fa Windows) no ha de fer res nou, ni fallar, ni tocar les partitures
         shell: cmd
         run: |
           cd /d "%ARRANJAMENTS%"
-          call Instalar-Windows.bat -SensePreguntes
-      - name: Repetir l'instal·lador no ha de fer res nou ni fallar
-        shell: cmd
-        run: |
-          cd /d "%ARRANJAMENTS%"
-          call Instalar-Windows.bat -SensePreguntes > segona.txt
+          call instalacio\Instalar-Windows.bat -SensePreguntes > segona.txt
           type segona.txt
-          findstr /C:"OpenCode ja est" segona.txt
-          findstr /C:"MuseScore ja est" segona.txt
+          findstr /C:"OpenCode ja est" segona.txt || exit /b 1
+          findstr /C:"MuseScore ja est" segona.txt || exit /b 1
+      - name: Les partitures continuen igual i la configuració amagada s'ha renovat
+        shell: pwsh
+        run: |
+          $W = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments"
+          if ((Get-Content "$W\eixida\no-tocar.txt" -Raw).Trim() -ne "partitura de la professora") { throw "S'ha tocat una partitura" }
+          if (@(Get-ChildItem "$W\eixida" -Force).Count -ne 1) { throw "eixida ha canviat" }
+          if ((Get-FileHash "$W\.opencode\AGENTS.md").Hash -ne (Get-FileHash "$env:ARRANJAMENTS\AGENTS.md").Hash) { throw "La configuració amagada no s'ha renovat" }
+          $totes = (Get-ChildItem $W -Force | Sort-Object Name | ForEach-Object Name) -join " "
+          if ($totes -ne ".opencode eixida entrada") { throw "Contingut inesperat: $totes" }
       - name: Comprovar el resultat
         shell: pwsh
         run: |
@@ -113,10 +323,7 @@ jobs:
           Write-Host "Icona: $($d.TargetPath) (carpeta de treball: $($d.WorkingDirectory))"
           if (-not (Test-Path $d.TargetPath)) { throw "La icona apunta a un fitxer que no existeix" }
           if ($d.TargetPath -ne $oc[0].FullName) { throw "La icona no apunta a OpenCode" }
-          $env:Path += ";$env:USERPROFILE\.local\bin"
-          Set-Location $env:ARRANJAMENTS
-          uv run partitures comprovar
-          if ($LASTEXITCODE -ne 0) { throw "uv run partitures comprovar ha fallat" }
+          if ($d.WorkingDirectory -ne (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments")) { throw "La icona no treballa a la carpeta de treball" }
       - name: Obrir la icona de l'Escriptori i veure que arrenca OpenCode
         continue-on-error: true
         shell: pwsh
@@ -127,3 +334,69 @@ jobs:
           for ($i = 0; $i -lt 20 -and -not $p; $i++) { Start-Sleep 2; $p = Get-Process OpenCode -ErrorAction SilentlyContinue }
           if (-not $p) { throw "OpenCode no ha arrencat" }
           Stop-Process -Name OpenCode -Force -ErrorAction SilentlyContinue
+      - name: Sense la carpeta del ZIP, les ordres funcionen des de la carpeta de treball
+        shell: pwsh
+        run: |
+          Remove-Item "C:\Prova àè amb espais" -Recurse -Force
+          $W = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments"
+          Set-Location $W
+          # com ho escriu l'ajudant dins d'OpenCode quan l'ordre encara no és al PATH
+          function P { & "$env:USERPROFILE\.local\bin\partitures.cmd" @args; if ($LASTEXITCODE -ne 0) { throw "partitures $args ha fallat ($LASTEXITCODE)" } }
+          P comprovar
+          P corpus bach --copia 1
+          Get-ChildItem entrada | ForEach-Object Name
+          P info "entrada/bwv101.7.musicxml"
+          P transport "entrada/bwv101.7.musicxml" --semitons 2
+          if (-not (Test-Path "eixida\bwv101.7-transportat.musicxml")) { throw "No s'ha creat el fitxer transportat" }
+          P instruments "entrada/bwv101.7.musicxml" --assigna "1=trompeta-sib,2=trompeta-sib,3=trompa-fa,4=trombo"
+          # mai fora d'entrada i eixida
+          & "$env:USERPROFILE\.local\bin\partitures.cmd" transport "entrada/bwv101.7.musicxml" --semitons 2 --eixida "../fora.musicxml"
+          if ($LASTEXITCODE -eq 0 -or (Test-Path "..\fora.musicxml")) { throw "Ha escrit fora de la carpeta de treball" }
+          P instalar --prova
+          # i amb el nom curt, com queda després d'obrir una sessió nova (PATH de la usuària)
+          $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+          cmd /c "partitures comprovar"
+          if ($LASTEXITCODE -ne 0) { throw "partitures comprovar (nom curt) ha fallat" }
+          if ((Get-Content "eixida\no-tocar.txt" -Raw).Trim() -ne "partitura de la professora") { throw "S'ha tocat una partitura" }
+          $totes = (Get-ChildItem $W -Force | Sort-Object Name | ForEach-Object Name) -join " "
+          if ($totes -ne ".opencode eixida entrada") { throw "Contingut inesperat: $totes" }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: captures-instalacio-Windows
+          path: ${{ runner.temp }}/captures/
+          if-no-files-found: warn
+
+  # Només quan tot ha anat bé a main: es publica el ZIP a «Releases», sempre amb el mateix enllaç.
+  publicar:
+    needs: [paquet, instalacio-mac, instalacio-windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publicar
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: arranjaments-zip
+      - name: Publicar arranjaments.zip (versió «ultima», que es va renovant)
+        run: |
+          set -x
+          cat > notes.md <<NOTES
+          Baixa **arranjaments.zip**, descomprimeix-lo i fes doble clic a «Instal·lar Arranjaments».
+          Les instruccions són al [README](https://github.com/$GH_REPO#readme).
+
+          Fet automàticament a partir de la versió $GITHUB_SHA, després de provar la instal·lació en un Mac i en un Windows nets.
+          NOTES
+          if gh release view ultima >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/ultima" -f sha="$GITHUB_SHA" -F force=true
+            gh release upload ultima arranjaments.zip --clobber
+            gh release edit ultima --title "Arranjaments" --notes-file notes.md --latest
+          else
+            gh release create ultima arranjaments.zip --target "$GITHUB_SHA" --title "Arranjaments" --notes-file notes.md --latest
+          fi
