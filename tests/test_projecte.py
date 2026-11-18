@@ -7,7 +7,8 @@ import pytest
 
 ARREL = Path(__file__).resolve().parent.parent
 TEXTOS = ([ARREL / "README.md", ARREL / "AGENTS.md", ARREL / "opencode.json", ARREL / "pyproject.toml",
-           ARREL / "instalacio" / "instalar-mac.sh", ARREL / "instalacio" / "instalar-windows.ps1"]
+           ARREL / "instalacio" / "instalar-mac.sh", ARREL / "instalacio" / "instalar-windows.ps1",
+           ARREL / "Instalar-Mac.command", ARREL / "Instalar-Windows.bat"]
           + list((ARREL / ".opencode" / "skills").rglob("SKILL.md"))
           + list((ARREL / "scripts").rglob("*.py")) + list((ARREL / ".github").rglob("*.yml")))
 
@@ -78,3 +79,36 @@ def test_opencode_json_format_v2_amb_les_regles_clau():
 def test_ci_a_windows_i_mac():
     t = _text(ARREL / ".github" / "workflows" / "proves.yml")
     assert "windows-latest" in t and "macos-latest" in t and "pytest" in t and "uv" in t
+    assert "Instalar-Mac.command" in t and "Instalar-Windows.bat" in t
+
+
+def test_lanzadors_de_la_carpeta_arrel():
+    mac = (ARREL / "Instalar-Mac.command").read_bytes()
+    assert mac.startswith(b"#!/bin/bash") and b"\r\n" not in mac and b"instalar-mac.sh" in mac
+    bat = (ARREL / "Instalar-Windows.bat").read_bytes()
+    assert bat.isascii() and b"\r\n" in bat
+    assert b"-ExecutionPolicy Bypass" in bat and b'-File "%~dp0instalacio\\instalar-windows.ps1"' in bat and b"pause" in bat
+
+
+def test_el_command_es_executable_a_git():
+    import shutil
+    import subprocess
+    if not shutil.which("git") or not (ARREL / ".git").exists():
+        pytest.skip("sense git")
+    r = subprocess.run(["git", "ls-files", "-s", "Instalar-Mac.command"], cwd=ARREL, capture_output=True, text=True)
+    assert r.stdout.startswith("100755"), "el bit d'execució ha d'estar a git perquè sobrevisca al ZIP"
+
+
+def test_installadors_creen_la_icona_i_tenen_mode_sense_preguntes():
+    mac = _text(ARREL / "instalacio" / "instalar-mac.sh")
+    assert "osacompile" in mac and "--sense-preguntes" in mac and "opencode-desktop-mac-" in mac
+    win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
+    assert "WScript.Shell" in win and "GetFolderPath('Desktop')" in win and "-SensePreguntes" in win
+    assert "opencode-desktop-win-x64.exe" in win and '"/S"' in win
+
+
+def test_readme_explica_la_instalacio_amb_doble_clic_i_els_avisos():
+    t = _text(ARREL / "README.md")
+    for clau in ("Instalar-Mac.command", "Instalar-Windows.bat", "Obrir igualment", "Executar igualment",
+                 "Desbloquejar", "Arranjaments", "Privacitat i seguretat", "Instal·lació manual"):
+        assert clau in t, clau

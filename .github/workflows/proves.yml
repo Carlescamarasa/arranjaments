@@ -23,3 +23,108 @@ jobs:
         env:
           PYTHONIOENCODING: cp1252
         run: uv run partitures --help
+
+  # Prova real de l'experiència de la professora: baixar el ZIP, descomprimir-lo en una carpeta amb accents
+  # i espais i fer doble clic a l'instal·lador (aquí, executat sense preguntes). Després, mirar que tot hi és.
+  instalacio-mac:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZIP com el de «Download ZIP», descomprimit com ho fa el Mac
+        run: |
+          git archive --format=zip --prefix=arranjaments-main/ -o "$RUNNER_TEMP/arranjaments.zip" HEAD
+          mkdir -p "$HOME/Prova àè amb espais"
+          ditto -x -k "$RUNNER_TEMP/arranjaments.zip" "$HOME/Prova àè amb espais"
+          test -x "$HOME/Prova àè amb espais/arranjaments-main/Instalar-Mac.command"
+      - name: Instal·lar (el mateix fitxer que prem la professora)
+        run: |
+          cd "$HOME/Prova àè amb espais/arranjaments-main"
+          ./Instalar-Mac.command --sense-preguntes
+      - name: Repetir l'instal·lador no ha de fer res nou ni fallar
+        run: |
+          cd "$HOME/Prova àè amb espais/arranjaments-main"
+          ./Instalar-Mac.command --sense-preguntes | tee segona.txt
+          grep -q "OpenCode ja està instal·lat" segona.txt
+          grep -q "MuseScore ja està instal·lat" segona.txt
+      - name: Comprovar el resultat
+        run: |
+          set -x
+          test -d "$HOME/Applications/OpenCode.app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$HOME/Applications/OpenCode.app/Contents/Info.plist")" = "ai.opencode.desktop"
+          ls -d "$HOME"/Applications/MuseScore*.app
+          test -d "$HOME/Desktop/Arranjaments.app"
+          test -x "$HOME/Desktop/Arranjaments.app/Contents/MacOS/applet"
+          codesign -v "$HOME/Desktop/Arranjaments.app"
+          ! xattr -r "$HOME/Desktop/Arranjaments.app" | grep -q quarantine
+          ! xattr "$HOME/Applications/OpenCode.app" | grep -q quarantine
+          export PATH="$HOME/.local/bin:$PATH"
+          cd "$HOME/Prova àè amb espais/arranjaments-main"
+          uv run partitures comprovar
+      - name: Obrir la icona de l'Escriptori i veure que arrenca OpenCode
+        continue-on-error: true
+        run: |
+          open "$HOME/Desktop/Arranjaments.app"
+          for i in $(seq 1 20); do pgrep -x OpenCode >/dev/null && break; sleep 2; done
+          pgrep -x OpenCode
+          pkill -x OpenCode || true
+
+  instalacio-windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZIP com el de «Download ZIP», descomprimit en una carpeta amb accents i espais
+        shell: pwsh
+        run: |
+          git archive --format=zip --prefix=arranjaments-main/ -o "$env:RUNNER_TEMP\arranjaments.zip" HEAD
+          $dest = "C:\Prova àè amb espais"
+          Expand-Archive "$env:RUNNER_TEMP\arranjaments.zip" -DestinationPath $dest
+          Add-Content $env:GITHUB_ENV "ARRANJAMENTS=$dest\arranjaments-main"
+      - name: Instal·lar (el mateix fitxer .bat que prem la professora)
+        shell: pwsh
+        run: |
+          Set-Location $env:ARRANJAMENTS
+          cmd /c ".\Instalar-Windows.bat -SensePreguntes"
+          if ($LASTEXITCODE -ne 0) { throw "L'instal·lador ha acabat amb error $LASTEXITCODE" }
+      - name: Repetir l'instal·lador no ha de fer res nou ni fallar
+        shell: pwsh
+        run: |
+          Set-Location $env:ARRANJAMENTS
+          $sortida = (cmd /c ".\Instalar-Windows.bat -SensePreguntes") | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "Segona execució amb error $LASTEXITCODE" }
+          if ($sortida -notmatch "OpenCode ja està instal·lat") { throw "No ha detectat OpenCode:`n$sortida" }
+          if ($sortida -notmatch "MuseScore ja està instal·lat") { throw "No ha detectat MuseScore:`n$sortida" }
+      - name: Comprovar el resultat
+        shell: pwsh
+        run: |
+          $oc = @(Get-ChildItem "$env:LOCALAPPDATA\Programs\*\OpenCode.exe")
+          if ($oc.Count -eq 0) { throw "Falta OpenCode.exe" }
+          Write-Host "OpenCode: $($oc[0].FullName)"
+          $ms = @(Get-ChildItem "$env:ProgramFiles\MuseScore*\bin\MuseScore*.exe")
+          if ($ms.Count -eq 0) { throw "Falta MuseScore" }
+          Write-Host "MuseScore: $($ms[0].FullName)"
+          $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "Arranjaments.lnk"
+          if (-not (Test-Path $lnk)) { throw "Falta la icona $lnk" }
+          $d = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+          Write-Host "Icona: $($d.TargetPath) (carpeta de treball: $($d.WorkingDirectory))"
+          if (-not (Test-Path $d.TargetPath)) { throw "La icona apunta a un fitxer que no existeix" }
+          if ($d.TargetPath -ne $oc[0].FullName) { throw "La icona no apunta a OpenCode" }
+          $env:Path += ";$env:USERPROFILE\.local\bin"
+          Set-Location $env:ARRANJAMENTS
+          uv run partitures comprovar
+          if ($LASTEXITCODE -ne 0) { throw "uv run partitures comprovar ha fallat" }
+      - name: Obrir la icona de l'Escriptori i veure que arrenca OpenCode
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "Arranjaments.lnk"
+          Start-Process $lnk
+          $p = $null
+          for ($i = 0; $i -lt 20 -and -not $p; $i++) { Start-Sleep 2; $p = Get-Process OpenCode -ErrorAction SilentlyContinue }
+          if (-not $p) { throw "OpenCode no ha arrencat" }
+          Stop-Process -Name OpenCode -Force -ErrorAction SilentlyContinue
