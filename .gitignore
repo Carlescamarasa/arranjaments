@@ -1,0 +1,12 @@
+entrada/*
+!entrada/.gitkeep
+eixida/*
+!eixida/.gitkeep
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+.opencode/node_modules/
+.opencode/package.json
+.opencode/bun.lock

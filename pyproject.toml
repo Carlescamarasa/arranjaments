@@ -1,0 +1,22 @@
+[project]
+name = "partitures"
+version = "0.1.0"
+description = "Eines deterministes per a fer arranjaments de cambra amb OpenCode"
+requires-python = ">=3.10,<3.14"
+dependencies = ["music21>=9.1"]
+
+[project.scripts]
+partitures = "partitures.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scripts/partitures"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
