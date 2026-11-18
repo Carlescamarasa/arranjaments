@@ -464,7 +464,8 @@ jobs:
           cmp "$W/.opencode/AGENTS.md" AGENTS.md
           test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
           bash instalacio/instalar-linux.sh --prova | tee prova.txt
-          ! grep -q "\[falta\]" prova.txt
+          # tot al seu lloc (Audiveris és opcional i només es mira a part)
+          ! grep "\[falta\]" prova.txt | grep -v Audiveris | grep .
       - name: OpenCode arrenca des de la icona (informatiu; xvfb, sense pantalla)
         continue-on-error: true
         run: |
