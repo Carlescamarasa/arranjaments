@@ -4,35 +4,27 @@ Un ajudant per a professors i professores de música que volen fer arranjaments 
 
 Una cosa important: la intel·ligència artificial NO escriu les notes. Tot el treball musical el fan unes eines normals, provades i previsibles. L'ajudant només tria quina eina toca i t'explica el resultat. Així, si el model gratuït que fas servir un dia és poc llest, no et fa malbé la música.
 
-## Instal·lació: només 2 passos
+## Instal·lació: 3 passos
 
-**Pas 1. Instal·la OpenCode** (copia i apega UNA línia).
+**Pas 1. Baixa i instal·la OpenCode.** És una aplicació normal, com qualsevol altra.
 
-- **Mac**: obri l'aplicació «Terminal» (busca «Terminal» amb la lupa), apega esta línia i prem Retorn:
+- Mac: [descarrega per a Mac amb xip Apple (M1, M2, M3...)](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-arm64.dmg) o [per a Mac amb Intel](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-x64.dmg). Obri el fitxer i arrossega OpenCode a Aplicacions. (Si no saps quin Mac tens: menú Apple, «Sobre este Mac».)
+- Windows: [descarrega per a Windows](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-x64.exe) i fes-hi doble clic.
+- Totes les opcions: https://opencode.ai/download
 
-  `curl -fsSL https://opencode.ai/v2/install | bash`
+**Pas 2. Instal·la MuseScore 4** (gratuït; potser ja el tens): https://musescore.org/ca/download
 
-- **Windows**: obri «PowerShell» (busca-ho al menú Inici), apega esta línia i prem Retorn (Windows et demanarà permís: accepta):
+**Pas 3. Obri la carpeta del projecte i comença a parlar.**
 
-  `winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements; $env:Path=[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User'); npm.cmd i -g '@opencode/cli@latest'`
+1. Baixa este projecte: en esta pàgina, botó verd «Code», després «Download ZIP». Descomprimeix-lo, per exemple a Documents. Et quedarà una carpeta `arranjaments`.
+2. Obri l'aplicació OpenCode, tria «Obrir projecte» (en anglés, «Open project») i selecciona la carpeta `arranjaments`.
+3. Escriu el que vols, per exemple: «Busca'm un coral de Bach». Ja està.
 
-Després, tanca la finestra i obri-la de nou.
+No cal fer res més: l'ajudant et dirà, només quan faça falta, si has d'instal·lar alguna cosa (les eines musicals la primera vegada, o el programa que llig PDF el dia que en portes un) i t'ho preguntarà abans. Quan et demane permís per a executar una cosa, prem «Permetre».
 
-**Pas 2. Obri OpenCode en la carpeta del projecte i escriu «prepara l'ordinador».**
+Els models gratuïts ja venen preparats: no cal compte ni clau. Les partitures que crees apareixen a la carpeta `eixida/` del projecte. Posa els teus fitxers (PDF, MusicXML) a `entrada/`.
 
-1. Baixa este projecte (botó verd «Code», «Download ZIP») i descomprimeix-lo, per exemple a Documents.
-2. Mac: al Terminal escriu `cd ` (amb l'espai), arrossega la carpeta del projecte a la finestra, prem Retorn i escriu `opencode`.
-   Windows: obri la carpeta a l'Explorador, escriu `powershell` a la barra de dalt (on diu la ruta), prem Retorn i escriu `opencode`.
-3. La primera vegada, tria un model gratuït (`/models`, vegeu més avall).
-4. Escriu: **prepara l'ordinador**. L'ajudant t'anirà explicant cada pas i instal·larà MuseScore i Audiveris (gratuïts) amb l'instal·lador del projecte. Et dirà exactament què has de prémer si cal una contrasenya o un permís. Al final et diu «Tot a punt» o què falta.
-
-Si en algun moment vols comprovar-ho, escriu «comprova que tot està instal·lat».
-
-## Obrir l'ajudant les altres vegades
-
-Igual que al pas 2.2: obri el Terminal (Mac) o PowerShell (Windows) dins de la carpeta del projecte i escriu `opencode`.
-
-Posa els teus fitxers (PDF, MusicXML) a la carpeta `entrada/`. Els resultats apareixen a la carpeta `eixida/`.
+Avisos de seguretat: l'aplicació de Mac d'OpenCode i MuseScore estan signades i verificades per Apple, així que no haurien de donar cap avís. Si Windows mostra una finestra blava («Windows ha protegit el seu equip»), prem «Més informació» i després «Executar igualment».
 
 ## Frases que pots escriure
 
@@ -50,13 +42,11 @@ L'ajudant et farà preguntes d'una en una. Contesta amb frases normals.
 
 ## Quan un model gratuït deixa de funcionar
 
-Els models gratuïts van i vénen: un dia n'hi ha un que s'acaba, va molt lent o dona errors. No és culpa teua. Per a canviar-ne:
+Els models gratuïts van i vénen: un dia n'hi ha un que s'acaba, va molt lent o dona errors. No és culpa teua. Normalment OpenCode en tria un altre de sol. Si no ho fa, canvia'l tu:
 
-1. Dins d'OpenCode, escriu `/models` i prem Retorn.
-2. Tria un altre model de la llista (els gratuïts porten «free» en el nom, per exemple els de la secció «opencode»). Si cal, pots escriure per a filtrar la llista.
+1. A la zona on escrius, busca el nom del model i prem-lo per a veure la llista (o escriu `/models` i prem Retorn).
+2. Tria un altre model de la llista (els gratuïts porten «free» en el nom, o són «Big Pickle»).
 3. Torna a escriure la teua petició.
-
-El canvi val per a la sessió actual. Per veure quins n'hi ha, també es pot escriure `opencode models` al Terminal.
 
 ## Importants
 
@@ -68,14 +58,13 @@ El canvi val per a la sessió actual. Per veure quins n'hi ha, també es pot esc
 ## Per a qui vol saber-ne més (no cal)
 
 - `AGENTS.md`: les instruccions que llig l'ajudant.
-- `.opencode/skills/`: les guies de procediment (preparar l'ordinador, buscar, importar PDF, arranjar, exportar).
-- `instalacio/`: els instal·ladors (Mac i Windows). Es poden executar a mà: `bash "instalacio/instalar-mac.sh"` o `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1"`. No cal Homebrew. Audiveris porta Java inclòs.
-- Comprovar-ho tot: `uv run partitures comprovar`.
-- `scripts/partitures/`: les eines musicals (Python + music21). `uv run partitures --help` mostra totes les ordres.
-- `opencode.json`: els permisos. Les ordres de l'eina s'executen sense preguntar; esborrar fitxers està prohibit; qualsevol altra cosa pregunta primer. L'ajudant no pot editar fitxers directament.
+- `.opencode/skills/`: les guies de procediment (buscar, importar PDF, arranjar, exportar i comprovar la instal·lació).
+- `opencode.json`: els permisos i el model per defecte (`opencode/big-pickle`, gratuït; si algun dia desapareix, OpenCode usa el model més nou disponible). Les ordres de l'eina s'executen sense preguntar; esborrar fitxers està prohibit; qualsevol altra cosa pregunta primer. L'ajudant no pot editar fitxers directament.
+- `instalacio/`: els instal·ladors (Mac i Windows), que l'ajudant executa sota demanda. Es poden usar a mà i instal·len el que falta, per separat si vols: `bash "instalacio/instalar-mac.sh" --nomes uv` (o `musescore`, `audiveris`); Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv`. Amb `--prova` (Windows `-Prova`) només comprova. No cal Homebrew. Audiveris porta Java inclòs.
+- `scripts/partitures/`: les eines musicals (Python + music21), que s'executen amb `uv run partitures ...`. `uv run partitures --help` mostra totes les ordres; `uv run partitures comprovar` diu què hi ha instal·lat.
 - Proves: `uv run pytest`.
 - Si Audiveris o MuseScore estan en un lloc inusual, pots indicar la ruta amb les variables d'entorn `AUDIVERIS_PATH` i `MUSESCORE_PATH`.
-- Provat amb OpenCode 1.19 i 2.3 (la configuració es llig en les dues versions).
+- Alternativa amb línia d'ordres (Terminal): `curl -fsSL https://opencode.ai/v2/install | bash`, i després `opencode` dins de la carpeta del projecte. Provat amb OpenCode 1.19 i 2.3.
 
 ## Llicència
 

@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "model": "opencode/big-pickle",
   "permission": {
     "bash": {
       "*": "ask",
@@ -11,10 +12,13 @@
       "open *": "ask",
       "rm *": "deny",
       "del *": "deny",
-      "git push*": "deny"
+      "git push*": "deny",
+      "uv --version": "allow"
     },
     "edit": "deny",
     "webfetch": "allow",
-    "skill": { "*": "allow" }
+    "skill": {
+      "*": "allow"
+    }
   }
 }

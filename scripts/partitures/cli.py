@@ -110,13 +110,18 @@ def cmd_corpus(a):
 def cmd_comprovar(a):
     from . import eines
     falten = 0
+    opcionals = 0
     for nom, ok, msg in eines.comprovar():
         print(f"  [{'fet' if ok else 'falta'}]  {nom}" + ("" if ok else f": {msg}"))
-        falten += 0 if ok else 1
+        if not ok:
+            if "opcional" in nom:
+                opcionals += 1
+            else:
+                falten += 1
     if falten:
         print(f"\nFalten {falten} cosa(es). Executa l'instal·lador del projecte (carpeta instalacio) o mira el README.")
         raise ErrorUsuari("L'ordinador encara no està preparat del tot.")
-    print("\nTot a punt.")
+    print("\nTot a punt." + (" (Audiveris només cal si vols convertir PDF.)" if opcionals else ""))
 
 
 def crear_parser() -> argparse.ArgumentParser:

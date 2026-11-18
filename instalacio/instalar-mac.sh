@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Instal·lació per a Mac. Es pot repetir sense problema: només fa el que falta.
 # No cal Homebrew: baixa els instal·ladors oficials directament.
-# Ús: bash "instalacio/instalar-mac.sh"      (o  --prova  per a només comprovar)
+# Ús: bash "instalacio/instalar-mac.sh"                 (tot el que falta)
+#     bash "instalacio/instalar-mac.sh" --nomes uv      (només una cosa: uv, musescore, audiveris)
+#     bash "instalacio/instalar-mac.sh" --prova         (només comprova, no canvia res)
 set -u
 
 CARPETA="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,7 +11,17 @@ cd "$CARPETA" || exit 1
 export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 
 PROVA=0
-[ "${1:-}" = "--prova" ] && PROVA=1
+NOMES=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --prova) PROVA=1 ;;
+    --nomes) shift; NOMES="${1:-}" ;;
+  esac
+  shift
+done
+case "$NOMES" in ""|uv|musescore|audiveris) ;; *) echo "Opció --nomes desconeguda: $NOMES (usa uv, musescore o audiveris)"; exit 1 ;; esac
+# vol X: diu si cal fer el pas X (sense --nomes, tots)
+vol() { [ -z "$NOMES" ] || [ "$NOMES" = "$1" ]; }
 
 ok()    { printf '  [fet]    %s\n' "$1"; }
 falta() { printf '  [falta]  %s\n' "$1"; }
@@ -42,15 +54,19 @@ instal_dmg() {
 
 [ "$PROVA" = 1 ] && echo "Mode prova: només es comprova què hi ha instal·lat, no es canvia res."
 
+if vol uv; then
 pas "1. uv (prepara les eines musicals)"
 if command -v uv >/dev/null 2>&1; then ok "uv ja està instal·lat"
 elif [ "$PROVA" = 1 ]; then falta "uv"
 else
   echo "  Instal·lant uv (instal·lador oficial d'astral.sh)..."
   curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
   command -v uv >/dev/null 2>&1 && ok "uv instal·lat" || { echo "  No s'ha pogut instal·lar uv."; exit 1; }
 fi
+fi
 
+if vol musescore; then
 pas "2. MuseScore 4 (revisar partitures i fer PDF)"
 if [ -d "/Applications/MuseScore 4.app" ] || [ -n "${MUSESCORE_PATH:-}" ]; then ok "MuseScore 4 ja està instal·lat"
 elif [ "$PROVA" = 1 ]; then falta "MuseScore 4"
@@ -59,7 +75,9 @@ else
   falta "No he pogut instal·lar MuseScore automàticament."
   echo "  Fes-ho a mà: baixa'l des de https://musescore.org/ca/download i arrossega la icona a Aplicacions."
 fi
+fi
 
+if vol audiveris; then
 pas "3. Audiveris (convertir PDF en partitura; porta Java inclòs)"
 if [ -d "/Applications/Audiveris.app" ] || [ -n "${AUDIVERIS_PATH:-}" ]; then ok "Audiveris ja està instal·lat"
 elif [ "$PROVA" = 1 ]; then falta "Audiveris"
@@ -71,11 +89,14 @@ else
     echo "  Fes-ho a mà: baixa el .dmg «$ARQ» de https://github.com/Audiveris/audiveris/releases i arrossega Audiveris a Aplicacions."
   fi
 fi
+fi
 
+if [ -z "$NOMES" ] || [ "$NOMES" = uv ]; then
 pas "4. Eines musicals d'este projecte"
 if [ "$PROVA" = 1 ]; then falta "uv sync (no es fa en mode prova)"
 elif command -v uv >/dev/null 2>&1; then
   uv sync && ok "eines musicals preparades" || { echo "  Ha fallat «uv sync». Comprova internet i torna-ho a provar."; }
+fi
 fi
 
 pas "5. Comprovació final"
