@@ -1,4 +1,4 @@
-"""Localitza MuseScore i Audiveris a Mac i Windows (i, per si de cas, Linux).
+"""Localitza MuseScore i Audiveris a Mac, Windows i Linux.
 
 Es pot forçar la ruta amb les variables d'entorn MUSESCORE_PATH i AUDIVERIS_PATH.
 """
@@ -22,6 +22,11 @@ def _es_mac() -> bool:
     return sys.platform == "darwin"
 
 
+def _dades_linux() -> Path:
+    """Carpeta de dades de l'aplicació a Linux (la mateixa que fa servir l'instal·lador)."""
+    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "Arranjaments"
+
+
 def _candidats_musescore() -> list[str]:
     """Qualsevol MuseScore (4 i versions futures), la més nova primer."""
     if _es_mac():
@@ -38,7 +43,13 @@ def _candidats_musescore() -> list[str]:
         for base in bases:
             trobats += glob.glob(str(Path(base) / "MuseScore*" / "bin" / "MuseScore*.exe"))
         return sorted(trobats, reverse=True)
-    return []
+    # Linux: la que deixa l'instal·lador (AppImage descomprimida), altres AppImage conegudes i Flatpak
+    trobats = [str(_dades_linux() / "MuseScore" / "AppRun")]
+    for base in (Path.home() / "Applications", Path.home() / ".local" / "bin", Path("/opt")):
+        trobats += sorted(glob.glob(str(base / "MuseScore*.AppImage")), reverse=True)
+    trobats += [str(Path.home() / ".local/share/flatpak/exports/bin/org.musescore.MuseScore"),
+                "/var/lib/flatpak/exports/bin/org.musescore.MuseScore"]
+    return trobats
 
 
 def _candidats_audiveris() -> list[str]:
@@ -118,11 +129,11 @@ def instalar(cosa: str | None, prova: bool = False) -> int:
         ordre = [str(Path(arrel_sistema) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"),
                  "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(guio), "-SensePreguntes"]
         ordre += ["-Prova"] if prova else ["-Nomes", cosa]
-    elif _es_mac():
-        guio = carpeta / "instalar-mac.sh"
+    elif _es_mac() or sys.platform.startswith("linux"):
+        guio = carpeta / ("instalar-mac.sh" if _es_mac() else "instalar-linux.sh")
         ordre = ["/bin/bash", str(guio), "--sense-preguntes"] + (["--prova"] if prova else ["--nomes", cosa])
     else:
-        raise ErrorUsuari("L'instal·lador automàtic només existeix per a Mac i Windows.")
+        raise ErrorUsuari("L'instal·lador automàtic només existeix per a Mac, Windows i Linux.")
     if not guio.exists():
         raise ErrorUsuari("No trobe l'instal·lador. Torna a obrir «Instal·lar Arranjaments» (el programa amb què vas "
                           "instal·lar-ho tot) i prova-ho de nou.")

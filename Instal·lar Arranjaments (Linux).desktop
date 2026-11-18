@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Instal·lar Arranjaments
+Comment=Instal·la Arranjaments en este ordinador (LliureX i altres Linux)
+Exec=sh -c "cd \\"\\${1%/*}/instalacio\\" && exec bash ./Instalar-Linux-Terminal.sh" sh %k
+Terminal=true
+Icon=system-software-install
+Categories=Utility;

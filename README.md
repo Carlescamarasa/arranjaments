@@ -43,6 +43,24 @@ Els models gratuïts ja venen preparats: no cal compte ni clau. Les partitures q
 
 **Privacitat.** Tot el que escrius a l'ajudant viatja a l'empresa que ofereix el model, i els models gratuïts poden fer servir les converses per a entrenar-se. No escrigues mai noms d'alumnes ni dades personals.
 
+<a id="linux"></a>
+
+## LliureX i altres Linux (Ubuntu)
+
+Sense finestra bonica, però amb la mateixa instal·lació i **sense contrasenya d'administradora**. Està pensat per a LliureX 23 (Ubuntu 22.04) i LliureX 25 (Ubuntu 24.04), tots dos amb l'escriptori KDE Plasma, i es prova automàticament en Ubuntu 22.04 i 24.04 nets, no en un LliureX de veritat. Només per a ordinadors de 64 bits (Intel/AMD o ARM).
+
+1. Baixa i descomprimeix [arranjaments.zip](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/arranjaments.zip) (clic dret, «Extraure ací»). La carpeta bona és on veus `README.md` i `instalacio`.
+2. Fes doble clic a **`Instal·lar Arranjaments (Linux).desktop`**. S'obri una finestra de Terminal amb el progrés (és normal) i, quan acaba, diu «Tot a punt». Si el sistema pregunta si el vols executar o confiar-hi, accepta. Tarda uns minuts (baixa OpenCode i MuseScore).
+3. Obri la icona **«Arranjaments»** de l'Escriptori (o del menú d'aplicacions), i després com al pas 3 de dalt: «Obrir projecte» i tria la carpeta `Arranjaments` de Documents.
+
+Si el doble clic no fa res: obri la carpeta amb el gestor de fitxers, prem **F4** (s'obri un terminal a baix, ja dins de la carpeta) i escriu `bash instalacio/instalar-linux.sh`. Fa el mateix. Al gestor de fitxers de KDE (Dolphin), fer doble clic en un fitxer `.sh` no obri cap terminal (només pregunta si s'executa o s'obri), per això l'entrada d'ací és un fitxer `.desktop`, que sí que ho fa.
+
+- No cal `libfuse2` ni res d'administradora: les aplicacions (AppImage) es descomprimeixen una vegada dins de `~/.local/share/Arranjaments`.
+- Documents i Escriptori són els del sistema (poden dir-se «Documentos» o «Escritorio»).
+- Audiveris (només per a convertir PDF) a Linux s'instal·la a mà amb el paquet `.deb` de [la seua pàgina](https://github.com/Audiveris/audiveris/releases), cosa que necessita una administradora.
+- **En ordinadors d'un centre**, l'administració pot tindre bloquejat baixar o executar programes de la carpeta personal, i llavors la instal·lació pot fallar. Si passa, consulta-ho amb qui l'administra (el mateix text de l'instal·lador diu què ha fallat).
+- Per a desinstal·lar: esborra `~/.local/share/Arranjaments`, `~/.local/bin/partitures`, `arranjaments.desktop` del menú d'aplicacions i de l'Escriptori.
+
 <a id="avisos"></a>
 
 ### Si el Mac o el Windows no deixa obrir l'instal·lador
@@ -103,12 +121,12 @@ Els models gratuïts van i vénen: un dia n'hi ha un que s'acaba, va molt lent o
 
 On queda cada cosa després d'instal·lar:
 
-| Què | Mac | Windows |
-| --- | --- | --- |
-| Carpeta de treball (l'única visible) | `~/Documents/Arranjaments` | `Documents\Arranjaments` |
-| Configuració de l'ajudant (amagada) | `.opencode` dins de la carpeta de treball | igual, amb l'atribut d'amagat |
-| Eines musicals i el seu Python | `~/Library/Application Support/Arranjaments` | `%LOCALAPPDATA%\Arranjaments` |
-| Ordre `partitures` | `~/.local/bin/partitures` | `%USERPROFILE%\.local\bin\partitures.cmd` |
+| Què | Mac | Windows | Linux |
+| --- | --- | --- | --- |
+| Carpeta de treball (l'única visible) | `~/Documents/Arranjaments` | `Documents\Arranjaments` | `Documents/Arranjaments` (la del sistema) |
+| Configuració de l'ajudant (amagada) | `.opencode` dins de la carpeta de treball | igual, amb l'atribut d'amagat | `.opencode` dins de la carpeta de treball |
+| Eines musicals i el seu Python | `~/Library/Application Support/Arranjaments` | `%LOCALAPPDATA%\Arranjaments` | `~/.local/share/Arranjaments` |
+| Ordre `partitures` | `~/.local/bin/partitures` | `%USERPROFILE%\.local\bin\partitures.cmd` | `~/.local/bin/partitures` |
 
 - A Windows, Documents pot estar dins d'OneDrive: no passa res, allí només hi ha partitures. Les eines van a una carpeta que OneDrive no sincronitza.
 - `.opencode/AGENTS.md` (dins de la carpeta de treball): les instruccions que llig l'ajudant. `.opencode/skills/`: les guies de procediment (buscar, importar PDF, arranjar, exportar i comprovar la instal·lació).
@@ -121,8 +139,8 @@ En este repositori (per a qui vol canviar el programa):
 
 - `AGENTS.md`, `opencode.json` i `.opencode/skills/`: el que l'instal·lador copia dins de `.opencode` a la carpeta de treball.
 - `scripts/partitures/`: les eines musicals (Python + music21). Dins del repositori s'executen amb `uv run partitures ...`.
-- `instalacio/`: els instal·ladors de veritat (`instalar-mac.sh` i `instalar-windows.ps1`). «Instal·lar Arranjaments» és només una finestra que executa estos mateixos fitxers i en mostra el progrés; el seu codi és a `instalacio/visual/` (Swift per a Mac, C# per a Windows) i es construeix sol a GitHub cada vegada que canvia el projecte, juntament amb el ZIP de «Releases». Es poden usar a mà, per separat si vols: `bash "instalacio/instalar-mac.sh" --nomes uv` (o `opencode`, `musescore`, `eines`, `carpeta`, `icona`; `audiveris` només si cal convertir PDF); Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv`. Amb `--prova` (Windows `-Prova`) només comprova. No cal Homebrew. Audiveris porta Java inclòs.
-- Proves: `uv run pytest` (a GitHub també s'executen a Mac i a Windows, amb una instal·lació de veritat en ordinadors nets).
+- `instalacio/`: els instal·ladors de veritat (`instalar-mac.sh`, `instalar-windows.ps1` i `instalar-linux.sh`). «Instal·lar Arranjaments» és només una finestra que executa estos mateixos fitxers i en mostra el progrés; el seu codi és a `instalacio/visual/` (Swift per a Mac, C# per a Windows) i es construeix sol a GitHub cada vegada que canvia el projecte, juntament amb el ZIP de «Releases». Es poden usar a mà, per separat si vols: `bash "instalacio/instalar-mac.sh" --nomes uv` (o `opencode`, `musescore`, `eines`, `carpeta`, `icona`; `audiveris` només si cal convertir PDF); Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv`. Amb `--prova` (Windows `-Prova`) només comprova. No cal Homebrew. Audiveris porta Java inclòs.
+- Proves: `uv run pytest` (a GitHub també s'executen a Mac i a Windows, amb una instal·lació de veritat en ordinadors nets, i la instal·lació de Linux es prova en Ubuntu 22.04 i 24.04).
 - Alternativa amb línia d'ordres (Terminal): `curl -fsSL https://opencode.ai/v2/install | bash`, i després `opencode` dins de la carpeta de treball. El format de `opencode.json` és el d'OpenCode 2; amb OpenCode 1 caldria el format antic (`permission`).
 
 <a id="manual"></a>
@@ -131,8 +149,9 @@ En este repositori (per a qui vol canviar el programa):
 
 1. **OpenCode.** Mac: [per a Mac amb xip Apple (M1, M2, M3...)](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-arm64.dmg) o [per a Mac amb Intel](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-x64.dmg); obri el fitxer i arrossega OpenCode a Aplicacions (si no saps quin Mac tens: menú Apple, «Sobre este Mac»). Windows: [descarrega per a Windows](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-x64.exe) i fes-hi doble clic. Totes les opcions: https://opencode.ai/download
 2. **MuseScore** (gratuït; potser ja el tens): https://musescore.org/ca/download. Tria l'opció «sense MuseHub» (MuseScore Studio «without MuseHub»), que és l'aplicació sola.
-3. **Les eines musicals i la carpeta de treball:** instal·la [uv](https://docs.astral.sh/uv/getting-started/installation/) i després executa l'instal·lador només per a estes dues coses. Mac: `bash "instalacio/instalar-mac.sh" --nomes eines` i `bash "instalacio/instalar-mac.sh" --nomes carpeta`. Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes eines` i el mateix amb `-Nomes carpeta`.
-4. Obri OpenCode, tria «Obrir projecte» i selecciona la carpeta `Arranjaments` de Documents.
+3. **Linux:** OpenCode, «Linux (AppImage)» a https://opencode.ai/download, i MuseScore, l'AppImage de https://musescore.org/ca/download. Per a les eines i la carpeta: `bash "instalacio/instalar-linux.sh" --nomes eines` i `--nomes carpeta` (cal [uv](https://docs.astral.sh/uv/getting-started/installation/)).
+4. **Les eines musicals i la carpeta de treball (Mac i Windows):** instal·la [uv](https://docs.astral.sh/uv/getting-started/installation/) i després executa l'instal·lador només per a estes dues coses. Mac: `bash "instalacio/instalar-mac.sh" --nomes eines` i `bash "instalacio/instalar-mac.sh" --nomes carpeta`. Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes eines` i el mateix amb `-Nomes carpeta`.
+5. Obri OpenCode, tria «Obrir projecte» i selecciona la carpeta `Arranjaments` de Documents.
 
 ## Llicència
 

@@ -367,9 +367,140 @@ jobs:
           path: ${{ runner.temp }}/captures/
           if-no-files-found: warn
 
+  # Linux (LliureX és Ubuntu 22.04 a la versió 23 i Ubuntu 24.04 a la 25): baixar el ZIP, descomprimir-lo en una carpeta
+  # amb accents i espais i executar el mateix que fa el doble clic al fitxer .desktop. Sense sudo per a instal·lar.
+  instalacio-linux:
+    needs: paquet
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: arranjaments-zip
+          path: ${{ runner.temp }}
+      - name: Preparar un ordinador de professora (carpetes en castellà, sense FUSE) i descomprimir el ZIP
+        run: |
+          set -x
+          # Només per a la prova (sudo): carpetes Documentos i Escritorio, com un escriptori en castellà, i xvfb per a mirar que OpenCode arrenca
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xdg-user-dirs xvfb desktop-file-utils
+          sudo apt-get purge -y libfuse2 libfuse2t64 fuse 2>/dev/null || true
+          ldconfig -p | grep 'libfuse.so.2' || echo "Sense libfuse2: com un Ubuntu net"
+          mkdir -p "$HOME/.config" "$HOME/Documentos" "$HOME/Escritorio"
+          printf 'XDG_DOCUMENTS_DIR="$HOME/Documentos"\nXDG_DESKTOP_DIR="$HOME/Escritorio"\n' > "$HOME/.config/user-dirs.dirs"
+          test "$(xdg-user-dir DOCUMENTS)" = "$HOME/Documentos"
+          mkdir -p "$HOME/Prova àè amb espais"
+          unzip -q "$RUNNER_TEMP/arranjaments.zip" -d "$HOME/Prova àè amb espais"
+          cd "$HOME/Prova àè amb espais/arranjaments"
+          ls -la
+          test -x "Instal·lar Arranjaments (Linux).desktop"
+          test -x instalacio/instalar-linux.sh
+          test -x instalacio/Instalar-Linux-Terminal.sh
+          desktop-file-validate "Instal·lar Arranjaments (Linux).desktop" || true
+          echo "ARRANJAMENTS=$PWD" >> "$GITHUB_ENV"
+      - name: Instal·lar com ho fa el doble clic al .desktop (la seua ordre Exec, sense sudo)
+        run: |
+          cd "$ARRANJAMENTS"
+          python3 - <<'PY' > "$RUNNER_TEMP/exec.sh"
+          import re
+          l = [x for x in open("Instal·lar Arranjaments (Linux).desktop", encoding="utf-8") if x.startswith("Exec=")][0][5:].rstrip("\n")
+          l = l.replace("\\\\", "\\")
+          l = re.sub(r'\\(["`$\\])', r"\1", l)
+          m = re.fullmatch(r'sh -c "(.*)" sh %k', l)
+          print(m.group(1))
+          PY
+          cat "$RUNNER_TEMP/exec.sh"
+          codi=0
+          ARRANJAMENTS_PROGRES=1 sh -c "$(cat "$RUNNER_TEMP/exec.sh")" sh "$PWD/Instal·lar Arranjaments (Linux).desktop" </dev/null | tee "$RUNNER_TEMP/primera.txt" || codi=$?
+          echo "Codi d'eixida: ${PIPESTATUS[0]} $codi"
+          grep -q "Tot a punt" "$RUNNER_TEMP/primera.txt"
+          grep -q "@@FI ok" "$RUNNER_TEMP/primera.txt"
+          for p in uv opencode musescore eines carpeta icona final; do grep -q "@@PAS $p ok" "$RUNNER_TEMP/primera.txt"; done
+          ! grep -q "falla" "$RUNNER_TEMP/primera.txt"
+      - name: La carpeta de treball només té entrada i eixida; les eines i les aplicacions queden a part
+        run: |
+          set -x
+          W="$HOME/Documentos/Arranjaments"
+          D="$HOME/.local/share/Arranjaments"
+          ls -la "$W" "$W/.opencode" "$D"
+          test "$(ls "$W" | sort | tr '\n' ' ')" = "eixida entrada "
+          test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+          test -f "$W/.opencode/opencode.json"
+          cmp "$W/.opencode/AGENTS.md" "$ARRANJAMENTS/AGENTS.md"
+          test -f "$W/.opencode/skills/arranjar/SKILL.md"
+          test -x "$D/.venv/bin/python" && test -d "$D/scripts/partitures" && test -x "$HOME/.local/bin/partitures"
+          test -x "$D/OpenCode/AppRun" && test -x "$D/MuseScore/AppRun"
+          test ! -e "$ARRANJAMENTS/.venv"
+          # el menú d'aplicacions i l'Escriptori (en castellà: Escritorio)
+          for f in "$HOME/.local/share/applications/arranjaments.desktop" "$HOME/Escritorio/Arranjaments.desktop"; do
+            test -x "$f"
+            grep -q '^Name=Arranjaments$' "$f"
+            grep -q "^Path=$W$" "$f"
+            desktop-file-validate "$f"
+            ICONA="$(sed -n 's/^Icon=//p' "$f")"; echo "Icona: $ICONA"
+            L="$(sed -n 's/^Exec="\(.*\)"$/\1/p' "$f")"; test -x "$L"
+          done
+          test -x "$D/arranjaments-obrir.sh"
+          gio info -a metadata::trusted "$HOME/Escritorio/Arranjaments.desktop" || true
+          # una partitura de la professora: en repetir l'instal·lador no s'ha de tocar
+          echo "partitura de la professora" > "$W/eixida/no-tocar.txt"
+          echo "vell" > "$W/.opencode/AGENTS.md"
+      - name: Repetir l'instal·lador no ha de fer res nou, ni fallar, ni tocar les partitures
+        run: |
+          cd "$ARRANJAMENTS"
+          ./instalacio/Instalar-Linux-Terminal.sh --sense-preguntes | tee segona.txt
+          grep -q "OpenCode ja està instal·lat" segona.txt
+          grep -q "MuseScore ja està instal·lat" segona.txt
+          grep -q "uv ja està instal·lat" segona.txt
+          W="$HOME/Documentos/Arranjaments"
+          test "$(cat "$W/eixida/no-tocar.txt")" = "partitura de la professora"
+          test "$(ls -A "$W/eixida")" = "no-tocar.txt"
+          cmp "$W/.opencode/AGENTS.md" AGENTS.md
+          test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+          bash instalacio/instalar-linux.sh --prova | tee prova.txt
+          ! grep -q "\[falta\]" prova.txt
+      - name: OpenCode arrenca des de la icona (informatiu; xvfb, sense pantalla)
+        continue-on-error: true
+        run: |
+          L="$HOME/.local/share/Arranjaments/arranjaments-obrir.sh"
+          cat "$L"
+          xvfb-run -a sh -c '"$0" --disable-gpu >"$RUNNER_TEMP/opencode.log" 2>&1 & p=$!; sleep 25; kill -0 $p && echo "OpenCode segueix obert" ; kill $p 2>/dev/null; wait $p 2>/dev/null; true' "$L"
+          tail -20 "$RUNNER_TEMP/opencode.log" || true
+      - name: Sense la carpeta del ZIP, les ordres funcionen des de la carpeta de treball (i MuseScore fa un PDF sense pantalla)
+        run: |
+          set -x
+          rm -rf "$HOME/Prova àè amb espais"
+          cd "$HOME/Documentos/Arranjaments"
+          # com ho fa l'ajudant dins d'OpenCode: amb un entorn mínim, sense uv al PATH
+          P() { env -i HOME="$HOME" PATH=/usr/bin:/bin "$HOME/.local/bin/partitures" "$@"; }
+          P comprovar | tee "$RUNNER_TEMP/comprovar.txt"
+          grep -q "MuseScore" "$RUNNER_TEMP/comprovar.txt"
+          P corpus bach --copia 1
+          ls entrada
+          P info "entrada/bwv101.7.musicxml"
+          P transport "entrada/bwv101.7.musicxml" --semitons 2
+          test -f "eixida/bwv101.7-transportat.musicxml"
+          # PDF amb MuseScore, sense finestra i amb la plataforma de Qt «offscreen»
+          env -i HOME="$HOME" PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen "$HOME/.local/bin/partitures" exportar "entrada/bwv101.7.musicxml"
+          find eixida -name '*.pdf' | tee "$RUNNER_TEMP/pdfs.txt"
+          test -s "$RUNNER_TEMP/pdfs.txt"
+          test "$(find eixida -name '*.pdf' -size 0 | wc -l)" = 0
+          # mai fora d'entrada i eixida
+          if P transport "entrada/bwv101.7.musicxml" --semitons 2 --eixida "../fora.musicxml"; then echo "Ha escrit fora"; exit 1; fi
+          test ! -e ../fora.musicxml
+          P instalar --prova
+          test "$(cat eixida/no-tocar.txt)" = "partitura de la professora"
+          test "$(ls -A | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+
   # Només quan tot ha anat bé a main: es publica el ZIP a «Releases», sempre amb el mateix enllaç.
   publicar:
-    needs: [paquet, instalacio-mac, instalacio-windows]
+    needs: [paquet, instalacio-mac, instalacio-windows, instalacio-linux]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -391,7 +522,7 @@ jobs:
           Baixa **arranjaments.zip**, descomprimeix-lo i fes doble clic a «Instal·lar Arranjaments».
           Les instruccions són al [README](https://github.com/$GH_REPO#readme).
 
-          Fet automàticament a partir de la versió $GITHUB_SHA, després de provar la instal·lació en un Mac i en un Windows nets.
+          Fet automàticament a partir de la versió $GITHUB_SHA, després de provar la instal·lació en un Mac, un Windows i dos Linux (Ubuntu 22.04 i 24.04) nets.
           NOTES
           if gh release view ultima >/dev/null 2>&1; then
             gh api -X PATCH "repos/$GH_REPO/git/refs/tags/ultima" -f sha="$GITHUB_SHA" -F force=true

@@ -361,6 +361,20 @@ def test_detecta_musescore_a_windows_de_qualsevol_versio(monkeypatch, tmp_path):
     assert str(exe) in eines._candidats_musescore()
 
 
+def test_detecta_musescore_a_linux_appimage_descomprimida_i_flatpak(monkeypatch, tmp_path):
+    monkeypatch.setattr(eines, "_es_mac", lambda: False)
+    monkeypatch.setattr(eines, "_es_windows", lambda: False)
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "dades"))
+    monkeypatch.setattr(eines.Path, "home", classmethod(lambda cls: tmp_path))
+    app = tmp_path / "Applications" / "MuseScore-Studio-4.7.7-x86_64.AppImage"
+    app.parent.mkdir(parents=True)
+    app.write_text("x")
+    c = eines._candidats_musescore()
+    assert str(tmp_path / "dades" / "Arranjaments" / "MuseScore" / "AppRun") in c
+    assert str(app) in c
+    assert any(x.endswith("flatpak/exports/bin/org.musescore.MuseScore") for x in c)
+
+
 def test_missatge_de_musescore_diu_sense_musehub(monkeypatch):
     monkeypatch.delenv("MUSESCORE_PATH", raising=False)
     monkeypatch.setattr(eines, "_candidats_musescore", lambda: [])

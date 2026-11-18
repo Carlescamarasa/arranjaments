@@ -8,7 +8,9 @@ import pytest
 ARREL = Path(__file__).resolve().parent.parent
 TEXTOS = ([ARREL / "README.md", ARREL / "AGENTS.md", ARREL / "opencode.json", ARREL / "pyproject.toml",
            ARREL / "instalacio" / "instalar-mac.sh", ARREL / "instalacio" / "instalar-windows.ps1",
-           ARREL / "instalacio" / "Instalar-Mac.command", ARREL / "instalacio" / "Instalar-Windows.bat"]
+           ARREL / "instalacio" / "Instalar-Mac.command", ARREL / "instalacio" / "Instalar-Windows.bat",
+           ARREL / "instalacio" / "instalar-linux.sh", ARREL / "instalacio" / "Instalar-Linux-Terminal.sh",
+           ARREL / "Instal·lar Arranjaments (Linux).desktop"]
           + [f for f in (ARREL / "instalacio" / "visual").rglob("*") if f.suffix in (".swift", ".cs", ".sh", ".ps1", ".py", ".plist", ".manifest")]
           + list((ARREL / ".opencode" / "skills").rglob("SKILL.md"))
           + list((ARREL / "scripts").rglob("*.py")) + list((ARREL / ".github").rglob("*.yml")))
@@ -277,3 +279,59 @@ def test_ordre_instalar_del_cli(monkeypatch):
     assert cli.main(["instalar", "musescore"]) == 1
     # l'instal·lador es busca al costat de les eines (igual al repositori que a la carpeta de dades)
     assert (Path(eines.__file__).resolve().parents[2] / "instalacio" / "instalar-mac.sh").exists()
+
+
+# ---- Linux (LliureX)
+
+def test_installador_linux_sense_sudo_amb_appimage_descomprimida_i_mateixos_passos():
+    sh = _text(ARREL / "instalacio" / "instalar-linux.sh")
+    assert not re.search(r"(?m)^[^#\n]*\bsudo (?!apt install curl)", sh.replace("sudo apt install curl", "")), "cap ordre amb sudo"
+    assert "--appimage-extract" in sh, "sense FUSE: l'AppImage es descomprimeix"
+    assert "xdg-user-dir" in sh and "XDG_DATA_HOME" in sh and "metadata::trusted" in sh
+    assert "opencode-desktop-linux-" in sh and "musescore/MuseScore" in sh and "astral.sh/uv/install.sh" in sh
+    assert len(re.findall(r"(?m)^inici_pas \w+;", sh)) == sh.count("\nfi_pas\n") == 8
+    for pas in ("uv", "opencode", "musescore", "eines", "carpeta", "icona", "final"):
+        assert re.search(rf"(?m)^inici_pas {pas}", sh), pas
+
+
+def test_el_guio_de_linux_nomes_s_executa_a_linux_i_els_fitxers_son_executables_a_git():
+    import shutil
+    import subprocess
+    if not shutil.which("git") or not (ARREL / ".git").exists():
+        pytest.skip("sense git")
+    for f in ("instalacio/instalar-linux.sh", "instalacio/Instalar-Linux-Terminal.sh", "Instal·lar Arranjaments (Linux).desktop"):
+        r = subprocess.run(["git", "ls-files", "-s", f], cwd=ARREL, capture_output=True, text=True)
+        assert r.stdout.startswith("100755"), f
+    assert "\r\n" not in (ARREL / "instalacio" / "instalar-linux.sh").read_text(encoding="utf-8")
+
+
+def test_el_desktop_de_doble_clic_executa_l_instalador_des_de_qualsevol_carpeta(tmp_path):
+    """L'Exec del .desktop s'interpreta com diu l'especificació de freedesktop (dues capes d'escapament)."""
+    import shlex
+    import shutil
+    import subprocess
+    import sys
+    if sys.platform.startswith("win") or not shutil.which("sh"):
+        pytest.skip("només on hi ha sh")
+    f = ARREL / "Instal·lar Arranjaments (Linux).desktop"
+    camp = dict(l.split("=", 1) for l in _text(f).splitlines() if "=" in l)
+    assert camp["Terminal"] == "true" and camp["Type"] == "Application"
+    # 1) valor de cadena: \\ -> \ ; 2) cometes de l'Exec: \" \$ \` \\ -> el caràcter
+    valor = camp["Exec"].replace("\\\\", "\\")
+    arrel_c = tmp_path / "Carpeta àè amb espais"
+    (arrel_c / "instalacio").mkdir(parents=True)
+    (arrel_c / "instalacio" / "Instalar-Linux-Terminal.sh").write_text("echo ARRANCA-$(basename \"$PWD\")\n")
+    escapat = re.sub(r"\\([\"`$\\])", r"\1", valor)
+    cas = re.fullmatch(r'sh -c "(.*)" sh %k', escapat)
+    assert cas, escapat
+    r = subprocess.run(["sh", "-c", cas.group(1), "sh", str(arrel_c / "Instal·lar Arranjaments (Linux).desktop")],
+                       capture_output=True, text=True)
+    assert r.returncode == 0 and "ARRANCA-instalacio" in r.stdout, (r.stdout, r.stderr)
+    assert shlex.split(escapat.replace("%k", "x"))[0] == "sh"
+
+
+def test_ci_a_linux_i_el_zip_porta_els_fitxers_de_linux():
+    t = _text(ARREL / ".github" / "workflows" / "proves.yml")
+    assert "ubuntu-22.04" in t and "instalar-linux.sh" in t and "instalacio-linux" in t
+    assert "QT_QPA_PLATFORM" in t and "Arranjaments (Linux).desktop" in t
+    assert re.search(r"publicar:\n\s+needs: \[[^\]]*instalacio-linux", t)
