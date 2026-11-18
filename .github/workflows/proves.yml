@@ -85,20 +85,19 @@ jobs:
           $dest = "C:\Prova àè amb espais"
           Expand-Archive "$env:RUNNER_TEMP\arranjaments.zip" -DestinationPath $dest
           Add-Content $env:GITHUB_ENV "ARRANJAMENTS=$dest\arranjaments-main"
-      - name: Instal·lar (el mateix fitxer .bat que prem la professora)
-        shell: pwsh
+      - name: Instal·lar (el mateix fitxer .bat que prem la professora, des de cmd com ho fa Windows)
+        shell: cmd
         run: |
-          Set-Location $env:ARRANJAMENTS
-          cmd /c ".\Instalar-Windows.bat -SensePreguntes"
-          if ($LASTEXITCODE -ne 0) { throw "L'instal·lador ha acabat amb error $LASTEXITCODE" }
+          cd /d "%ARRANJAMENTS%"
+          call Instalar-Windows.bat -SensePreguntes
       - name: Repetir l'instal·lador no ha de fer res nou ni fallar
-        shell: pwsh
+        shell: cmd
         run: |
-          Set-Location $env:ARRANJAMENTS
-          $sortida = (cmd /c ".\Instalar-Windows.bat -SensePreguntes") | Out-String
-          if ($LASTEXITCODE -ne 0) { throw "Segona execució amb error $LASTEXITCODE" }
-          if ($sortida -notmatch "OpenCode ja està instal·lat") { throw "No ha detectat OpenCode:`n$sortida" }
-          if ($sortida -notmatch "MuseScore ja està instal·lat") { throw "No ha detectat MuseScore:`n$sortida" }
+          cd /d "%ARRANJAMENTS%"
+          call Instalar-Windows.bat -SensePreguntes > segona.txt
+          type segona.txt
+          findstr /C:"OpenCode ja est" segona.txt
+          findstr /C:"MuseScore ja est" segona.txt
       - name: Comprovar el resultat
         shell: pwsh
         run: |

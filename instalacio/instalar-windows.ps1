@@ -102,7 +102,8 @@ if (Get-Command uv -ErrorAction SilentlyContinue) { Fet "uv ja està instal·lat
 elseif ($Prova) { Falta "uv" }
 else {
     Write-Host "  Instal·lant uv (instal·lador oficial d'astral.sh)..."
-    powershell -NoProfile -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    # (es neteja PSModulePath per si l'instal·lador es llança des de PowerShell 7, que trenca el Windows PowerShell fill)
+    powershell -NoProfile -ExecutionPolicy ByPass -c "`$env:PSModulePath = [Environment]::GetEnvironmentVariable('PSModulePath','Machine'); irm https://astral.sh/uv/install.ps1 | iex"
     ActualitzaPath
     if (Get-Command uv -ErrorAction SilentlyContinue) { Fet "uv instal·lat a $env:USERPROFILE\.local\bin\uv.exe" }
     else { Fallada "No s'ha pogut instal·lar uv." "https://docs.astral.sh/uv/getting-started/installation/" }
