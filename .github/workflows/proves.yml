@@ -487,10 +487,8 @@ jobs:
           P info "entrada/bwv101.7.musicxml"
           P transport "entrada/bwv101.7.musicxml" --semitons 2
           test -f "eixida/bwv101.7-transportat.musicxml"
-          # PDF amb MuseScore, sense finestra i amb la plataforma de Qt «offscreen»
-          grep -n "QT_QPA\|platform" "$HOME/.local/share/Arranjaments/MuseScore/AppRun" || true
-          env -i HOME="$HOME" PATH=/usr/bin:/bin QT_QPA_PLATFORM=offscreen "$HOME/.local/bin/partitures" exportar "entrada/bwv101.7.musicxml" \
-            || { echo "SENSE PANTALLA FALLA; es prova amb una pantalla virtual (xvfb)"; xvfb-run -a sh -c 'env -i HOME="$HOME" PATH=/usr/bin:/bin DISPLAY="$DISPLAY" "$HOME/.local/bin/partitures" exportar entrada/bwv101.7.musicxml'; }
+          # El servidor del CI no té pantalla. MuseScore (Qt 6) no fa cas de QT_QPA_PLATFORM=offscreen i demana pantalla: es dona una de virtual (xvfb).
+          xvfb-run -a "$HOME/.local/bin/partitures" exportar "entrada/bwv101.7.musicxml"
           find eixida -name '*.pdf' | tee "$RUNNER_TEMP/pdfs.txt"
           test -s "$RUNNER_TEMP/pdfs.txt"
           test "$(find eixida -name '*.pdf' -size 0 | wc -l)" = 0
