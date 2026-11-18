@@ -1,24 +1,29 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "opencode/big-pickle",
-  "permission": {
-    "bash": {
-      "*": "ask",
-      "uv run partitures *": "allow",
-      "uv sync": "allow",
-      "ls": "allow",
-      "ls *": "allow",
-      "pwd": "allow",
-      "open *": "ask",
-      "rm *": "deny",
-      "del *": "deny",
-      "git push*": "deny",
-      "uv --version": "allow"
-    },
-    "edit": "deny",
-    "webfetch": "allow",
-    "skill": {
-      "*": "allow"
-    }
-  }
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "shell", "resource": "uv run partitures *", "effect": "allow" },
+    { "action": "shell", "resource": "~/.local/bin/uv run partitures *", "effect": "allow" },
+    { "action": "shell", "resource": "& \"$env:USERPROFILE\\.local\\bin\\uv.exe\" run partitures *", "effect": "allow" },
+    { "action": "shell", "resource": "uv sync", "effect": "allow" },
+    { "action": "shell", "resource": "uv --version", "effect": "allow" },
+    { "action": "shell", "resource": "ls", "effect": "allow" },
+    { "action": "shell", "resource": "ls *", "effect": "allow" },
+    { "action": "shell", "resource": "pwd", "effect": "allow" },
+    { "action": "shell", "resource": "rm *", "effect": "deny" },
+    { "action": "shell", "resource": "del *", "effect": "deny" },
+    { "action": "shell", "resource": "erase *", "effect": "deny" },
+    { "action": "shell", "resource": "rmdir *", "effect": "deny" },
+    { "action": "shell", "resource": "rd *", "effect": "deny" },
+    { "action": "shell", "resource": "Remove-Item *", "effect": "deny" },
+    { "action": "shell", "resource": "mv *", "effect": "deny" },
+    { "action": "shell", "resource": "move *", "effect": "deny" },
+    { "action": "shell", "resource": "Move-Item *", "effect": "deny" },
+    { "action": "shell", "resource": "git push*", "effect": "deny" },
+    { "action": "edit", "resource": "*", "effect": "deny" },
+    { "action": "webfetch", "resource": "*", "effect": "ask" },
+    { "action": "external_directory", "resource": "*", "effect": "ask" },
+    { "action": "skill", "resource": "*", "effect": "allow" }
+  ]
 }

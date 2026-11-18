@@ -11,14 +11,13 @@ Objectiu: aconseguir un fitxer MusicXML (`.musicxml`, `.xml` o `.mxl`) de l'obra
 
 1. Pregunta quina obra vol (compositor i títol) i per a quina plantilla (instruments).
 2. Pregunta si ja té algun fitxer. Si el té, demana-li que el deixe a la carpeta `entrada/` i ves a la skill `arranjar`.
-3. Cerca primer al corpus que ja ve instal·lat (no necessita internet):
-   `uv run partitures corpus <text>` (per exemple `bach`). Per copiar un resultat a `entrada/`: `uv run partitures corpus <text> --copia <número>`.
+3. Cerca primer al corpus que ja ve instal·lat (no necessita internet): `uv run partitures corpus <paraules>` (per exemple `corpus bach`, `corpus beethoven quartet` o `corpus bwv66.6`). Cerca per compositor, títol o nom de fitxer, sense mirar accents ni majúscules, i mostra títol i compositor. Per copiar un resultat a `entrada/`: `uv run partitures corpus <paraules> --copia <número>`. El corpus és limitat (sobretot coral de Bach, quartets clàssics, música antiga i cançons populars): si l'obra no hi és, no passa res, vés al pas següent.
 4. Si no hi ha res, proposa-li (d'una en una) estes fonts, perquè ho cerque ell o ella al navegador. Tu NO inventes enllaços ni diràs que una obra hi és si no ho has comprovat:
    - OpenScore (https://musescore.com/openscore): transcripcions fetes per voluntaris, publicades sota CC0 (sense restriccions). Es poden baixar en MusicXML amb compte gratuït a MuseScore.com. Moltes són de cançons, cambra i piano.
    - CPDL, Choral Public Domain Library (https://www.cpdl.org): sobretot música coral i antiga. Molts arxius tenen versió MusicXML, però no tots: cal mirar cada edició.
    - Mutopia Project (https://www.mutopiaproject.org): música de domini públic o amb llicència Creative Commons. Ofereix sobretot PDF, LilyPond i MIDI; el MusicXML no és habitual.
    - IMSLP (https://imslp.org): biblioteca enorme, però quasi tot són PDF d'escanejats. Serveix per a la via PDF (skill `importar-pdf`).
-5. Si la persona troba un PDF, passa a la skill `importar-pdf`.
+5. Si baixa un fitxer, que el deixe a la carpeta `entrada/`. Si és un PDF, passa a la skill `importar-pdf`; si és MusicXML, a `arranjar`.
 
 ## Drets d'autor (digues-ho sempre, amb paraules senzilles)
 
