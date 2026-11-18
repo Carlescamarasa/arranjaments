@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .errors import ErrorUsuari
 
-URL_MUSESCORE = "https://musescore.org/ca/download"
+URL_MUSESCORE = "https://musescore.org/ca/download"  # tria l'opció «sense MuseHub»
 URL_AUDIVERIS = "https://github.com/Audiveris/audiveris/releases"
 
 
@@ -23,32 +23,36 @@ def _es_mac() -> bool:
 
 
 def _candidats_musescore() -> list[str]:
+    """Qualsevol MuseScore (4 i versions futures), la més nova primer."""
     if _es_mac():
-        return [
-            "/Applications/MuseScore 4.app/Contents/MacOS/mscore",
-            str(Path.home() / "Applications/MuseScore 4.app/Contents/MacOS/mscore"),
-        ]
+        trobats = []
+        for base in ("/Applications", str(Path.home() / "Applications")):
+            trobats += glob.glob(str(Path(base) / "MuseScore*.app" / "Contents" / "MacOS" / "mscore"))
+        return sorted(trobats, reverse=True)
     if _es_windows():
-        pf = [os.environ.get("ProgramFiles", r"C:\Program Files"),
-              os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")]
-        llista = []
-        for base in pf:
-            llista.append(str(Path(base) / "MuseScore 4" / "bin" / "MuseScore4.exe"))
-        return llista
+        bases = [os.environ.get("ProgramFiles", r"C:\Program Files"),
+                 os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")]
+        if os.environ.get("LOCALAPPDATA"):
+            bases.append(str(Path(os.environ["LOCALAPPDATA"]) / "Programs"))
+        trobats = []
+        for base in bases:
+            trobats += glob.glob(str(Path(base) / "MuseScore*" / "bin" / "MuseScore*.exe"))
+        return sorted(trobats, reverse=True)
     return []
 
 
 def _candidats_audiveris() -> list[str]:
     if _es_mac():
-        return [
-            "/Applications/Audiveris.app/Contents/MacOS/Audiveris",
-            str(Path.home() / "Applications/Audiveris.app/Contents/MacOS/Audiveris"),
-        ]
+        trobats = []
+        for base in ("/Applications", str(Path.home() / "Applications")):
+            trobats += glob.glob(str(Path(base) / "Audiveris*.app" / "Contents" / "MacOS" / "Audiveris"))
+        return sorted(trobats, reverse=True)
     if _es_windows():
-        pf = [os.environ.get("ProgramFiles", r"C:\Program Files"),
-              os.environ.get("LOCALAPPDATA", "") and str(Path(os.environ["LOCALAPPDATA"]) / "Programs")]
+        bases = [os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"),
+                 os.environ.get("LOCALAPPDATA") and str(Path(os.environ["LOCALAPPDATA"]) / "Programs"),
+                 os.environ.get("LOCALAPPDATA")]
         llista = []
-        for base in pf:
+        for base in bases:
             if not base:
                 continue
             llista += sorted(glob.glob(str(Path(base) / "Audiveris*" / "Audiveris*.exe")))
@@ -80,7 +84,7 @@ def trobar_musescore() -> str:
     if not ruta:
         raise ErrorUsuari(
             "No trobe MuseScore. Instal·la'l des de "
-            f"{URL_MUSESCORE} i torna-ho a provar. "
+            f"{URL_MUSESCORE} (tria l'opció «sense MuseHub») i torna-ho a provar. "
             "Si ja el tens instal·lat en un lloc estrany, indica'm la ruta amb la variable "
             "d'entorn MUSESCORE_PATH."
         )
@@ -106,7 +110,7 @@ def comprovar() -> list[tuple[str, bool, str]]:
         res.append(("Eines musicals (music21)", True, "preparades"))
     except ImportError:
         res.append(("Eines musicals (music21)", False, "falten; executa l'instal·lador d'este projecte"))
-    for nom, fn, ajuda in (("MuseScore 4", trobar_musescore, "Revisar partitures i fer PDF"),
+    for nom, fn, ajuda in (("MuseScore", trobar_musescore, "Revisar partitures i fer PDF"),
                            ("Audiveris (opcional, només per a PDF)", trobar_audiveris, "Convertir PDF en partitura editable")):
         try:
             res.append((nom, True, fn()))

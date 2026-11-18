@@ -2,7 +2,7 @@
 name = "partitures"
 version = "0.1.0"
 description = "Eines deterministes per a fer arranjaments de cambra amb OpenCode"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.12"
 dependencies = ["music21>=9.1"]
 
 [project.scripts]
@@ -17,6 +17,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["scripts/partitures"]
+
+[tool.uv]
+# OneDrive i altres carpetes sincronitzades fallen amb enllaços durs: copiem els fitxers.
+link-mode = "copy"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

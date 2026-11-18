@@ -5,7 +5,7 @@ import copy
 import re
 from pathlib import Path
 
-from music21 import clef, converter, interval, key, layout, meter, metadata, note, pitch, stream, tempo
+from music21 import clef, converter, corpus, harmony, interval, key, layout, metadata, meter, note, pitch, stream, tempo
 
 from . import instruments as inst
 from .errors import ErrorUsuari
@@ -66,6 +66,7 @@ def _a_part(flux) -> stream.Part:
 
 
 def desar(score: stream.Score, ruta: str | Path) -> Path:
+    """Escriu el MusicXML a una ruta ja validada per `rutes` (que és qui evita sobreescriure)."""
     ruta = Path(ruta)
     ruta.parent.mkdir(parents=True, exist_ok=True)
     if ruta.suffix.lower() not in EXT_MUSICXML:
@@ -74,7 +75,41 @@ def desar(score: stream.Score, ruta: str | Path) -> Path:
     return ruta
 
 
-# --------------------------------------------------------------------------- parts
+# --------------------------------------------------------------------------- noms de nota i text
+
+CONVENCIO = "Els noms de nota segueixen la convenció espanyola: el Do central és Do3."
+_SOLFEIG = {"C": "Do", "D": "Re", "E": "Mi", "F": "Fa", "G": "Sol", "A": "La", "B": "Si"}
+
+
+def nom_alteracio(p: pitch.Pitch) -> str:
+    """Nom de la nota sense octava, en solfeig: Do, Fa#, Sib..."""
+    alt = p.accidental.modifier if p.accidental is not None else ""
+    return _SOLFEIG[p.step] + alt.replace("-", "b")
+
+
+def nom_nota(x) -> str:
+    """Nota en solfeig amb octava espanyola (Do central = Do3). Accepta pitch, nom music21 o número MIDI."""
+    p = x if isinstance(x, pitch.Pitch) else pitch.Pitch(x)
+    return f"{nom_alteracio(p)}{p.implicitOctave - 1}"
+
+
+def _curt(text, maxim: int = 60) -> str:
+    """Text d'una partitura (títol, nom de part) en una sola línia i curt: és dada, mai instrucció."""
+    t = re.sub(r"\s+", " ", str(text or "")).strip()
+    return t if len(t) <= maxim else t[: maxim - 3].rstrip() + "..."
+
+
+# --------------------------------------------------------------------------- parts i unitats
+
+def notes_reals(flux) -> list:
+    """Notes i acords de debò: sense símbols d'acord (C7, Dm...) ni notes sense altura."""
+    return [n for n in flux.recurse().notes
+            if not isinstance(n, (harmony.Harmony, note.Unpitched)) and getattr(n, "pitches", None)]
+
+
+def altures(flux) -> list[pitch.Pitch]:
+    return [p for n in notes_reals(flux) for p in n.pitches]
+
 
 def nom_part(part: stream.Part, i: int) -> str:
     n = part.partName
@@ -84,12 +119,37 @@ def nom_part(part: stream.Part, i: int) -> str:
     return n or f"Part {i + 1}"
 
 
+def unitats(score: stream.Score) -> list[list[int]]:
+    """Agrupa els pentagrames que són UN sol instrument (piano: dos pentagrames amb clau).
+
+    Retorna llistes d'índexs de `score.parts`. Els números que veu la persona (1, 2, 3...) són les unitats.
+    """
+    parts = list(score.parts)
+    pos = {id(p): i for i, p in enumerate(parts)}
+    grup_de: dict[int, list[int]] = {}
+    for sg in score.recurse().getElementsByClass(layout.StaffGroup):
+        idx = sorted(pos[id(e)] for e in sg.getSpannedElements() if id(e) in pos)
+        if len(idx) > 1 and all(isinstance(parts[k], stream.PartStaff) for k in idx):
+            for k in idx:
+                grup_de[k] = idx
+    res: list[list[int]] = []
+    vistos: set[int] = set()
+    for i in range(len(parts)):
+        if i in vistos:
+            continue
+        g = grup_de.get(i, [i])
+        vistos.update(g)
+        res.append(list(g))
+    return res
+
+
 def triar_parts(score: stream.Score, seleccio: str | None) -> list[int]:
-    """Converteix «1,3» o «trompeta» en índexs (0-based). Sense selecció, totes."""
-    n = len(score.parts)
+    """Converteix «1,3» o «trompeta» en índexs de `score.parts` (0-based). Sense selecció, totes."""
+    us = unitats(score)
+    n = len(us)
     if not seleccio:
-        return list(range(n))
-    índexs: list[int] = []
+        return [k for u in us for k in u]
+    seleccionades: list[int] = []
     for tros in re.split(r"[,;]\s*", seleccio.strip()):
         if not tros:
             continue
@@ -97,14 +157,14 @@ def triar_parts(score: stream.Score, seleccio: str | None) -> list[int]:
             k = int(tros)
             if not 1 <= k <= n:
                 raise ErrorUsuari(f"La part {k} no existeix: la partitura en té {n} (numerades de 1 a {n}).")
-            índexs.append(k - 1)
+            seleccionades.append(k - 1)
         else:
             t = inst._norm(tros)
-            trobades = [i for i, p in enumerate(score.parts) if t in inst._norm(nom_part(p, i))]
+            trobades = [j for j, u in enumerate(us) if t in inst._norm(nom_part(score.parts[u[0]], u[0]))]
             if not trobades:
                 raise ErrorUsuari(f"No trobe cap part que es diga «{tros}». Mira els noms amb l'ordre «info».")
-            índexs += trobades
-    return índexs
+            seleccionades += trobades
+    return [k for j in seleccionades for k in us[j]]
 
 
 def part_sonora(part: stream.Part) -> stream.Part:
@@ -140,51 +200,98 @@ def _parse_assignacions(text: str | None) -> dict[int, str]:
     return res
 
 
+def _unitat(score: stream.Score, num0: int) -> list[int]:
+    us = unitats(score)
+    if not 0 <= num0 < len(us):
+        raise ErrorUsuari(f"La part {num0 + 1} no existeix: la partitura en té {len(us)}.")
+    return us[num0]
+
+
+def parts_separades(score: stream.Score) -> list[tuple[str, stream.Score]]:
+    """Una partitura per cada instrument (el piano, amb els dos pentagrames). Per a exportar les parts."""
+    res = []
+    for num, u in enumerate(unitats(score)):
+        s = stream.Score()
+        s.metadata = copy.deepcopy(score.metadata)
+        copies = [copy.deepcopy(score.parts[k]) for k in u]
+        for c in copies:
+            s.insert(0, c)
+        if len(copies) > 1:
+            s.insert(0, layout.StaffGroup(copies, symbol="brace"))
+        res.append((nom_part(score.parts[u[0]], u[0]), s))
+    return res
+
+
 # --------------------------------------------------------------------------- info
+
+_MODES = {"major": "major", "minor": "menor", "dorian": "dòric", "phrygian": "frigi", "lydian": "lidi",
+          "mixolydian": "mixolidi", "locrian": "locri"}
+
+
+def _nom_tonalitat(ks) -> str:
+    """Tonalitat llegible. Si el fitxer no diu el mode, no s'inventa: es donen les dues possibilitats."""
+    def tonica(k):
+        return nom_alteracio(k.tonic)
+    mode = getattr(ks, "mode", None)
+    if isinstance(ks, key.Key) and mode:
+        return f"{tonica(ks)} {_MODES.get(mode, mode)}"
+    n = ks.sharps
+    if n == 0:
+        q = "sense alteracions"
+    elif n > 0:
+        q = f"{n} sostingut" + ("s" if n > 1 else "")
+    else:
+        q = f"{-n} bemoll" + ("s" if n < -1 else "")
+    return f"{q} ({tonica(ks.asKey('major'))} major o {tonica(ks.asKey('minor'))} menor)"
+
+
+def _tonalitat_sonora(score: stream.Score):
+    """Primera armadura de la partitura, llegida en so real (concert), no en l'altura escrita d'un transpositor."""
+    for p in score.parts:
+        ks = part_sonora(p).recurse().getElementsByClass(key.KeySignature)
+        if len(ks):
+            return ks[0]
+    return None
+
 
 def info(score: stream.Score) -> dict:
     md = score.metadata
-    titol = (md.title if md and md.title else None) or None
-    compositor = (md.composer if md and md.composer else None) or None
+    titol = _curt(md.title) if md and md.title else None
+    compositor = _curt(md.composer) if md and md.composer else None
     parts = []
-    for i, p in enumerate(score.parts):
+    for num, u in enumerate(unitats(score)):
+        p = score.parts[u[0]]
         ins = p.getInstrument(returnDefault=False)
-        det = inst.detectar(f"{nom_part(p, i)} {getattr(ins, 'instrumentName', '') or ''}",
+        nom = nom_part(p, u[0])
+        det = inst.detectar(f"{nom} {getattr(ins, 'instrumentName', '') or ''}",
                             _semitons_transposicio(p) if ins is not None and ins.transposition else None)
-        sons = part_sonora(p)
-        notes = [n for n in sons.recurse().notes]
-        midis = [pp.midi for n in notes for pp in (n.pitches if hasattr(n, "pitches") else [n.pitch])]
+        mids = [x.midi for k in u for x in altures(part_sonora(score.parts[k]))]
+        n_notes = sum(len(notes_reals(score.parts[k])) for k in u)
         parts.append({
-            "numero": i + 1,
-            "nom": nom_part(p, i),
+            "numero": num + 1,
+            "nom": _curt(nom),
+            "pentagrames": len(u),
             "instrument_detectat": det.clau if det else None,
             "transposicio": str(ins.transposition) if ins is not None and ins.transposition else None,
             "escrit_en_altura": "escrita (transpositor)" if p.atSoundingPitch is False and ins is not None
             and ins.transposition else "real (concert)",
             "compassos": len(p.getElementsByClass(stream.Measure)),
-            "notes": len(notes),
-            "mes_greu": str(pitch.Pitch(min(midis))) if midis else None,
-            "mes_agut": str(pitch.Pitch(max(midis))) if midis else None,
+            "notes": n_notes,
+            "mes_greu": nom_nota(min(mids)) if mids else None,
+            "mes_agut": nom_nota(max(mids)) if mids else None,
         })
-    tonalitats = score.recurse().getElementsByClass(key.KeySignature)
+    ks = _tonalitat_sonora(score)
     compassos = score.recurse().getElementsByClass(meter.TimeSignature)
     tempos = score.recurse().getElementsByClass(tempo.MetronomeMark)
     return {
         "titol": titol,
         "compositor": compositor,
-        "tonalitat": _nom_tonalitat(tonalitats[0]) if len(tonalitats) else None,
+        "tonalitat": _nom_tonalitat(ks) if ks is not None else None,
         "compas": compassos[0].ratioString if len(compassos) else None,
         "tempo": (tempos[0].number if len(tempos) and tempos[0].number else None),
+        "convencio_notes": CONVENCIO,
         "parts": parts,
     }
-
-
-def _nom_tonalitat(ks) -> str:
-    try:
-        k = ks.asKey() if hasattr(ks, "asKey") else ks
-        return f"{k.tonic.name} {k.mode}".replace("-", "b")
-    except Exception:
-        return f"{ks.sharps:+d} alteracions"
 
 
 def text_info(d: dict) -> str:
@@ -199,6 +306,7 @@ def text_info(d: dict) -> str:
         ll.append(f"  {p['numero']}. {p['nom']}{ins}")
         ll.append(f"     {p['compassos']} compassos, {p['notes']} notes; més greu {p['mes_greu']}, "
                   f"més agut {p['mes_agut']} (so real); altura {p['escrit_en_altura']}")
+    ll.append(d["convencio_notes"])
     return "\n".join(ll)
 
 
@@ -232,113 +340,120 @@ def assignar(score: stream.Score, assignacions: str) -> tuple[stream.Score, list
         raise ErrorUsuari("No m'has dit cap assignació. Exemple: --assigna \"1=trompeta-sib,2=trompeta-sib,3=trompa-fa,4=trombo\".")
     res = copy.deepcopy(score)
     avisos = []
-    for idx, clau in mapa.items():
-        if not 0 <= idx < len(res.parts):
-            raise ErrorUsuari(f"La part {idx + 1} no existeix: la partitura en té {len(res.parts)}.")
+    for num0, clau in mapa.items():
+        unitat = _unitat(res, num0)
         i = inst.obtenir(clau)
-        part = res.parts[idx]
-        # 1) portar la part a altura real (concert)
-        vella = part.getInstrument(returnDefault=False)
-        if part.atSoundingPitch is False and vella is not None and vella.transposition is not None:
-            part.toSoundingPitch(inPlace=True)
-        # 2) canviar instrument
-        for x in list(part.recurse().getElementsByClass("Instrument")):
-            x.activeSite.remove(x)
-        obj = inst.crear_objecte_music21(i)
-        part.insert(0, obj)
-        part.partName = i.nom
-        part.partAbbreviation = i.nom
-        part.atSoundingPitch = True
-        # 3) escriure en altura escrita
-        if obj.transposition is not None:
-            part.toWrittenPitch(inPlace=True)
-        else:
+        for k in unitat:
+            part = res.parts[k]
+            # 1) portar la part a altura real (concert)
+            vella = part.getInstrument(returnDefault=False)
+            if part.atSoundingPitch is False and vella is not None and vella.transposition is not None:
+                part.toSoundingPitch(inPlace=True)
+            # 2) canviar instrument
+            for x in list(part.recurse().getElementsByClass("Instrument")):
+                x.activeSite.remove(x)
+            obj = inst.crear_objecte_music21(i)
+            part.insert(0, obj)
+            part.partName = i.nom
+            part.partAbbreviation = i.nom
             part.atSoundingPitch = True
-        _posar_clau(part)
-        avisos.append(f"Part {idx + 1} → {i.nom}")
+            # 3) escriure en altura escrita
+            if obj.transposition is not None:
+                part.toWrittenPitch(inPlace=True)
+            if len(unitat) == 1:
+                _posar_clau(part, i)
+        avisos.append(f"Part {num0 + 1}: ara és {i.nom}")
     return res, avisos
 
 
-def _posar_clau(part: stream.Part) -> None:
+def _clau_de(i: inst.Instrument, part: stream.Part) -> clef.Clef:
+    if i.clef == "bass":
+        return clef.BassClef()
+    if i.clef == "alto":
+        return clef.AltoClef()
+    if i.clef == "treble":
+        return clef.TrebleClef()
+    flux = part.flatten()
+    return clef.bestClef(flux, recurse=True) if len(flux.notes) else clef.TrebleClef()
+
+
+def _posar_clau(part: stream.Part, i: inst.Instrument) -> None:
     for c in list(part.recurse().getElementsByClass(clef.Clef)):
         c.activeSite.remove(c)
-    flux = part.flatten()
-    nova = clef.bestClef(flux, recurse=True) if len(flux.notes) else clef.TrebleClef()
     primer = part.getElementsByClass(stream.Measure).first()
-    (primer if primer is not None else part).insert(0, nova)
+    (primer if primer is not None else part).insert(0, _clau_de(i, part))
 
 
 # --------------------------------------------------------------------------- tessitura
 
 def tessitura(score: stream.Score, assignacions: str | None = None) -> dict:
-    forçades = _parse_assignacions(assignacions)
+    forcades = _parse_assignacions(assignacions)
     resultats = []
-    for i, p in enumerate(score.parts):
+    for num, u in enumerate(unitats(score)):
+        p = score.parts[u[0]]
+        nom = nom_part(p, u[0])
         ins_m21 = p.getInstrument(returnDefault=False)
         escrit = (p.atSoundingPitch is False and ins_m21 is not None and ins_m21.transposition is not None)
-        clau = forçades.get(i)
+        clau = forcades.get(num)
         if clau:
             instr = inst.obtenir(clau)
         else:
-            instr = inst.detectar(f"{nom_part(p, i)} {getattr(ins_m21, 'instrumentName', '') or ''}",
+            instr = inst.detectar(f"{nom} {getattr(ins_m21, 'instrumentName', '') or ''}",
                                   _semitons_transposicio(p) if escrit else None)
         if instr is None:
-            resultats.append({"numero": i + 1, "nom": nom_part(p, i), "instrument": None, "problemes": [],
+            resultats.append({"numero": num + 1, "nom": _curt(nom), "instrument": None, "problemes": [],
                               "avis": "No sé quin instrument és. Indica-ho amb --instruments \"%d=trompeta-sib\" "
-                                      "(o usa l'ordre «instruments» per assignar-lo)." % (i + 1)})
+                                      "(o usa l'ordre «instruments» per assignar-lo)." % (num + 1)})
             continue
-        sons = part_sonora(p)
         trans = instr.semitons()
         ab_lo, ab_hi = inst.rang_midi(instr.abast)
         co_lo, co_hi = inst.rang_midi(instr.comoda)
         problemes = []
-        total = 0
-        fora = 0
-        incomodes = 0
+        total = fora = incomodes = 0
         escrits = []
-        for n in sons.recurse().notes:
-            for pp in (n.pitches if hasattr(n, "pitches") else [n.pitch]):
-                total += 1
-                w = pp.midi - trans   # altura escrita
-                escrits.append(w)
-                comp = n.getContextByClass(stream.Measure)
-                num = comp.number if comp is not None else "?"
-                nom_w = str(pitch.Pitch(w)).replace("-", "b")
-                if w < ab_lo:
-                    fora += 1
-                    problemes.append({"compas": num, "nota_escrita": nom_w, "tipus": "massa greu"})
-                elif w > ab_hi:
-                    fora += 1
-                    problemes.append({"compas": num, "nota_escrita": nom_w, "tipus": "massa aguda"})
-                elif w < co_lo or w > co_hi:
-                    incomodes += 1
-                    problemes.append({"compas": num, "nota_escrita": nom_w,
-                                      "tipus": "zona incòmoda (greu)" if w < co_lo else "zona incòmoda (aguda)"})
+        for k in u:
+            sons = part_sonora(score.parts[k])
+            for n in notes_reals(sons):
+                for pp in n.pitches:
+                    total += 1
+                    w = pp.midi - trans   # altura escrita
+                    escrits.append(w)
+                    comp = n.getContextByClass(stream.Measure)
+                    numc = comp.number if comp is not None else "?"
+                    nom_w = nom_nota(w)
+                    if w < ab_lo:
+                        fora += 1
+                        problemes.append({"compas": numc, "nota_escrita": nom_w, "tipus": "massa greu"})
+                    elif w > ab_hi:
+                        fora += 1
+                        problemes.append({"compas": numc, "nota_escrita": nom_w, "tipus": "massa aguda"})
+                    elif w < co_lo or w > co_hi:
+                        incomodes += 1
+                        problemes.append({"compas": numc, "nota_escrita": nom_w,
+                                          "tipus": "zona incòmoda (greu)" if w < co_lo else "zona incòmoda (aguda)"})
         resultats.append({
-            "numero": i + 1, "nom": nom_part(p, i), "instrument": instr.clau, "instrument_nom": instr.nom,
-            "abast": instr.abast, "comoda": instr.comoda,
+            "numero": num + 1, "nom": _curt(nom), "instrument": instr.clau, "instrument_nom": instr.nom,
+            "abast": [nom_nota(x) for x in instr.abast], "comoda": [nom_nota(x) for x in instr.comoda],
             "notes": total, "fora_abast": fora, "incomodes": incomodes,
-            "escrit_min": str(pitch.Pitch(min(escrits))).replace("-", "b") if escrits else None,
-            "escrit_max": str(pitch.Pitch(max(escrits))).replace("-", "b") if escrits else None,
+            "escrit_min": nom_nota(min(escrits)) if escrits else None,
+            "escrit_max": nom_nota(max(escrits)) if escrits else None,
             "problemes": problemes, "avis": None,
         })
-    return {"parts": resultats}
-
-
-def _bonic(nom: str) -> str:
-    return re.sub(r"(?<=[A-G])-(?=\d)", "b", nom)
+    return {"convencio_notes": CONVENCIO,
+            "nota": "Els límits de cada instrument són orientatius (de manual): decideix qui coneix l'instrument.",
+            "parts": resultats}
 
 
 def text_tessitura(d: dict, maxim_detall: int = 12) -> str:
-    ll = []
+    ll = [d["convencio_notes"], d["nota"]]
     for r in d["parts"]:
         if r["instrument"] is None:
             ll.append(f"{r['numero']}. {r['nom']}: {r['avis']}")
             continue
         ll.append(f"{r['numero']}. {r['nom']}: "
                   f"{'' if r['instrument_nom'] == r['nom'] else r['instrument_nom'] + ', '}escrit de {r['escrit_min']} a {r['escrit_max']}; "
-                  f"abast pràctic {_bonic(r['abast'][0])}-{_bonic(r['abast'][1])}, "
-                  f"zona còmoda {_bonic(r['comoda'][0])}-{_bonic(r['comoda'][1])}")
+                  f"abast pràctic (orientatiu) {r['abast'][0]}-{r['abast'][1]}, "
+                  f"zona còmoda {r['comoda'][0]}-{r['comoda'][1]}")
         if not r["problemes"]:
             ll.append("   Tot dins de la zona còmoda.")
             continue
@@ -352,51 +467,38 @@ def text_tessitura(d: dict, maxim_detall: int = 12) -> str:
 
 # --------------------------------------------------------------------------- reducció
 
-def reduir(score: stream.Score, mantindre: str | None = None, a_piano: bool = False) -> stream.Score:
-    if not mantindre and not a_piano:
-        raise ErrorUsuari("Digues què vols: --mantin \"1,3\" (quedar-te amb algunes parts) o --a-piano.")
+def reduir(score: stream.Score, mantindre: str | None = None) -> stream.Score:
+    if not mantindre:
+        raise ErrorUsuari("Digues quines parts vols conservar: --mantin \"1,3\".")
+    sel = set(triar_parts(score, mantindre))
     res = stream.Score()
     res.metadata = copy.deepcopy(score.metadata) if score.metadata else metadata.Metadata()
-    if mantindre:
-        for i in triar_parts(score, mantindre):
-            res.insert(0, copy.deepcopy(score.parts[i]))
-        return res
-    # a piano: tot en altura real i dividit per la zona do central
-    sons = stream.Score()
-    for i, p in enumerate(score.parts):
-        sons.insert(0, part_sonora(p))
-    acords = sons.chordify()
-    dreta, esquerra = stream.PartStaff(), stream.PartStaff()
-    for m in acords.getElementsByClass(stream.Measure):
-        md, me = stream.Measure(number=m.number), stream.Measure(number=m.number)
-        for el in m:
-            off = el.offset
-            if isinstance(el, (meter.TimeSignature, key.KeySignature)):
-                md.insert(off, copy.deepcopy(el))
-                me.insert(off, copy.deepcopy(el))
-            elif isinstance(el, note.Rest):
-                md.insert(off, note.Rest(quarterLength=el.quarterLength))
-                me.insert(off, note.Rest(quarterLength=el.quarterLength))
-            elif hasattr(el, "pitches"):
-                alts = [x for x in el.pitches if x.midi >= 60]
-                baixos = [x for x in el.pitches if x.midi < 60]
-                for dest, pits in ((md, alts), (me, baixos)):
-                    if not pits:
-                        dest.insert(off, note.Rest(quarterLength=el.quarterLength))
-                    elif len(pits) == 1:
-                        dest.insert(off, note.Note(pits[0], quarterLength=el.quarterLength))
-                    else:
-                        from music21 import chord
-                        dest.insert(off, chord.Chord(pits, quarterLength=el.quarterLength))
-        dreta.append(md)
-        esquerra.append(me)
-    if dreta.getElementsByClass(stream.Measure).first() is not None:
-        dreta.getElementsByClass(stream.Measure).first().insert(0, clef.TrebleClef())
-        esquerra.getElementsByClass(stream.Measure).first().insert(0, clef.BassClef())
-    from music21 import instrument as m21i
-    dreta.insert(0, m21i.Piano())
-    esquerra.insert(0, m21i.Piano())
-    res.insert(0, dreta)
-    res.insert(0, esquerra)
-    res.insert(0, layout.StaffGroup([dreta, esquerra], name="Piano", abbreviation="Pno.", symbol="brace"))
+    for u in unitats(score):
+        triades = [k for k in u if k in sel]
+        if not triades:
+            continue
+        copies = [copy.deepcopy(score.parts[k]) for k in triades]
+        for c in copies:
+            res.insert(0, c)
+        if len(copies) > 1:
+            res.insert(0, layout.StaffGroup(copies, symbol="brace"))
+    return res
+
+
+# --------------------------------------------------------------------------- corpus
+
+def cercar_corpus(text: str) -> list[dict]:
+    """Cerca al corpus de music21 per títol, compositor o nom de fitxer (sense accents ni majúscules)."""
+    paraules = [w for w in re.split(r"[^\w.#]+", inst._norm(text)) if w]
+    if not paraules:
+        return []
+    res = []
+    for e in corpus.corpora.CoreCorpus().metadataBundle:
+        md = e.metadata
+        ruta = Path(str(e.sourcePath)).as_posix()
+        titol = getattr(md, "title", None) or ""
+        compositor = getattr(md, "composer", None) or ""
+        pallar = inst._norm(f"{titol} {compositor} {ruta}")
+        if all(w in pallar for w in paraules):
+            res.append({"titol": titol or Path(ruta).stem, "compositor": compositor or None, "ruta": ruta})
     return res
