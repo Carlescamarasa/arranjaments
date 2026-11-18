@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Instal·lació per a Mac. Es pot repetir sense problema: només fa el que falta.
 # No cal Homebrew: baixa els instal·ladors oficials directament.
-# Ús: bash "instal·lar/instalar-mac.sh"      (o  --prova  per a només comprovar)
+# Ús: bash "instalacio/instalar-mac.sh"      (o  --prova  per a només comprovar)
 set -u
 
 CARPETA="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

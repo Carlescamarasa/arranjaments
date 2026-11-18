@@ -1,6 +1,6 @@
 # Instal·lació per a Windows. Es pot repetir sense problema: només fa el que falta.
 # Fa servir winget (ve amb Windows 10/11). Windows et demanarà permís (finestra blava): accepta.
-# Ús: powershell -ExecutionPolicy Bypass -File "instal·lar\instalar-windows.ps1"   (o amb -Prova)
+# Ús: powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1"   (o amb -Prova)
 param([switch]$Prova)
 
 $ErrorActionPreference = "Continue"

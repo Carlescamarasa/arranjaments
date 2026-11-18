@@ -69,7 +69,7 @@ El canvi val per a la sessió actual. Per veure quins n'hi ha, també es pot esc
 
 - `AGENTS.md`: les instruccions que llig l'ajudant.
 - `.opencode/skills/`: les guies de procediment (preparar l'ordinador, buscar, importar PDF, arranjar, exportar).
-- `instal·lar/`: els instal·ladors (Mac i Windows). Es poden executar a mà: `bash "instal·lar/instalar-mac.sh"` o `powershell -ExecutionPolicy Bypass -File "instal·lar\instalar-windows.ps1"`. No cal Homebrew. Audiveris porta Java inclòs.
+- `instalacio/`: els instal·ladors (Mac i Windows). Es poden executar a mà: `bash "instalacio/instalar-mac.sh"` o `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1"`. No cal Homebrew. Audiveris porta Java inclòs.
 - Comprovar-ho tot: `uv run partitures comprovar`.
 - `scripts/partitures/`: les eines musicals (Python + music21). `uv run partitures --help` mostra totes les ordres.
 - `opencode.json`: els permisos. Les ordres de l'eina s'executen sense preguntar; esborrar fitxers està prohibit; qualsevol altra cosa pregunta primer. L'ajudant no pot editar fitxers directament.

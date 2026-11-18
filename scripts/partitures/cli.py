@@ -114,7 +114,7 @@ def cmd_comprovar(a):
         print(f"  [{'fet' if ok else 'falta'}]  {nom}" + ("" if ok else f": {msg}"))
         falten += 0 if ok else 1
     if falten:
-        print(f"\nFalten {falten} cosa(es). Executa l'instal·lador del projecte (carpeta instal·lar) o mira el README.")
+        print(f"\nFalten {falten} cosa(es). Executa l'instal·lador del projecte (carpeta instalacio) o mira el README.")
         raise ErrorUsuari("L'ordinador encara no està preparat del tot.")
     print("\nTot a punt.")
 
