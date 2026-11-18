@@ -76,3 +76,7 @@ El canvi val per a la sessió actual. Per veure quins n'hi ha, també es pot esc
 - Proves: `uv run pytest`.
 - Si Audiveris o MuseScore estan en un lloc inusual, pots indicar la ruta amb les variables d'entorn `AUDIVERIS_PATH` i `MUSESCORE_PATH`.
 - Provat amb OpenCode 1.19 i 2.3 (la configuració es llig en les dues versions).
+
+## Llicència
+
+MIT: es pot usar, copiar i adaptar lliurement, també en altres conservatoris. Vegeu `LICENSE`.
