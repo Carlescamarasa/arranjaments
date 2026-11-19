@@ -104,7 +104,7 @@ def test_ragtime_xilofon_sona_una_octava_amunt_i_porta_els_acords(ragtime, capsy
     xil = _parts(s)["Xilòfon"]
     ins = xil.getInstrument(returnDefault=False)
     assert ins.transposition is not None and ins.transposition.semitones == 12
-    assert len(xil.recurse().getElementsByClass(harmony.ChordSymbol)) > 10
+    assert not xil.recurse().getElementsByClass(harmony.ChordSymbol)   # els acords van a la melodia
     # dues baquetes: mai més de dues notes alhora
     assert all(len(n.pitches) <= 2 for n in _notes(xil))
     lo, hi = inst.rang_midi(inst.obtenir("xilofon").abast)
@@ -151,6 +151,58 @@ def test_compassos_acords_i_to(ragtime, capsys):
     d = musica.info(s)
     assert [p["pentagrames"] for p in d["parts"] if p["nom"] == "Piano"] == [2]
     assert "Sol" in d["tonalitat"]
+
+
+@pytest.fixture(scope="session")
+def full_acords(tmp_path_factory):
+    """Full de melodia en Fa major amb els acords F, C7 i Bb (un per compàs)."""
+    p = stream.Part()
+    for fig, alt in (("F", "A4"), ("C7", "G4"), ("B-", "D5"), ("F", "F4")):
+        m = stream.Measure()
+        m.insert(0, harmony.ChordSymbol(fig))
+        m.insert(0, note.Note(alt, quarterLength=4))
+        p.append(m)
+    sc = stream.Score()
+    sc.insert(0, p)
+    return _desa(tmp_path_factory, sc, "full.musicxml")
+
+
+def _figures(part):
+    return [c.figure.replace("-", "b") for c in part.recurse().getElementsByClass(harmony.ChordSymbol)]
+
+
+@pytest.mark.parametrize("instrument, esperat", [
+    ("trompeta-sib", ["G", "D7", "C", "G"]),     # una segona major amunt
+    ("trompa-fa", ["C", "G7", "F", "C"]),        # una quinta justa amunt
+    ("flauta", ["F", "C7", "Bb", "F"]),          # so real: sense canvis
+])
+def test_acords_escrits_a_l_altura_de_la_part_de_melodia(full_acords, instrument, esperat):
+    s = musica.carregar(full_acords)
+    r, _ = arr.arranjar(s, arr.parse_rols(f"melodia={instrument},acompanyament=xilofon,baix=violoncel"), estil="pop")
+    nom = inst.obtenir(instrument).nom
+    mel = next(p for p in r.parts if p.partName == nom)
+    assert _figures(mel) == esperat
+    # només la melodia porta els acords (la partitura general és coherent)
+    assert sum(len(p.recurse().getElementsByClass(harmony.ChordSymbol)) for p in r.parts) == 4
+    # i sobreviuen a desar i tornar a llegir
+    ruta = rutes.carpeta("eixida") / "acords.musicxml"
+    musica.desar(r, ruta)
+    llegida = next(p for p in musica.carregar(ruta).parts if p.partName == nom)
+    assert _figures(llegida) == esperat
+
+
+def test_elemental_sense_perfil_limita_la_zona_comoda(ragtime):
+    (lo, hi), font = arr.rang_comode(inst.obtenir("trompeta-sib"), "4t elemental")
+    assert musica.nom_nota(hi) == "Do4" and "elemental" in font
+    (_, hi2), _ = arr.rang_comode(inst.obtenir("trompeta-sib"), "1r professional")
+    assert musica.nom_nota(hi2) == "Sol4"
+    r, informe = arr.arranjar(musica.carregar(ragtime), arr.parse_rols(ROLS_RAG), estil="ragtime", curs="4t elemental")
+    text = "\n".join(informe)
+    assert "dos terços de baix" in text
+    assert "limitada per a elemental" in text
+    # la melodia no baixa d'octava per a cabre: es queda i s'avisa
+    tpt = next(p for p in r.parts if p.partName.startswith("Trompeta"))
+    assert max(q.midi for n in _notes(tpt) for q in n.pitches) == 79   # Sol4 escrit (Sol5 internacional)
 
 
 # --------------------------------------------------------------------------- altres entrades

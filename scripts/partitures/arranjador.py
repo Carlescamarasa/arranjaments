@@ -578,7 +578,16 @@ def rang_comode(instr: inst.Instrument, curs: str | None) -> tuple[tuple[int, in
     if p and p.get("tessitura"):
         from . import nivells
         return nivells.rang_midi(p["tessitura"]), f"perfil de {curs}"
-    return inst.rang_midi(instr.comoda), "catàleg"
+    lo, hi = inst.rang_midi(instr.comoda)
+    if es_elemental(curs):
+        return (lo, lo + -(-(hi - lo) * 7 // 10)), "catàleg, limitada per a elemental"
+    return (lo, hi), "catàleg"
+
+
+def es_elemental(curs: str | None) -> bool:
+    """Cursos d'iniciació o d'elemental: sense perfil, la zona còmoda es limita als dos terços de baix."""
+    t = inst._norm(curs or "")
+    return any(x in t for x in ("elemental", "inicia", "primaria", "basic"))
 
 
 def _figures_permeses(instr: inst.Instrument, curs: str | None) -> set[str] | None:
@@ -615,7 +624,7 @@ def rol_melodia(evs: list[Ev], instr: inst.Instrument, curs: str | None) -> tupl
     def nota(sh):
         dins = sum(lo <= m + sh <= hi for m in mids)
         fora = sum(not ab_lo <= m + sh <= ab_hi for m in mids)
-        return (dins, -fora, -abs(mitja + sh - centre), sh == 0)
+        return (-fora, dins, -abs(mitja + sh - centre), sh == 0)   # mai fora d'abast per a guanyar zona còmoda
 
     sh = max((-24, -12, 0, 12, 24), key=nota)
     return [Ev(e.ini, e.dur, [_octava(x, sh // 12) for x in e.alt]) for e in evs], sh
@@ -1444,12 +1453,13 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
     res.metadata.movementName = res.metadata.title
     res.metadata.composer = compositor or ""
     tempos = list(score.recurse().getElementsByClass(tempo.MetronomeMark))
-    simbols_posats = False
+    # els acords van damunt de la (primera) melodia, posats en so real ABANS d'escriure la part: si l'instrument
+    # transporta, es transporten amb les notes (Fa -> Sol per a la trompeta en Sib, Fa -> Do per a la trompa en Fa)
+    mel_simbols = next(r for r, _, _ in construides if r.rol == "melodia")
     for n, (r, pp, _) in enumerate(construides):
         if not r.instr.percussio:
-            if r.rol == "acompanyament" and not simbols_posats:
+            if r is mel_simbols:
                 _posar_simbols(pp[0], segs, compassos)
-                simbols_posats = True
             for p in pp:
                 _vestir(p, r.instr, None, ks_concert)
             if len(pp) == 2:
@@ -1466,12 +1476,6 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
             res.insert(0, p)
         if len(pp) > 1:
             res.insert(0, layout.StaffGroup(pp, name=r.instr.nom, abbreviation=r.instr.abreviatura, symbol="brace"))
-    if not simbols_posats:
-        # sense acompanyament: els acords van damunt de la melodia (en so real si l'instrument no transporta)
-        for r, pp, _ in construides:
-            if r.rol == "melodia" and r.instr.semitons() == 0:
-                _posar_simbols(pp[0], segs, compassos)
-                break
 
     # ----- informe
     informe += _text_acords(segs, compassos)
@@ -1489,13 +1493,16 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
                 informe.append(f"   No tinc el perfil de {r.instr.clau} a {curs}: he usat figures senzilles (negres, i "
                                "corxeres només en pop i rock).")
             elif _perfil(r.instr, curs) is None:
-                informe.append(f"   No tinc el perfil de {r.instr.clau} a {curs}: he usat la zona còmoda del catàleg. "
+                informe.append(f"   No tinc el perfil de {r.instr.clau} a {curs}: he usat una zona còmoda orientativa. "
                                f"Es pot desar amb «partitures nivell desa --instrument {r.instr.clau} --curs \"{curs}\" ...».")
             else:
                 c = nivells.comprova(r.instr, curs, pp)
                 informe += nivells.text_comprovacio(c)
     if not curs:
         informe.append("Sense nivell: he usat les zones còmodes del catàleg (orientatives).")
+    elif es_elemental(curs) and any(_perfil(r.instr, curs) is None for r, _, _ in construides if not r.instr.percussio):
+        informe.append(f"Sense perfil de «{curs}»: per prudència he limitat la zona còmoda de cada instrument als dos "
+                       "terços de baix de la del catàleg. És orientatiu: desa el perfil real amb «partitures nivell desa».")
     informe.append("Comprovacions:")
     par = []
     if "contracant" in linies:
