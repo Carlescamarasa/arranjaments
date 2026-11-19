@@ -788,7 +788,11 @@ jobs:
           set -x
           ls -la
           test -s Arranjaments-Windows.exe && test -s Arranjaments-Mac.dmg && test -s Arranjaments-LliureX.run && test -s arranjaments.zip
+          VERSIO="$(python3 -c "import json;print(json.load(open('versio.json'))['versio'])")"
+          test -n "$VERSIO"
           cat > notes.md <<NOTES
+          Versió $VERSIO (prototip, en proves)
+
           Baixa **un sol fitxer** per al teu ordinador i fes-hi doble clic:
 
           - Windows: **Arranjaments-Windows.exe**
@@ -805,7 +809,9 @@ jobs:
             gh release upload ultima $FITXERS --clobber
             # versio.json l'últim: quan apareix, el paquet ja hi és
             gh release upload ultima versio.json --clobber
-            gh release edit ultima --title "Arranjaments" --notes-file notes.md --latest
+            gh release edit ultima --title "Arranjaments $VERSIO" --notes-file notes.md --latest
           else
-            gh release create ultima $FITXERS versio.json --target "$GITHUB_SHA" --title "Arranjaments" --notes-file notes.md --latest
+            gh release create ultima $FITXERS versio.json --target "$GITHUB_SHA" --title "Arranjaments $VERSIO" --notes-file notes.md --latest
           fi
+          # Etiqueta fixa de la versió, només per a l'historial (no és una publicació: «ultima» continua sent la darrera)
+          gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/v$VERSIO" -f sha="$GITHUB_SHA" || echo "L'etiqueta v$VERSIO ja existeix"
