@@ -227,7 +227,7 @@ jobs:
           cmp "$W/.opencode/AGENTS.md" "$REF/AGENTS.md"
           test -f "$W/.opencode/skills/arranjar/SKILL.md"
           test -x "$D/.venv/bin/python"
-          test -d "$D/scripts/partitures"
+          test -d "$D/scripts/partitures" && test -f "$D/referencies/harmonia/sisena-augmentada/fitxa.md"
           test -x "$HOME/.local/bin/partitures"
           # la còpia temporal del projecte (de dins de l'aplicació) ja no hi és
           test ! -e "$D/staging"
@@ -407,7 +407,7 @@ jobs:
           if ($totes -ne ".opencode eixida entrada") { throw "Contingut inesperat: $totes" }
           if (-not ((Get-Item "$W\.opencode" -Force).Attributes -band [IO.FileAttributes]::Hidden)) { throw ".opencode no està amagada" }
           foreach ($f in @("$W\.opencode\opencode.json", "$W\.opencode\AGENTS.md", "$W\.opencode\skills\arranjar\SKILL.md",
-                           "$D\.venv\Scripts\python.exe", "$D\scripts\partitures\cli.py", "$env:USERPROFILE\.local\bin\partitures.cmd")) {
+                           "$D\.venv\Scripts\python.exe", "$D\scripts\partitures\cli.py", "$D\referencies\harmonia\sisena-augmentada\fitxa.md", "$env:USERPROFILE\.local\bin\partitures.cmd")) {
               if (-not (Test-Path $f)) { throw "Falta $f" }
           }
           if (Test-Path "$D\staging") { throw "La còpia temporal del projecte no s'ha esborrat" }
@@ -663,7 +663,7 @@ jobs:
           test -f "$W/.opencode/opencode.json"
           cmp "$W/.opencode/AGENTS.md" "$REF/AGENTS.md"
           test -f "$W/.opencode/skills/arranjar/SKILL.md"
-          test -x "$D/.venv/bin/python" && test -d "$D/scripts/partitures" && test -x "$HOME/.local/bin/partitures"
+          test -x "$D/.venv/bin/python" && test -d "$D/scripts/partitures" && test -f "$D/referencies/harmonia/sisena-augmentada/fitxa.md" && test -x "$HOME/.local/bin/partitures"
           test -x "$D/OpenCode/AppRun" && test -x "$D/MuseScore/AppRun"
           # arquitectura de cada peça (aarch64 o x86_64)
           uname -m

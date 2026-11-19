@@ -47,12 +47,12 @@ MIDA_MAXIMA_DESCOMPRIMIT = 200 * 1024 * 1024
 
 # Peces de la carpeta de dades que es renoven (rutes dins del paquet i dins de la carpeta de dades)
 ELEMENTS_DADES = ("scripts", "instalacio", "pyproject.toml", "uv.lock", ".python-version", "VERSION",
-                  "AGENTS.md", "opencode.json", "NOVETATS.md", ".opencode/skills")
+                  "AGENTS.md", "opencode.json", "NOVETATS.md", ".opencode/skills", "referencies")
 # Peces de la configuració amagada de la carpeta de treball: (ruta dins del paquet, ruta dins de .opencode)
 ELEMENTS_TREBALL = (("AGENTS.md", "AGENTS.md"), ("opencode.json", "opencode.json"),
                     ("NOVETATS.md", "NOVETATS.md"), (".opencode/skills", "skills"))
 OBLIGATORIS = ("scripts/partitures/__init__.py", "scripts/partitures/actualitzar.py", "pyproject.toml", "uv.lock",
-               "VERSION", "AGENTS.md", "opencode.json", ".opencode/skills")
+               "VERSION", "AGENTS.md", "opencode.json", ".opencode/skills", "referencies/harmonia")
 
 
 class ErrorActualitzacio(Exception):

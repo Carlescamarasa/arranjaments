@@ -267,6 +267,14 @@ Ningú ha d'omplir fitxes. Quan l'ajudant necessita saber un nivell (per exemple
 - Per a veure el que sap: `partitures nivell mostra` i `partitures preferencia mostra`.
 - Per a compartir-ho amb el departament: `partitures nivell exporta` crea un fitxer a `eixida/`; deixa'l a una carpeta `nivells` dins de la biblioteca compartida i tot el professorat el podrà usar (el que cadascú ha desat ell mateix té prioritat).
 
+## Fitxes d'harmonia
+
+Per a revisar un coral o resoldre un dubte d'harmonia, l'ajudant porta unes **fitxes de referència** pròpies (quintes i octaves paral·leles, sensible i 7a del V7, sisena augmentada). Són resums escrits per a este projecte, amb cites del tractat (capítol i paràgraf) però sense copiar-ne el text: els llibres no hi són. Cada fitxa porta exemples correctes i incorrectes en MusicXML, i una prova automàtica comprova que cada exemple fa exactament el que diu la fitxa.
+
+- `partitures harmonia fitxa <tema>` mostra una fitxa (sense tema, les llista). L'ajudant només llig la que necessita.
+- `partitures harmonia comprova "entrada/coral.musicxml" [--veus SATB] [--tonalitat "la menor"]` revisa un coral amb una part per veu i diu, compàs a compàs, on hi ha quintes o octaves paral·leles o directes, sensible o 7a que no resolen, sisenes augmentades mal obertes, creuaments, separació i tessitura, citant la fitxa que ho explica. Són regles d'escola: té excepcions i les notes de pas poden donar avisos falsos, així que és una ajuda i no un veredicte.
+- Les fitxes viuen a `referencies/harmonia/` i s'instal·len i s'actualitzen amb la resta d'eines (a la carpeta de dades, no a la teua carpeta de treball).
+
 ## Frases que pots escriure
 
 - «Busca'm un coral de Bach en format editable.» (Cerca en el corpus de música lliure que ja ve instal·lat; si l'obra no hi és, l'ajudant et proposa on buscar-la.)

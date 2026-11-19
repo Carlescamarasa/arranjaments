@@ -74,6 +74,14 @@ def cmd_arranja(a):
     _actual(ruta)
 
 
+def cmd_harmonia(a):
+    from . import harmonia
+    if a.accio == "fitxa":
+        print(harmonia.text_fitxa(a.tema) if a.tema else harmonia.llista_temes())
+    else:
+        print(harmonia.comprova(musica.carregar(a.fitxer), a.veus, a.tonalitat))
+
+
 def cmd_nivell(a):
     from . import nivells
     if a.accio == "mostra":
@@ -289,6 +297,15 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--simplifica", action="store_true", help="Simplifica el ritme de la melodia a les figures del nivell")
     s.add_argument("--bordo", action="store_true", help="Acompanyament amb bordó (tònica i quinta), estil Orff")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_arranja)
+
+    s = sub.add_parser("harmonia", help="Fitxes d'harmonia i comprovació de corals (quintes paral·leles, sensible...)")
+    h = s.add_subparsers(dest="accio", required=True)
+    x = h.add_parser("fitxa", help="Mostra la fitxa d'un tema (sense tema, la llista)")
+    x.add_argument("tema", nargs="?")
+    x = h.add_parser("comprova", help="Comprova un coral a 4 veus (o menys), compàs a compàs")
+    x.add_argument("fitxer"); x.add_argument("--veus", default="SATB", help="Veus, de dalt a baix (per defecte SATB)")
+    x.add_argument("--tonalitat", help="Si l'armadura no ho diu (per exemple «la menor»)")
+    s.set_defaults(f=cmd_harmonia)
 
     s = sub.add_parser("nivell", help="Perfils de nivell (curs i instrument) que l'ajudant va aprenent")
     n = s.add_subparsers(dest="accio", required=True, parser_class=_Parser)

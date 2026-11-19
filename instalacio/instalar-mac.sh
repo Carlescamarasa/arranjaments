@@ -107,8 +107,9 @@ instal_dmg() {
 copia_eines() {
   [ "$CARPETA" -ef "$DADES" ] && return 0
   mkdir -p "$DADES/instalacio" "$DADES/.opencode" || return 1
-  rm -rf "$DADES/scripts" "$DADES/.opencode/skills"
+  rm -rf "$DADES/scripts" "$DADES/referencies" "$DADES/.opencode/skills"
   cp -RX "$CARPETA/scripts" "$DADES/scripts" \
+    && cp -RX "$CARPETA/referencies" "$DADES/referencies" \
     && cp -X "$CARPETA/pyproject.toml" "$CARPETA/uv.lock" "$CARPETA/.python-version" "$CARPETA/VERSION" "$CARPETA/AGENTS.md" "$CARPETA/NOVETATS.md" "$CARPETA/opencode.json" "$DADES/" \
     && cp -X "$CARPETA/instalacio/instalar-mac.sh" "$DADES/instalacio/" \
     && cp -RX "$CARPETA/.opencode/skills" "$DADES/.opencode/skills" || return 1

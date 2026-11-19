@@ -117,8 +117,9 @@ instal_appimage() {
 copia_eines() {
   [ "$CARPETA" -ef "$DADES" ] && return 0
   mkdir -p "$DADES/instalacio" "$DADES/.opencode" || return 1
-  rm -rf "$DADES/scripts" "$DADES/.opencode/skills"
+  rm -rf "$DADES/scripts" "$DADES/referencies" "$DADES/.opencode/skills"
   cp -R "$CARPETA/scripts" "$DADES/scripts" \
+    && cp -R "$CARPETA/referencies" "$DADES/referencies" \
     && cp "$CARPETA/pyproject.toml" "$CARPETA/uv.lock" "$CARPETA/.python-version" "$CARPETA/VERSION" "$CARPETA/AGENTS.md" "$CARPETA/NOVETATS.md" "$CARPETA/opencode.json" "$DADES/" \
     && cp "$CARPETA/instalacio/instalar-linux.sh" "$DADES/instalacio/" \
     && cp -R "$CARPETA/.opencode/skills" "$DADES/.opencode/skills" || return 1

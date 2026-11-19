@@ -31,6 +31,7 @@ def _arbre(arrel: Path, versio: str, marca: str, lock: str = "lock-1") -> None:
     _escriu(arrel / "NOVETATS.md", f"novetats {marca}")
     _escriu(arrel / ".opencode/skills/arranjar/SKILL.md", f"skill {marca}")
     _escriu(arrel / "instalacio/instalar-linux.sh", f"# {marca}")
+    _escriu(arrel / "referencies/harmonia/tema/fitxa.md", f"fitxa {marca}")
 
 
 @pytest.fixture
@@ -84,6 +85,7 @@ def test_actualitza_canvia_eines_i_configuracio_i_no_toca_res_de_la_persona(ento
     assert (entorn.treball / ".opencode/AGENTS.md").read_text(encoding="utf-8") == "agents nova"
     assert (entorn.treball / ".opencode/skills/arranjar/SKILL.md").read_text(encoding="utf-8") == "skill nova"
     assert (entorn.dades / ".opencode/skills/arranjar/SKILL.md").read_text(encoding="utf-8") == "skill nova"
+    assert (entorn.dades / "referencies/harmonia/tema/fitxa.md").read_text(encoding="utf-8") == "fitxa nova"
     assert (_foto(entorn.treball / "eixida") | _foto(entorn.treball / "entrada")) == persona_abans
     assert sorted(p.name for p in entorn.treball.iterdir()) == [".opencode", "eixida", "entrada"]
     assert sorted(p.name for p in (entorn.treball / ".opencode").iterdir()) == ["AGENTS.md", "NOVETATS.md", "opencode.json", "skills"]

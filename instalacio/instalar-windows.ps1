@@ -152,10 +152,11 @@ function CopiaEines {
     try {
         New-Item -ItemType Directory -Force $Dades, (Join-Path $Dades "instalacio"), (Join-Path $Dades ".opencode") | Out-Null
         if ((Resolve-Path $Dades).Path -eq $Carpeta) { return $true }
-        foreach ($vella in @((Join-Path $Dades "scripts"), (Join-Path $Dades ".opencode\skills"))) {
+        foreach ($vella in @((Join-Path $Dades "scripts"), (Join-Path $Dades "referencies"), (Join-Path $Dades ".opencode\skills"))) {
             if (Test-Path $vella) { Remove-Item $vella -Recurse -Force -ErrorAction Stop }
         }
         Copy-Item (Join-Path $Carpeta "scripts") (Join-Path $Dades "scripts") -Recurse -Force -ErrorAction Stop
+        Copy-Item (Join-Path $Carpeta "referencies") (Join-Path $Dades "referencies") -Recurse -Force -ErrorAction Stop
         foreach ($f in @("pyproject.toml", "uv.lock", ".python-version", "VERSION", "AGENTS.md", "NOVETATS.md", "opencode.json")) {
             Copy-Item (Join-Path $Carpeta $f) (Join-Path $Dades $f) -Force -ErrorAction Stop
         }
@@ -165,7 +166,7 @@ function CopiaEines {
         [IO.File]::WriteAllText((Join-Path $Dades "treball.txt"), $Treball + "`n", (New-Object Text.UTF8Encoding $false))
         Get-ChildItem (Join-Path $Dades "scripts") -Recurse -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         # Els fitxers venen d'un ZIP baixat d'internet: es trau la marca perquè Windows no avise més endavant
-        Get-ChildItem (Join-Path $Dades "scripts"), (Join-Path $Dades "instalacio"), (Join-Path $Dades ".opencode") -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+        Get-ChildItem (Join-Path $Dades "scripts"), (Join-Path $Dades "referencies"), (Join-Path $Dades "instalacio"), (Join-Path $Dades ".opencode") -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
         return $true
     } catch { Write-Host "  $($_.Exception.Message)"; return $false }
 }
