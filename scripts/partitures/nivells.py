@@ -240,6 +240,8 @@ def normalitza_curs(text: str) -> str:
 def _instrument(text: str) -> tuple[str, str]:
     """(clau, nom) d'un instrument: del catàleg si el coneixem; si no (làmines, xilòfon, veu...), tal com l'ha dit la persona."""
     try:
+        if inst.grup(text):          # un grup («làmines») és un perfil propi, no el del primer instrument del grup
+            raise ErrorUsuari("grup")
         i = inst.obtenir(text)
         return i.clau, i.nom
     except ErrorUsuari:

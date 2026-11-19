@@ -35,7 +35,7 @@ Opcions:
 - `--bordo`: acompanyament amb bordó Orff (tònica i quinta).
 - `--melodia-part 2`: si la melodia no és a la part més aguda.
 
-L'ordre mostra l'informe: la tonalitat, els **acords** (els que porta la partitura i, amb `*`, els que ha posat l'eina), la tessitura de cada part, el que passa del nivell i les comprovacions (quintes i octaves paral·leles, compassos buits). **Ensenya-li els acords i els avisos tal com surten.** Digues SEMPRE que és un esborrany i que cal revisar-lo amb MuseScore (`partitures obrir "<fitxer>"`).
+L'ordre mostra l'informe: la tonalitat, els **acords** (els que porta la partitura i, amb `*`, els que ha posat l'eina), la tessitura de cada part, el que passa del nivell i les comprovacions (quintes i octaves paral·leles, compassos buits). **Ensenya-li els acords i els avisos tal com apareixen.** Digues SEMPRE que és un esborrany i que cal revisar-lo amb MuseScore (`partitures obrir "<fitxer>"`).
 
 ### Què preguntar (una cosa cada vegada) i res més
 
