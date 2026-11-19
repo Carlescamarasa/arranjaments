@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import unicodedata
 import sys
 from pathlib import Path
 
@@ -76,13 +77,30 @@ def test_no_escriu_amb_cami_relatiu_que_s_escapa(coral, capsys):
     assert "Només puc guardar" in capsys.readouterr().err
 
 
-def test_no_sobreescriu_i_afegeix_numero(coral, capsys):
+def test_reemplaça_en_el_lloc_i_nova_versio_conserva(coral, capsys, projecte):
     executar("transport", coral, "--semitons", 2)
-    assert actual(capsys) == "eixida/coral-transportat.musicxml"
+    assert actual(capsys) == "eixida/coral/coral.musicxml"
+    primer = (projecte / "eixida" / "coral" / "coral.musicxml").read_bytes()
     executar("transport", coral, "--semitons", 1)
-    assert actual(capsys) == "eixida/coral-transportat-2.musicxml"
-    executar("transport", coral, "--semitons", 3)
-    assert actual(capsys) == "eixida/coral-transportat-3.musicxml"
+    assert actual(capsys) == "eixida/coral/coral.musicxml"
+    assert (projecte / "eixida" / "coral" / "coral.musicxml").read_bytes() != primer
+    assert not list((projecte / "eixida" / "coral").glob(".tmp-*"))
+    executar("transport", coral, "--semitons", 3, "--nova-versio")
+    assert actual(capsys) == "eixida/coral-2/coral-2.musicxml"
+    executar("transport", coral, "--semitons", 4, "--nova-versio")
+    assert actual(capsys) == "eixida/coral-3/coral-3.musicxml"
+    # editar des d'una versió nova la reemplaça a ella, no a la primera
+    executar("transport", "eixida/coral-2/coral-2.musicxml", "--semitons", 1)
+    assert actual(capsys) == "eixida/coral-2/coral-2.musicxml"
+    assert sorted(p.name for p in (projecte / "eixida").iterdir()) == ["coral", "coral-2", "coral-3"]
+
+
+def test_arrel_peca_encadenada_no_creix(coral, capsys):
+    executar("instruments", coral, "--assigna", QUARTET)
+    a = actual(capsys)
+    executar("transport", a, "--semitons", 2)
+    b = actual(capsys)
+    assert a == b == "eixida/coral/coral.musicxml"
 
 
 def test_ruta_explicita_dins_d_eixida_tampoc_sobreescriu(coral, capsys, projecte):
@@ -98,20 +116,7 @@ def test_mai_sobre_el_fitxer_d_entrada(coral, projecte, capsys):
     original = dins.read_bytes()
     executar("transport", "eixida/obra.musicxml", "--semitons", 2, "--eixida", "eixida/obra.musicxml")
     assert dins.read_bytes() == original
-    assert actual(capsys) == "eixida/obra-2.musicxml"
-
-
-def test_noms_curts_no_creixen_en_cadena(coral, capsys):
-    executar("instruments", coral, "--assigna", QUARTET)
-    a = actual(capsys)
-    executar("transport", a, "--semitons", 2)
-    b = actual(capsys)
-    executar("transport", b, "--semitons", 2)
-    c = actual(capsys)
-    executar("reduir", c, "--mantin", "1,2")
-    d = actual(capsys)
-    assert (a, b, c, d) == ("eixida/coral-instruments.musicxml", "eixida/coral-transportat.musicxml",
-                            "eixida/coral-transportat-2.musicxml", "eixida/coral-reduccio.musicxml")
+    assert actual(capsys) == "eixida/obra-2.musicxml"   # --eixida explícit: mai sobreescriu
 
 
 def test_totes_les_ordres_que_escriuen_acaben_amb_fitxer_actual(coral, capsys):
@@ -418,10 +423,97 @@ def test_titols_i_noms_de_part_es_tallen_a_60(coral):
 def test_exportar_piano_i_trompeta_dona_dos_pdf_de_part(piano_trompeta, projecte, capsys):
     assert executar("exportar", piano_trompeta) == 0
     pdfs = sorted(p.name for p in (projecte / "eixida" / "piano-trompeta").glob("*.pdf"))
-    assert len(pdfs) == 3 and any("1. Trumpet" in p for p in pdfs) and any("2. Piano" in p for p in pdfs)
+    assert [unicodedata.normalize("NFC", n) for n in pdfs] == ["piano-trompeta - Guió.pdf"]
+    parts = sorted(p.name for p in (projecte / "eixida" / "piano-trompeta" / "Particel·les").glob("*.pdf"))
+    assert len(parts) == 2 and any("1. Trumpet" in p for p in parts) and any("2. Piano" in p for p in parts)
 
 
 def test_a_piano_ja_no_apareix_enlloc():
     for f in list((ARREL / "scripts").rglob("*.py")) + [ARREL / "README.md", ARREL / "AGENTS.md"] + \
             list((ARREL / ".opencode" / "skills").rglob("SKILL.md")):
         assert "a-piano" not in f.read_text(encoding="utf-8") and "a_piano" not in f.read_text(encoding="utf-8"), f
+
+
+# ---- exportar: carpeta de peça, .mscz protegit, obrir prefereix .mscz
+
+@pytest.fixture
+def mscore_fals(monkeypatch):
+    """MuseScore de mentida: escriu un fitxer petit al destí demanat."""
+    crides = []
+
+    def fals(mscore, origen, desti, temps_maxim=300):
+        crides.append(Path(desti))
+        Path(desti).parent.mkdir(parents=True, exist_ok=True)
+        Path(desti).write_bytes(b"x" * (len(crides) + 3))
+    monkeypatch.setattr(eines, "trobar_musescore", lambda: "/fals/mscore")
+    monkeypatch.setattr(externs, "_mscore_a_pdf", fals)
+    return crides
+
+
+def test_exportar_deixa_tot_en_la_carpeta_de_la_peça(piano_trompeta, projecte, capsys, mscore_fals):
+    assert executar("exportar", piano_trompeta) == 0
+    out = capsys.readouterr().out.splitlines()
+    c = projecte / "eixida" / "piano-trompeta"
+    assert (c / "piano-trompeta.mscz").exists() and (c / "piano-trompeta - Guió.pdf").exists()
+    assert len(list((c / "Particel·les").glob("*.pdf"))) == 2
+    assert out[-1] == "Fitxer actual: " + rutes.relativa(piano_trompeta)
+    assert any(l.startswith("Guió: ") for l in out) and any(l.startswith("Particel·la: ") for l in out)
+    assert any(l.startswith("Fitxer de MuseScore: ") for l in out)
+    assert not list(c.glob(".tmp-*"))
+
+
+def test_exportar_esborra_particelles_velles(piano_trompeta, projecte, mscore_fals):
+    vella = projecte / "eixida" / "piano-trompeta" / "Particel·les" / "piano-trompeta - 9. Tuba.pdf"
+    vella.parent.mkdir(parents=True)
+    vella.write_bytes(b"vell")
+    assert executar("exportar", piano_trompeta) == 0
+    assert not vella.exists()
+    assert len(list(vella.parent.glob("*.pdf"))) == 2
+
+
+def test_exportar_sense_parts(piano_trompeta, projecte, mscore_fals):
+    assert executar("exportar", piano_trompeta, "--sense-parts") == 0
+    assert not (projecte / "eixida" / "piano-trompeta" / "Particel·les").exists()
+
+
+def test_exportar_conserva_el_mscz_retocat(piano_trompeta, projecte, capsys, mscore_fals):
+    executar("exportar", piano_trompeta)
+    c = projecte / "eixida" / "piano-trompeta"
+    capsys.readouterr()
+    # sense canvis: es reemplaça sense avís
+    executar("exportar", piano_trompeta)
+    assert "retocat" not in capsys.readouterr().out
+    # la professora el retoca a MuseScore
+    (c / "piano-trompeta.mscz").write_bytes(b"canvis de la professora")
+    executar("exportar", piano_trompeta)
+    out = capsys.readouterr().out
+    assert "piano-trompeta (retocat a MuseScore).mscz" in out
+    assert (c / "piano-trompeta (retocat a MuseScore).mscz").read_bytes() == b"canvis de la professora"
+    assert (c / "piano-trompeta.mscz").read_bytes() != b"canvis de la professora"
+    # segon retoc: no trepitja el primer
+    (c / "piano-trompeta.mscz").write_bytes(b"segon retoc")
+    executar("exportar", piano_trompeta)
+    assert (c / "piano-trompeta (retocat a MuseScore).mscz").read_bytes() == b"canvis de la professora"
+    assert len(list(c.glob("*retocat*.mscz"))) == 2
+
+
+def test_exportar_mscz_sense_registre_es_tracta_com_retocat(piano_trompeta, projecte, capsys, mscore_fals):
+    c = projecte / "eixida" / "piano-trompeta"
+    c.mkdir(parents=True)
+    (c / "piano-trompeta.mscz").write_bytes(b"ningu sap d'on ve")
+    executar("exportar", piano_trompeta)
+    assert (c / "piano-trompeta (retocat a MuseScore).mscz").read_bytes() == b"ningu sap d'on ve"
+
+
+def test_obrir_prefereix_el_mscz_germa(monkeypatch, projecte, coral, capsys):
+    c = projecte / "eixida" / "obra"
+    c.mkdir(parents=True)
+    xml = c / "obra.musicxml"
+    xml.write_bytes(coral.read_bytes())
+    (c / "obra.mscz").write_bytes(b"x")
+    cridat = []
+    monkeypatch.setattr(eines, "trobar_musescore", lambda: "/Apps/MuseScore 4.app/Contents/MacOS/mscore")
+    monkeypatch.setattr(externs.subprocess, "Popen", lambda ordre, **kw: cridat.append(ordre))
+    assert executar("obrir", xml) == 0
+    assert str(c / "obra.mscz") in cridat[0] and str(xml) not in cridat[0]
+    assert "obra.mscz" in capsys.readouterr().out

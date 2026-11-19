@@ -1,6 +1,7 @@
 """Crides a programes externs: Audiveris (PDF → MusicXML), MuseScore (→ PDF) i obrir una partitura."""
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -25,9 +26,7 @@ def _entorn_silenciós() -> dict:
     return env
 
 
-def netejar_nom(text: str) -> str:
-    n = re.sub(r"[^\w\-. ]+", "_", text, flags=re.UNICODE).strip(" ._")
-    return n or "partitura"
+netejar_nom = rutes.netejar_nom
 
 
 def _cua(r) -> str:
@@ -82,27 +81,86 @@ def _mscore_a_pdf(mscore: str, origen: Path, desti: Path, temps_maxim: int = 300
         raise ErrorUsuari(f"MuseScore no ha pogut crear «{desti.name}».\n{_cua(r)}".strip())
 
 
+def _registre() -> Path:
+    from .actualitzar import dades_per_defecte
+    return dades_per_defecte() / "registre-mscz.json"
+
+
+def _empremta(ruta: Path) -> dict:
+    st = ruta.stat()
+    return {"mida": st.st_size, "mtime_ns": st.st_mtime_ns}
+
+
+def _llig_registre() -> dict:
+    try:
+        d = json.loads(_registre().read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _anota_mscz(ruta: Path) -> None:
+    """Recorda com és el .mscz que acabem d'escriure, per saber si algú el retoca després a MuseScore."""
+    d = _llig_registre()
+    d[str(ruta.resolve())] = _empremta(ruta)
+    try:
+        _registre().parent.mkdir(parents=True, exist_ok=True)
+        _registre().write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    except OSError:
+        pass   # sense registre, el pitjor cas és guardar una còpia de més
+
+
+def _es_retocat(mscz: Path) -> bool:
+    anotat = _llig_registre().get(str(mscz.resolve()))
+    return anotat != _empremta(mscz)
+
+
 def exportar(ruta: str | Path, amb_parts: bool = True) -> dict:
-    """Genera PDF de la partitura completa i, si es vol, un PDF per cada instrument. Tot dins d'eixida/."""
+    """Deixa la peça completa en la seua carpeta d'eixida: MuseScore, guió en PDF i particel·les en PDF."""
     mscore = eines.trobar_musescore()
     ruta = Path(ruta).expanduser().resolve()
     score = musica.carregar(ruta)          # valida el fitxer abans de res més
-    base = netejar_nom(ruta.stem)
-    carpeta = rutes.lliure(rutes.carpeta("eixida") / base)
-    carpeta.mkdir(parents=True, exist_ok=False)
-    complet = carpeta / f"{base} - partitura completa.pdf"
-    _mscore_a_pdf(mscore, ruta, complet)
+    nom, es_carpeta = rutes.peca_de(ruta)
+    if es_carpeta:
+        carpeta = ruta.parent
+    else:
+        carpeta = rutes.carpeta("eixida") / nom
+    carpeta.mkdir(parents=True, exist_ok=True)
+    base = carpeta.name
+    avis = ""
+    mscz = carpeta / f"{base}.mscz"
+    if ruta.resolve() != mscz.resolve():
+        if mscz.exists() and _es_retocat(mscz):
+            apart = mscz.with_name(f"{base} (retocat a MuseScore).mscz")
+            k = 2
+            while apart.exists():
+                apart = mscz.with_name(f"{base} (retocat a MuseScore {k}).mscz")
+                k += 1
+            os.replace(mscz, apart)
+            avis = (f"Atenció: el fitxer de MuseScore d'esta peça tenia canvis fets a mà. L'he guardat amb el nom "
+                    f"«{apart.name}» perquè no es perda; el fitxer nou «{mscz.name}» ve del MusicXML.")
+        with tempfile.TemporaryDirectory(dir=carpeta, prefix=".tmp-") as tmp:
+            nou = Path(tmp) / mscz.name
+            _mscore_a_pdf(mscore, ruta, nou)
+            os.replace(nou, mscz)
+        _anota_mscz(mscz)
+    guio = carpeta / f"{base} - Guió.pdf"
+    _mscore_a_pdf(mscore, ruta, guio)
     parts_pdf: list[Path] = []
     separades = musica.parts_separades(score)
     if amb_parts and len(separades) > 1:
+        dest = carpeta / "Particel·les"
+        dest.mkdir(exist_ok=True)
+        for vell in dest.glob("*.pdf"):    # instruments de versions anteriors
+            vell.unlink()
         with tempfile.TemporaryDirectory(dir=carpeta, prefix=".tmp-") as tmp:
-            for i, (nom, s) in enumerate(separades):
+            for i, (nom_part, s) in enumerate(separades):
                 x = Path(tmp) / f"part{i + 1}.musicxml"
                 s.write("musicxml", fp=str(x))
-                pdf = carpeta / f"{base} - {i + 1}. {netejar_nom(nom)}.pdf"
+                pdf = dest / f"{base} - {i + 1}. {netejar_nom(nom_part)}.pdf"
                 _mscore_a_pdf(mscore, x, pdf)
                 parts_pdf.append(pdf)
-    return {"completa": complet, "parts": parts_pdf}
+    return {"guio": guio, "parts": parts_pdf, "mscz": mscz if mscz.exists() else None, "avis": avis}
 
 
 def obrir(fitxer: str | Path) -> Path:
@@ -112,6 +170,10 @@ def obrir(fitxer: str | Path) -> Path:
         raise ErrorUsuari(f"No trobe el fitxer «{ruta.name}».")
     if ruta.suffix.lower() not in musica.EXT_ACCEPTADES:
         raise ErrorUsuari("Només sé obrir partitures (MusicXML, MuseScore, MIDI...) amb MuseScore.")
+    mscz = ruta.with_suffix(".mscz")
+    if ruta.suffix.lower() in (".musicxml", ".xml", ".mxl") and mscz.exists():
+        ruta = mscz
+        print(f"Hi ha una versió de MuseScore («{mscz.name}»); obric esa, que pot tenir retocs.")
     mscore = eines.trobar_musescore()
     try:
         if sys.platform == "darwin" and ".app/" in mscore:

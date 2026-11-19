@@ -64,7 +64,7 @@ def _notes(part):
 def test_ragtime_crea_les_quatre_parts(ragtime, capsys):
     assert executar("arranja", ragtime, "--rols", ROLS_RAG, "--estil", "ragtime", "--nivell", "4t elemental") == 0
     ruta, out = actual(capsys)
-    assert ruta == "eixida/ragtime-arranjament.musicxml"
+    assert ruta == "eixida/ragtime/ragtime.musicxml"
     s = musica.carregar(ruta)
     noms = _parts(s)
     assert set(noms) == {"Flauta", "Trompeta en Si bemoll", "Xilòfon", "Bateria"}
@@ -316,12 +316,15 @@ def test_estil_i_tonalitat_desconeguts(ragtime, capsys):
     assert "mode" in capsys.readouterr().err
 
 
-def test_mai_sobreescriu(ragtime, capsys):
+def test_arranja_reemplaça_i_nova_versio_conserva(ragtime, capsys):
     executar("arranja", ragtime, "--rols", ROLS_RAG)
     a, _ = actual(capsys)
     executar("arranja", ragtime, "--rols", ROLS_RAG)
     b, _ = actual(capsys)
-    assert a != b and b.endswith("-2.musicxml")
+    assert a == b == "eixida/ragtime/ragtime.musicxml"
+    executar("arranja", ragtime, "--rols", ROLS_RAG, "--nova-versio")
+    c, _ = actual(capsys)
+    assert c == "eixida/ragtime-2/ragtime-2.musicxml"
 
 
 # --------------------------------------------------------------------------- nivell
@@ -357,5 +360,5 @@ def test_arranjament_s_exporta_a_pdf(ragtime, capsys, projecte):
     executar("arranja", ragtime, "--rols", ROLS_RAG, "--estil", "ragtime", "--compassos", "1-8")
     ruta, _ = actual(capsys)
     assert executar("exportar", ruta) == 0
-    pdfs = list((projecte / "eixida").glob("*/*.pdf"))
-    assert len(pdfs) == 5      # partitura completa i 4 parts
+    pdfs = list((projecte / "eixida").glob("*/*.pdf")) + list((projecte / "eixida").glob("*/*/*.pdf"))
+    assert len(pdfs) == 1 + 4      # guió i 4 particel·les

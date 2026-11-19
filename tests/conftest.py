@@ -11,6 +11,7 @@ def projecte(tmp_path, monkeypatch):
     monkeypatch.setenv("PARTITURES_ARREL", str(arrel))
     monkeypatch.chdir(arrel)
     monkeypatch.delenv("PARTITURES_DEBUG", raising=False)
+    monkeypatch.setenv("ARRANJAMENTS_DADES", str(tmp_path / "dades-app"))   # perfils i registre de .mscz aïllats
     # res es recorda entre proves (on és la biblioteca, perfils compartits)
     from partitures import biblioteca, nivells
     biblioteca._MEMO.clear()

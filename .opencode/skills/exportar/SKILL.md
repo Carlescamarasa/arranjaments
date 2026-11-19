@@ -1,6 +1,6 @@
 ---
 name: exportar
-description: Genera en PDF la partitura general i les parts soltes de cada instrument amb MuseScore. Usa-la quan l'arranjament està acabat i es vol imprimir o repartir.
+description: Genera el fitxer de MuseScore, el guió en PDF i les particel·les (un PDF per instrument) amb MuseScore. Usa-la quan l'arranjament està acabat i es vol imprimir o repartir.
 ---
 
 # Exportar a PDF
@@ -11,8 +11,9 @@ description: Genera en PDF la partitura general i les parts soltes de cada instr
 1. Si no, pregunta quin fitxer vol exportar (normalment l'últim «Fitxer actual»; si no el tens, mira `ls eixida`).
 2. Si encara no s'ha comprovat la tessitura (skill `arranjar`), proposa fer-ho abans. Si la partitura ve d'un PDF, comprova que s'ha revisat a MuseScore.
 3. Executa: `partitures exportar "eixida/nom.musicxml"`
-   Això crea, dins una carpeta nova `eixida/nom/` (si ja existeix, `nom-2`...), un PDF de la partitura completa i un PDF per cada instrument, amb nom `nom - 1. Trompeta en Si bemoll.pdf`, etc. (Per a la partitura sola: afegir `--sense-parts`.)
-4. Escriu la ruta completa de cada PDF que s'ha creat.
+   Això deixa dins la carpeta de la peça, `eixida/nom/`, el fitxer de MuseScore `nom.mscz`, el guió en PDF `nom - Guió.pdf` i, a la subcarpeta `Particel·les/`, un PDF per cada instrument (`nom - 1. Trompeta en Si bemoll.pdf`, etc.). Una exportació nova reemplaça l'anterior i esborra les particel·les velles. (Per al guió sol: afegir `--sense-parts`.)
+   Si la persona havia retocat el fitxer de MuseScore, l'ordre el guarda com `nom (retocat a MuseScore).mscz` i ho avisa: digues-ho clarament, perquè els PDF nous venen del MusicXML i no tenen eixos retocs.
+4. Escriu la carpeta de la peça i el que hi ha dins.
 5. Si diu que no troba MuseScore, llig el missatge tal com és, explica que cal MuseScore (gratuït, https://musescore.org/ca/download) i ofereix instal·lar-lo amb `partitures instalar musescore` (vegeu `preparar-ordinador`, amb `timeout` 900000).
 
 ## Notes

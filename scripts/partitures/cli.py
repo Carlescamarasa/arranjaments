@@ -25,7 +25,7 @@ def cmd_info(a):
 def cmd_transport(a):
     s = musica.carregar(a.fitxer)
     r = musica.transportar(s, a.semitons, a.interval, a.octava or 0, a.part)
-    ruta = musica.desar(r, rutes.eixida_per_defecte(a.fitxer, "transportat", sol_licitada=a.eixida))
+    ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     _actual(ruta)
 
 
@@ -50,7 +50,7 @@ def cmd_instruments(a):
         raise ErrorUsuari("Cal dir el fitxer: partitures instruments FITXER --assigna \"1=trompeta-sib,...\".")
     s = musica.carregar(a.fitxer)
     r, avisos = musica.assignar(s, a.assigna)
-    ruta = musica.desar(r, rutes.eixida_per_defecte(a.fitxer, "instruments", sol_licitada=a.eixida))
+    ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     print("\n".join(avisos))
     print("Recorda: ara convé mirar la tessitura amb l'ordre «tessitura».")
     _actual(ruta)
@@ -69,7 +69,7 @@ def cmd_arranja(a):
     s = musica.carregar(a.fitxer)
     r, informe = arr.arranjar(s, rols, estil=a.estil, curs=a.nivell, compassos_sel=arr.parse_compassos(a.compassos),
                               melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo)
-    ruta = musica.desar(r, rutes.eixida_per_defecte(a.fitxer, "arranjament", sol_licitada=a.eixida))
+    ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     print("\n".join(informe))
     _actual(ruta)
 
@@ -116,7 +116,7 @@ def cmd_preferencia(a):
 def cmd_reduir(a):
     s = musica.carregar(a.fitxer)
     r = musica.reduir(s, a.mantin)
-    ruta = musica.desar(r, rutes.eixida_per_defecte(a.fitxer, "reduccio", sol_licitada=a.eixida))
+    ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     _actual(ruta)
 
 
@@ -135,9 +135,13 @@ def cmd_importar(a):
 def cmd_exportar(a):
     from . import externs
     r = externs.exportar(a.fitxer, amb_parts=not a.sense_parts)
-    print(f"Partitura completa: {rutes.relativa(r['completa'])}")
+    if r["avis"]:
+        print(r["avis"])
+    print(f"Guió: {rutes.relativa(r['guio'])}")
     for p in r["parts"]:
-        print(f"Part: {rutes.relativa(p)}")
+        print(f"Particel·la: {rutes.relativa(p)}")
+    if r["mscz"]:
+        print(f"Fitxer de MuseScore: {rutes.relativa(r['mscz'])}")
     _actual(a.fitxer)   # per a continuar treballant, la partitura editable, no els PDF
 
 
@@ -271,11 +275,15 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--octava", type=int, help="Octaves (1 = una amunt, -1 = una avall)")
     s.add_argument("--part", help="Només estes parts (números o noms, separats per comes)")
     s.add_argument("--eixida", help="Ruta del resultat, dins d'eixida/ (per defecte, un nom automàtic)")
+    s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
+                   help="Conserva la versió anterior i crea una carpeta nova (peça-2)")
     s.set_defaults(f=cmd_transport)
 
     s = sub.add_parser("instruments", help="Llista instruments o assigna parts a instruments")
     s.add_argument("fitxer", nargs="?")
     s.add_argument("--assigna", help='Per exemple "1=trompeta-sib,2=trompeta-sib,3=trompa-fa,4=trombo"')
+    s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
+                   help="Conserva la versió anterior i crea una carpeta nova (peça-2)")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_instruments)
 
     s = sub.add_parser("tessitura", help="Comprova l'abast de cada instrument (orientatiu)")
@@ -296,6 +304,8 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--to", help='Transporta abans a esta tonalitat, per exemple "Sol major"')
     s.add_argument("--simplifica", action="store_true", help="Simplifica el ritme de la melodia a les figures del nivell")
     s.add_argument("--bordo", action="store_true", help="Acompanyament amb bordó (tònica i quinta), estil Orff")
+    s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
+                   help="Conserva la versió anterior i crea una carpeta nova (peça-2)")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_arranja)
 
     s = sub.add_parser("harmonia", help="Fitxes d'harmonia i comprovació de corals (quintes paral·leles, sensible...)")
@@ -337,12 +347,14 @@ def crear_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("reduir", help="Redueix: quedar-se només amb algunes parts")
     s.add_argument("fitxer")
     s.add_argument("--mantin", help='Parts que es queden: "1,3"')
+    s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
+                   help="Conserva la versió anterior i crea una carpeta nova (peça-2)")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_reduir)
 
     s = sub.add_parser("importar", help="PDF a MusicXML amb Audiveris (després, revisar amb MuseScore)")
     s.add_argument("fitxer"); s.set_defaults(f=cmd_importar)
 
-    s = sub.add_parser("exportar", help="Partitura completa i parts soltes en PDF amb MuseScore")
+    s = sub.add_parser("exportar", help="Fitxer de MuseScore, guió i particel·les en PDF, dins la carpeta de la peça")
     s.add_argument("fitxer"); s.add_argument("--sense-parts", action="store_true", dest="sense_parts")
     s.set_defaults(f=cmd_exportar)
 

@@ -1,6 +1,7 @@
 """Operacions musicals deterministes sobre partitures (música21)."""
 from __future__ import annotations
 
+import os
 import copy
 import re
 from pathlib import Path
@@ -71,7 +72,14 @@ def desar(score: stream.Score, ruta: str | Path) -> Path:
     ruta.parent.mkdir(parents=True, exist_ok=True)
     if ruta.suffix.lower() not in EXT_MUSICXML:
         ruta = ruta.with_suffix(".musicxml")
-    score.write("musicxml", fp=str(ruta))
+    # escriptura atòmica: primer a un fitxer temporal de la mateixa carpeta i després es reemplaça
+    temp = ruta.with_name(f".tmp-{os.getpid()}-{ruta.name}")
+    try:
+        score.write("musicxml", fp=str(temp))
+        os.replace(temp, ruta)
+    finally:
+        if temp.exists():
+            temp.unlink()
     return ruta
 
 

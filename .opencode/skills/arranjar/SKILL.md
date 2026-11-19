@@ -5,7 +5,7 @@ description: Fa arranjaments amb les ordres de l'eina. Crea parts noves (melodia
 
 # Arranjar amb les ordres de l'eina
 
-Tot es fa amb ordres. Tu no edites cap fitxer ni escrius codi (tampoc codi de music21 ni de Python): les ordres ja fan la música. Les ordres NO modifiquen l'original: escriuen un fitxer nou a `eixida/` (si el nom ja existeix, afigen -2, -3...) i acaben amb la línia `Fitxer actual: ...`. Usa sempre l'última.
+Tot es fa amb ordres. Tu no edites cap fitxer ni escrius codi (tampoc codi de music21 ni de Python): les ordres ja fan la música. Les ordres NO modifiquen l'original: escriuen a la carpeta de la peça, `eixida/peça/peça.musicxml`, i el resultat nou reemplaça l'anterior; per conservar l'anterior (per exemple, un segon arranjament de la mateixa peça per a un altre grup) afig `--nova-versio` i va a `eixida/peça-2/`. Acaben amb la línia `Fitxer actual: ...`. Usa sempre l'última.
 
 ## Dos camins: quin triar
 
@@ -63,15 +63,15 @@ Exemple de pregunta 1: «Pregunta 1 de 3: et propose trompeta la melodia, flauta
 **Pas 3. Amb l'última resposta, genera-ho tot sense demanar permís.** NO preguntes «et sembla bé?» ni «vols que el genere?»: les respostes ja són el sí. Digues «Perfecte, el faig ara.» i executa, sense parar entre ordre i ordre:
 1. `partitures arranja "entrada/peça.musicxml" --rols "..." --estil ... --nivell "..."`
 2. Si l'informe diu notes FORA d'abast en una part, prova UNA vegada `partitures transport "<Fitxer actual>" --octava 1 --part N` (o `-1`) i digues-ho en una frase.
-3. `partitures exportar "<Fitxer actual>"` (PDF de la partitura i de cada part).
+3. `partitures exportar "<Fitxer actual>"` (fitxer de MuseScore, guió en PDF i particel·les, tot dins la carpeta de la peça).
 
 **Pas 4. Lliura i tanca, en un sol missatge curt.**
 - «Fet. És un esborrany: revisa'l amb MuseScore (`partitures obrir "<fitxer>"`) abans de repartir-lo.»
-- On són els PDF i el fitxer MusicXML (l'últim «Fitxer actual»).
+- On és tot: només la carpeta de la peça, `eixida/peça/` (dins hi ha el MusicXML, el fitxer de MuseScore, el guió en PDF i la carpeta Particel·les).
 - Els avisos importants, com a molt 3 línies (els acords que ha posat l'eina, en una línia).
 - UNA sola pregunta final: «Vols canviar alguna cosa? Per exemple, un altre estil, un altre instrument o un tros més curt. Si no, ja està.»
 
-**Pas 5. Si demana un canvi**, fes-lo i torna a generar-ho tot (arranja i exportar) sense preguntar res més; després, torna al Pas 4. Només pregunta si el canvi no s'entén. Si vol retocar notes concretes, que òbriga el fitxer amb MuseScore.
+**Pas 5. Si demana un canvi**, fes-lo i torna a generar-ho tot (arranja i exportar), que reemplaça el resultat anterior, sense preguntar res més (si vol conservar l'anterior, afig `--nova-versio`); després, torna al Pas 4. Només pregunta si el canvi no s'entén. Si vol retocar notes concretes, que òbriga el fitxer amb MuseScore.
 
 **Nivell sense perfil.** Si el curs no té perfil desat, NO pares la conversa: genera amb la zona còmoda de cada instrument. Al Pas 4, afig una línia: «Si vols que el pròxim arranjament s'ajuste millor a este curs, et faré una pregunta per instrument (la nota més greu i la més aguda).» Si diu que sí, anuncia-les i fes-les numerades com al Pas 2, i desa cada resposta amb `partitures nivell desa`.
 
@@ -87,7 +87,7 @@ Exemple de pregunta 1: «Pregunta 1 de 3: et propose trompeta la melodia, flauta
 2. Llista d'instruments (i els noms que accepta): `partitures instruments`
 3. Assignar parts existents a instruments (número de part = instrument):
    `partitures instruments "entrada/nom.musicxml" --assigna "1=trompeta-sib,2=trompeta-sib,3=trompa-fa,4=trombo"`
-4. Comprovar tessitures: `partitures tessitura "eixida/nom-instruments.musicxml"` (amb `--nivell "4t elemental"` per a comparar amb el curs). Si el fitxer no diu quins instruments són: afegir `--instruments "1=trompeta-sib,..."`.
+4. Comprovar tessitures: `partitures tessitura "eixida/nom/nom.musicxml"` (amb `--nivell "4t elemental"` per a comparar amb el curs). Si el fitxer no diu quins instruments són: afegir `--instruments "1=trompeta-sib,..."`.
 5. Transportar tot el conjunt: `partitures transport "<fitxer>" --semitons -2` o `--interval m-3`. Només una part una octava més amunt: `--octava 1 --part 3`.
 6. Quedar-se només amb algunes parts: `partitures reduir "<fitxer>" --mantin "1,4"`.
 

@@ -50,7 +50,7 @@ def test_pdf_es_rebutja_amb_ajuda(tmp_path, capsys):
 def test_transport_semitons(coral, capsys):
     assert executar("transport", coral, "--semitons", 2) == 0
     out = actual(capsys)
-    assert out == "eixida/coral-transportat.musicxml"
+    assert out == "eixida/coral/coral.musicxml"
     orig = musica.carregar(coral).parts[0].flatten().notes[0].pitch.midi
     nou = musica.carregar(out).parts[0].flatten().notes[0].pitch.midi
     assert nou == orig + 2
@@ -214,20 +214,20 @@ def test_exportar_pdf_complet_i_parts(coral, capsys, projecte):
     executar("instruments", coral, "--assigna", QUARTET)
     q = actual(capsys)
     assert executar("exportar", q) == 0
-    carpeta = projecte / "eixida" / "coral-instruments"
-    pdfs = sorted(p.name for p in carpeta.glob("*.pdf"))
-    assert len(pdfs) == 5 and any("completa" in p for p in pdfs)
+    carpeta = projecte / "eixida" / "coral"
+    assert (carpeta / "coral - Guió.pdf").exists() and (carpeta / "coral.mscz").exists()
+    assert len(list((carpeta / "Particel·les").glob("*.pdf"))) == 4
     assert not list(carpeta.glob(".tmp-*"))
-    # una segona vegada no sobreescriu: carpeta nova
+    # una segona vegada reemplaça: la mateixa carpeta
     assert executar("exportar", q) == 0
-    assert (projecte / "eixida" / "coral-instruments-2").is_dir()
+    assert not (projecte / "eixida" / "coral-2").exists()
 
 
 @pytest.mark.skipif(not (_te(eines.trobar_musescore) and _te(eines.trobar_audiveris)),
                     reason="MuseScore o Audiveris no instal·lats")
 def test_cicle_pdf_a_musicxml(coral, projecte):
     executar("exportar", coral, "--sense-parts")
-    pdf = next((projecte / "eixida").glob("*/*completa.pdf"))
+    pdf = next((projecte / "eixida").glob("*/*Guió.pdf"))
     assert executar("importar", pdf) == 0
     mxl = next((projecte / "eixida").rglob("*-omr/*.mxl"))
     d = musica.info(musica.carregar(mxl))

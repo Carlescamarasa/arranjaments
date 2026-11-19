@@ -112,7 +112,7 @@ El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
    ![Pas 12](docs/captures/mac/12-resultat.png)
 
-13. Els PDF són a Documents, `Arranjaments`, `eixida`.
+13. Els PDF són a Documents, `Arranjaments`, `eixida`, dins la carpeta de la peça.
 
    ![Pas 13](docs/captures/mac/13-carpeta-eixida.png)
 
@@ -169,7 +169,7 @@ El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
    ![Pas 11](docs/captures/windows/11-resultat.png)
 
-12. Els PDF són a Documents, `Arranjaments`, `eixida`.
+12. Els PDF són a Documents, `Arranjaments`, `eixida`, dins la carpeta de la peça.
 
    ![Pas 12](docs/captures/windows/12-carpeta-eixida.png)
 
@@ -306,7 +306,7 @@ Els models gratuïts van i venen: un dia n'hi ha un que s'acaba, va molt lent o 
 - Les **tessitures** (fins on pot tocar cada instrument) són orientatives, de manual. Tu coneixes els teus alumnes i el teu instrument: tu decideixes.
 - Els **noms de les notes** són en solfeig i segueixen la convenció espanyola: el Do central és Do3 (en altres llocs, Do4 o C4).
 - **Drets d'autor**: treballa amb música de domini públic o amb llicència que ho permeta. Una edició moderna d'una obra antiga pot tindre drets propis.
-- Les eines **no canvien mai l'original ni sobreescriuen res**: sempre creen un fitxer nou a `eixida/` (si el nom ja existeix, afigen -2, -3...) i no escriuen fora de la carpeta de treball. L'última línia de cada ordre diu «Fitxer actual», el fitxer amb què continuar.
+- Les eines **no canvien mai l'original**: escriuen cada peça en la seua carpeta de `eixida/` (`eixida/peça/`, amb el MusicXML, el fitxer de MuseScore, el guió en PDF i la carpeta Particel·les): un resultat nou reemplaça l'anterior, i amb `--nova-versio` es conserva l'antic en una carpeta nova (`peça-2`). Si has retocat el fitxer de MuseScore, en exportar es guarda com «(retocat a MuseScore)» i no es perd. No escriuen fora de la carpeta de treball. L'última línia de cada ordre diu «Fitxer actual», el fitxer amb què continuar.
 
 ## Per a qui vol saber-ne més (no cal)
 
