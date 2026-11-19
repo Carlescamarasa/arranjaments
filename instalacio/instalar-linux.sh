@@ -119,7 +119,7 @@ copia_eines() {
   mkdir -p "$DADES/instalacio" "$DADES/.opencode" || return 1
   rm -rf "$DADES/scripts" "$DADES/.opencode/skills"
   cp -R "$CARPETA/scripts" "$DADES/scripts" \
-    && cp "$CARPETA/pyproject.toml" "$CARPETA/uv.lock" "$CARPETA/.python-version" "$CARPETA/AGENTS.md" "$CARPETA/opencode.json" "$DADES/" \
+    && cp "$CARPETA/pyproject.toml" "$CARPETA/uv.lock" "$CARPETA/.python-version" "$CARPETA/VERSION" "$CARPETA/AGENTS.md" "$CARPETA/NOVETATS.md" "$CARPETA/opencode.json" "$DADES/" \
     && cp "$CARPETA/instalacio/instalar-linux.sh" "$DADES/instalacio/" \
     && cp -R "$CARPETA/.opencode/skills" "$DADES/.opencode/skills" || return 1
   find "$DADES/scripts" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null
@@ -217,7 +217,10 @@ else
      && rm -rf "$TREBALL/.opencode/skills" \
      && cp -R "$CARPETA/.opencode/skills" "$TREBALL/.opencode/skills" \
      && cp "$CARPETA/AGENTS.md" "$TREBALL/.opencode/AGENTS.md" \
+     && cp "$CARPETA/NOVETATS.md" "$TREBALL/.opencode/NOVETATS.md" \
      && cp "$CARPETA/opencode.json" "$TREBALL/.opencode/opencode.json"; then
+    # L'actualitzador sap així on és la carpeta de treball
+    mkdir -p "$DADES" && printf '%s\n' "$TREBALL" > "$DADES/treball.txt"
     ok "carpeta de treball preparada (les teues partitures no s'han tocat)"
   else fallada "No he pogut preparar la carpeta de treball $TREBALL."; fi
 fi
@@ -245,6 +248,8 @@ else
 #!/bin/sh
 # Creat per l'instal·lador d'Arranjaments. Obri OpenCode des de la carpeta de treball.
 cd "$TREBALL" 2>/dev/null || cd "\$HOME"
+# Actualització silenciosa: si falla o no hi ha internet, no es nota res i s'obri OpenCode igualment
+"$DADES/.venv/bin/python" -I -m partitures.actualitzar --silenci >/dev/null 2>&1 </dev/null || true
 EXTRA=""
 if [ "\$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null)" = 1 ] \\
    || [ "\$(cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null)" = 0 ]; then EXTRA="--no-sandbox"; fi

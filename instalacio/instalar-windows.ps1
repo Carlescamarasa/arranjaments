@@ -125,7 +125,7 @@ function CopiaEines {
             if (Test-Path $vella) { Remove-Item $vella -Recurse -Force -ErrorAction Stop }
         }
         Copy-Item (Join-Path $Carpeta "scripts") (Join-Path $Dades "scripts") -Recurse -Force -ErrorAction Stop
-        foreach ($f in @("pyproject.toml", "uv.lock", ".python-version", "AGENTS.md", "opencode.json")) {
+        foreach ($f in @("pyproject.toml", "uv.lock", ".python-version", "VERSION", "AGENTS.md", "NOVETATS.md", "opencode.json")) {
             Copy-Item (Join-Path $Carpeta $f) (Join-Path $Dades $f) -Force -ErrorAction Stop
         }
         Copy-Item (Join-Path $Carpeta "instalacio\instalar-windows.ps1") (Join-Path $Dades "instalacio\instalar-windows.ps1") -Force -ErrorAction Stop
@@ -167,6 +167,10 @@ function PreparaCarpeta {
         if (Test-Path $skills) { Remove-Item $skills -Recurse -Force -ErrorAction Stop }
         Copy-Item (Join-Path $Carpeta ".opencode\skills") $skills -Recurse -Force -ErrorAction Stop
         Copy-Item (Join-Path $Carpeta "AGENTS.md") (Join-Path $cfg "AGENTS.md") -Force -ErrorAction Stop
+        Copy-Item (Join-Path $Carpeta "NOVETATS.md") (Join-Path $cfg "NOVETATS.md") -Force -ErrorAction Stop
+        # L'actualitzador sap així on és la carpeta de treball (UTF-8 sense BOM: el camí pot portar accents)
+        New-Item -ItemType Directory -Force $Dades | Out-Null
+        [IO.File]::WriteAllText((Join-Path $Dades "treball.txt"), $Treball + "`n", (New-Object Text.UTF8Encoding $false))
         Copy-Item (Join-Path $Carpeta "opencode.json") (Join-Path $cfg "opencode.json") -Force -ErrorAction Stop
         Get-ChildItem $cfg -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
         # Amagada, perquè a la carpeta només es vegen entrada i eixida
@@ -283,7 +287,12 @@ else {
     try {
         $sh = New-Object -ComObject WScript.Shell
         $d = $sh.CreateShortcut($lnk)
-        $d.TargetPath = $oc
+        # La icona obri un Python sense finestra que busca novetats (sense internet o si falla, no es nota) i després obri OpenCode
+        $pyw = Join-Path $Dades ".venv\Scripts\pythonw.exe"
+        if (Test-Path $pyw) {
+            $d.TargetPath = $pyw
+            $d.Arguments = "-I -m partitures.actualitzar --silenci --obri `"$oc`""
+        } else { $d.TargetPath = $oc }
         if (Test-Path $Treball) { $d.WorkingDirectory = $Treball }
         $d.IconLocation = "$oc,0"
         $d.Description = "Arranjaments: obri OpenCode"

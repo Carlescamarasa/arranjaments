@@ -27,6 +27,8 @@ Què t'ha deixat a l'ordinador:
 - Una icona **«Arranjaments»** a l'Escriptori, per a obrir l'ajudant.
 - Les eines musicals, guardades dins de l'ordinador com les de qualsevol aplicació. No cal que les busques.
 
+**Actualitzacions.** Cada vegada que obris la icona «Arranjaments», el programa busca sol si n'hi ha una versió nova i, si n'hi ha, l'instal·la en silenci, sense preguntar res i sense que es note (si no hi ha internet, obri OpenCode com sempre). Les teues partitures no es toquen. Si una novetat va malament, a l'ajudant li pots dir «torna a la versió anterior» (o, al Terminal, `partitures actualitzar --torna-enrere`). Per a saber què hi ha de nou, pregunta-li a l'ajudant «què hi ha de nou?». **Si vas instal·lar abans del 19 de novembre de 2026, torna a fer l'instal·lació una vegada** (baixa el ZIP nou i obri «Instal·lar Arranjaments»): la icona antiga no sap actualitzar-se.
+
 Si tornes a obrir «Instal·lar Arranjaments» (per exemple, amb un ZIP més nou), actualitza les eines i fa el que falte. **Les partitures d'`entrada` i `eixida` no les toca mai.**
 
 - Mac: no demana contrasenya. Les aplicacions van a la carpeta Aplicacions de la teua usuària (`~/Applications`). Si el Mac pregunta si «Instal·lar Arranjaments» pot accedir a l'Escriptori, a Documents o a Descàrregues, prem «Permet»: és per a deixar la icona a l'Escriptori i crear la carpeta de treball a Documents.
@@ -254,6 +256,11 @@ Els models gratuïts van i vénen: un dia n'hi ha un que s'acaba, va molt lent o
 - Les eines **no canvien mai l'original ni sobreescriuen res**: sempre creen un fitxer nou a `eixida/` (si el nom ja existeix, afigen -2, -3...) i no escriuen fora de la carpeta de treball. L'última línia de cada ordre diu «Fitxer actual», el fitxer amb què continuar.
 
 ## Per a qui vol saber-ne més (no cal)
+
+**Com funciona l'actualització (tècnic).** La icona executa primer `python -I -m partitures.actualitzar --silenci` (només biblioteca estàndard, sense music21) i després obri OpenCode; a Windows, la icona és un Python sense finestra (`pythonw`) que fa el mateix i obri OpenCode al final. L'actualitzador baixa `versio.json` (versió i sha256) de la versió «ultima» de GitHub amb un límit de 5 segons i, com a molt, una consulta per hora. Si hi ha una versió més nova, baixa `actualitzacio.zip` (només eines i configuració), comprova el sha256, ho descomprimeix a una carpeta temporal de la carpeta de dades, guarda la versió actual a `anterior/` i canvia les peces una a una (si una falla, torna tot enrere). Només renova `scripts`, `instalacio`, `pyproject.toml`, `uv.lock` (i fa `uv sync` només si ha canviat), `VERSION` i la configuració amagada `.opencode` de la carpeta de treball; mai `entrada/`, `eixida/` ni cap fitxer teu. Tot queda escrit a `actualitzacio.log` de la carpeta de dades. Ordres: `partitures versio`, `partitures actualitzar` i `partitures actualitzar --torna-enrere` (l'ajudant demana permís abans d'`actualitzar`). La versió és `major.menor` de `VERSION` més el número d'execució del CI.
+
+**Seguretat de les actualitzacions.** Només es baixa de l'adreça fixa `https://github.com/Carlescamarasa/arranjaments/releases/latest/download/` (HTTPS, es rebutgen les redireccions que no ho siguen) i es comprova el sha256 del fitxer `versio.json`, que protegeix de baixades trencades però no d'un atac a GitHub: **qui controla el compte de GitHub del projecte controla les actualitzacions de tots els ordinadors**. Per això el compte ha de tindre verificació en dos passos (2FA) activada. La variable `ARRANJAMENTS_ACTUALITZACIO_URL` només serveix per a les proves.
+
 
 On queda cada cosa després d'instal·lar:
 

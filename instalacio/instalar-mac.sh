@@ -108,7 +108,7 @@ copia_eines() {
   mkdir -p "$DADES/instalacio" "$DADES/.opencode" || return 1
   rm -rf "$DADES/scripts" "$DADES/.opencode/skills"
   cp -RX "$CARPETA/scripts" "$DADES/scripts" \
-    && cp -X "$CARPETA/pyproject.toml" "$CARPETA/uv.lock" "$CARPETA/.python-version" "$CARPETA/AGENTS.md" "$CARPETA/opencode.json" "$DADES/" \
+    && cp -X "$CARPETA/pyproject.toml" "$CARPETA/uv.lock" "$CARPETA/.python-version" "$CARPETA/VERSION" "$CARPETA/AGENTS.md" "$CARPETA/NOVETATS.md" "$CARPETA/opencode.json" "$DADES/" \
     && cp -X "$CARPETA/instalacio/instalar-mac.sh" "$DADES/instalacio/" \
     && cp -RX "$CARPETA/.opencode/skills" "$DADES/.opencode/skills" || return 1
   find "$DADES/scripts" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null
@@ -211,7 +211,10 @@ else
      && rm -rf "$TREBALL/.opencode/skills" \
      && cp -RX "$CARPETA/.opencode/skills" "$TREBALL/.opencode/skills" \
      && cp -X "$CARPETA/AGENTS.md" "$TREBALL/.opencode/AGENTS.md" \
+     && cp -X "$CARPETA/NOVETATS.md" "$TREBALL/.opencode/NOVETATS.md" \
      && cp -X "$CARPETA/opencode.json" "$TREBALL/.opencode/opencode.json"; then
+    # L'actualitzador sap així on és la carpeta de treball
+    mkdir -p "$DADES" && printf '%s\n' "$TREBALL" > "$DADES/treball.txt"
     ok "carpeta de treball preparada (les teues partitures no s'han tocat)"
   else fallada "No he pogut preparar la carpeta de treball $TREBALL."; fi
 fi
@@ -232,8 +235,10 @@ else
   # La icona recorda la carpeta de treball, per a avisar si algun dia no hi és.
   TMP="$(mktemp -d)"
   CARPETA_AS="${TREBALL//\\/\\\\}"; CARPETA_AS="${CARPETA_AS//\"/\\\"}"
+  PYTHON_AS="$DADES/.venv/bin/python"; PYTHON_AS="${PYTHON_AS//\\/\\\\}"; PYTHON_AS="${PYTHON_AS//\"/\\\"}"
   cat > "$TMP/arranjaments.applescript" <<APPLESCRIPT
 set carpeta to "$CARPETA_AS"
+set python to "$PYTHON_AS"
 set rutes to {(POSIX path of (path to home folder)) & "Applications/OpenCode.app", "/Applications/OpenCode.app"}
 set trobada to ""
 repeat with r in rutes
@@ -243,6 +248,12 @@ repeat with r in rutes
 		exit repeat
 	end try
 end repeat
+-- Actualització silenciosa: si falla o no hi ha internet, no es nota res i s'obri OpenCode igualment
+try
+	with timeout of 900 seconds
+		do shell script quoted form of python & " -I -m partitures.actualitzar --silenci >/dev/null 2>&1"
+	end timeout
+end try
 if trobada is "" then
 	display dialog "No trobe OpenCode. Torna a obrir «Instal·lar Arranjaments»." buttons {"D'acord"} default button 1 with icon caution
 else

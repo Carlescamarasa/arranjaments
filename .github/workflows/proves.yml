@@ -87,6 +87,15 @@ jobs:
           set -x
           mkdir muntatge
           git archive HEAD | tar -x -C muntatge
+          # Versió: «major.menor» del fitxer VERSION i el número d'execució de GitHub (sempre creix)
+          BASE="$(cut -d. -f1,2 VERSION)"
+          VERSIO="$BASE.$GITHUB_RUN_NUMBER"
+          echo "$VERSIO" > muntatge/VERSION
+          echo "Versió: $VERSIO"
+          # Paquet petit per a l'actualització automàtica (només eines i configuració) i el fitxer que en diu la versió i el sha256
+          PYTHONPATH=muntatge/scripts python3 -m partitures.actualitzar --fes-paquet muntatge "$VERSIO" "$PWD"
+          cat versio.json
+          python3 -c "import json,hashlib;d=json.load(open('versio.json'));assert d['sha256']==hashlib.sha256(open('actualitzacio.zip','rb').read()).hexdigest()"
           tar -xf peces/instalador-mac.tar -C muntatge
           cp peces/instalador-windows.exe "muntatge/Instal·lar Arranjaments.exe"
           test -x "muntatge/Instal·lar Arranjaments.app/Contents/MacOS/InstalarArranjaments"
@@ -96,7 +105,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: arranjaments-zip
-          path: arranjaments.zip
+          path: |
+            arranjaments.zip
+            actualitzacio.zip
+            versio.json
           if-no-files-found: error
 
   # Prova real de l'experiència de la professora: baixar el ZIP, descomprimir-lo en una carpeta amb accents
@@ -193,6 +205,55 @@ jobs:
           for i in $(seq 1 20); do pgrep -x OpenCode >/dev/null && break; sleep 2; done
           pgrep -x OpenCode
           pkill -x OpenCode || true
+      - name: Actualització silenciosa (simulada), fitxers de la professora intactes i tornar enrere
+        run: |
+          set -ex
+          W="$HOME/Documents/Arranjaments"
+          D="$HOME/Library/Application Support/Arranjaments"
+          PY="$D/.venv/bin/python"
+          osadecompile "$HOME/Desktop/Arranjaments.app" | grep -q "partitures.actualitzar"
+          test "$(cat "$D/VERSION")" = "$(cat "$ARRANJAMENTS/VERSION")"
+          V0="$(cat "$D/VERSION")"
+          # el paquet «nou»: el real, amb una marca i una versió molt alta
+          F="$RUNNER_TEMP/fals"; rm -rf "$F" "$RUNNER_TEMP/servidor" "$RUNNER_TEMP/servidor-mal"; mkdir -p "$F"
+          unzip -q "$RUNNER_TEMP/actualitzacio.zip" -d "$F"
+          echo "marca" > "$F/scripts/partitures/marca_prova.txt"
+          echo "LINIA-DE-PROVA" >> "$F/AGENTS.md"
+          "$PY" -m partitures.actualitzar --fes-paquet "$F" 99.0.0 "$RUNNER_TEMP/servidor"
+          echo "partitura de la professora" > "$W/eixida/no-tocar.txt"
+          # sha256 incorrecte: es rebutja i no canvia res
+          cp -R "$RUNNER_TEMP/servidor" "$RUNNER_TEMP/servidor-mal"
+          "$PY" -c "import json,sys;p=sys.argv[1];d=json.load(open(p));d['sha256']='0'*64;json.dump(d,open(p,'w'))" "$RUNNER_TEMP/servidor-mal/versio.json"
+          if ARRANJAMENTS_ACTUALITZACIO_URL="file://$RUNNER_TEMP/servidor-mal" "$HOME/.local/bin/partitures" actualitzar; then echo "Hauria de rebutjar-ho"; exit 1; fi
+          test "$(cat "$D/VERSION")" = "$V0"
+          # sense internet: la icona obri igualment, sense error
+          ARRANJAMENTS_ACTUALITZACIO_URL="file:///no/hi/ha/res" "$PY" -I -m partitures.actualitzar --silenci
+          grep -q "Sense connexió" "$D/actualitzacio.log"
+          test "$(cat "$D/VERSION")" = "$V0"
+          # la mateixa ordre que executa la icona
+          ARRANJAMENTS_ACTUALITZACIO_URL="file://$RUNNER_TEMP/servidor" "$PY" -I -m partitures.actualitzar --silenci
+          test "$(cat "$D/VERSION")" = "99.0.0"
+          test -f "$D/scripts/partitures/marca_prova.txt"
+          test -f "$D/anterior/ESTAT.json"
+          grep -q "LINIA-DE-PROVA" "$W/.opencode/AGENTS.md"
+          test -f "$W/.opencode/NOVETATS.md"
+          test "$(cat "$W/eixida/no-tocar.txt")" = "partitura de la professora"
+          test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+          test "$(ls -A "$W/.opencode" | sort | tr '\n' ' ')" = "AGENTS.md NOVETATS.md opencode.json skills "
+          P() { env -i HOME="$HOME" PATH=/usr/bin:/bin "$HOME/.local/bin/partitures" "$@"; }
+          P versio | grep -q "99.0.0"
+          P comprovar
+          # tornar enrere
+          P actualitzar --torna-enrere
+          test "$(cat "$D/VERSION")" = "$V0"
+          test ! -e "$D/scripts/partitures/marca_prova.txt"
+          ! grep -q "LINIA-DE-PROVA" "$W/.opencode/AGENTS.md"
+          cmp "$W/.opencode/AGENTS.md" "$ARRANJAMENTS/AGENTS.md"
+          test "$(cat "$W/eixida/no-tocar.txt")" = "partitura de la professora"
+          P comprovar
+          # i la icona no torna a posar la versió que s'ha rebutjat
+          ARRANJAMENTS_ACTUALITZACIO_URL="file://$RUNNER_TEMP/servidor" "$PY" -I -m partitures.actualitzar --silenci
+          test "$(cat "$D/VERSION")" = "$V0"
       - name: Sense la carpeta del ZIP, les ordres funcionen des de la carpeta de treball
         run: |
           set -x
@@ -320,9 +381,11 @@ jobs:
           $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "Arranjaments.lnk"
           if (-not (Test-Path $lnk)) { throw "Falta la icona $lnk" }
           $d = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
-          Write-Host "Icona: $($d.TargetPath) (carpeta de treball: $($d.WorkingDirectory))"
+          Write-Host "Icona: $($d.TargetPath) $($d.Arguments) (carpeta de treball: $($d.WorkingDirectory))"
           if (-not (Test-Path $d.TargetPath)) { throw "La icona apunta a un fitxer que no existeix" }
-          if ($d.TargetPath -ne $oc[0].FullName) { throw "La icona no apunta a OpenCode" }
+          # la icona passa per l'actualitzador (Python sense finestra) i després obri OpenCode
+          if ($d.TargetPath -notlike "*\.venv\Scripts\pythonw.exe") { throw "La icona no apunta a l'actualitzador" }
+          if ($d.Arguments -notlike "*--obri*$($oc[0].FullName)*") { throw "La icona no obri OpenCode" }
           if ($d.WorkingDirectory -ne (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments")) { throw "La icona no treballa a la carpeta de treball" }
       - name: Obrir la icona de l'Escriptori i veure que arrenca OpenCode
         continue-on-error: true
@@ -334,6 +397,67 @@ jobs:
           for ($i = 0; $i -lt 20 -and -not $p; $i++) { Start-Sleep 2; $p = Get-Process OpenCode -ErrorAction SilentlyContinue }
           if (-not $p) { throw "OpenCode no ha arrencat" }
           Stop-Process -Name OpenCode -Force -ErrorAction SilentlyContinue
+      - name: Actualització silenciosa (simulada), fitxers de la professora intactes i tornar enrere
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $W = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments"
+          $D = Join-Path $env:LOCALAPPDATA "Arranjaments"
+          $Py = Join-Path $D ".venv\Scripts\python.exe"
+          $Ordre = "$env:USERPROFILE\.local\bin\partitures.cmd"
+          function Llig($f) { (Get-Content $f -Raw).Trim() }
+          function Url($ruta) { ([Uri]$ruta).AbsoluteUri }
+          if ((Llig "$D\VERSION") -ne (Llig "$env:ARRANJAMENTS\VERSION")) { throw "VERSION no coincideix" }
+          $V0 = Llig "$D\VERSION"
+          # la icona ha d'executar l'actualitzador abans d'obrir OpenCode
+          $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) "Arranjaments.lnk"))
+          if ($lnk.TargetPath -notlike "*pythonw.exe" -or $lnk.Arguments -notlike "*partitures.actualitzar*--obri*OpenCode.exe*") { throw "La icona no passa per l'actualitzador: $($lnk.TargetPath) $($lnk.Arguments)" }
+          $F = Join-Path $env:RUNNER_TEMP "fals"; $S = Join-Path $env:RUNNER_TEMP "servidor"
+          Remove-Item $F, $S, "$S-mal" -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive (Join-Path $env:RUNNER_TEMP "actualitzacio.zip") $F
+          Set-Content "$F\scripts\partitures\marca_prova.txt" "marca"
+          Add-Content "$F\AGENTS.md" "LINIA-DE-PROVA"
+          & $Py -m partitures.actualitzar --fes-paquet $F 99.0.0 $S
+          Set-Content "$W\eixida\no-tocar.txt" "partitura de la professora"
+          # sha256 incorrecte: es rebutja i no canvia res
+          Copy-Item $S "$S-mal" -Recurse
+          $j = Get-Content "$S-mal\versio.json" -Raw | ConvertFrom-Json; $j.sha256 = "0" * 64
+          [IO.File]::WriteAllText("$S-mal\versio.json", ($j | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
+          $env:ARRANJAMENTS_ACTUALITZACIO_URL = Url "$S-mal"
+          & $Ordre actualitzar
+          if ($LASTEXITCODE -eq 0) { throw "Hauria de rebutjar el paquet amb sha256 incorrecte" }
+          if ((Llig "$D\VERSION") -ne $V0) { throw "S'ha canviat amb un sha256 incorrecte" }
+          # sense internet: la icona obri igualment, sense error
+          $env:ARRANJAMENTS_ACTUALITZACIO_URL = "file:///C:/no/hi/ha/res"
+          & $Py -I -m partitures.actualitzar --silenci
+          if ($LASTEXITCODE -ne 0) { throw "L'actualitzador ha fallat sense internet" }
+          if (-not (Select-String -Path "$D\actualitzacio.log" -Pattern "Sense connexi" -Quiet)) { throw "No s'ha registrat la falta de connexió" }
+          # la mateixa ordre que executa la icona
+          $env:ARRANJAMENTS_ACTUALITZACIO_URL = Url $S
+          & $Py -I -m partitures.actualitzar --silenci
+          if ((Llig "$D\VERSION") -ne "99.0.0") { throw "No s'ha actualitzat: $(Get-Content "$D\actualitzacio.log" -Raw)" }
+          if (-not (Test-Path "$D\scripts\partitures\marca_prova.txt")) { throw "Falta la marca" }
+          if (-not (Test-Path "$D\anterior\ESTAT.json")) { throw "Falta anterior" }
+          if (-not (Select-String -Path "$W\.opencode\AGENTS.md" -Pattern "LINIA-DE-PROVA" -Quiet)) { throw "AGENTS.md no s'ha renovat" }
+          if ((Llig "$W\eixida\no-tocar.txt") -ne "partitura de la professora") { throw "S'ha tocat una partitura" }
+          $tot = (Get-ChildItem $W -Force | Sort-Object Name | ForEach-Object Name) -join " "
+          if ($tot -ne ".opencode eixida entrada") { throw "Contingut inesperat: $tot" }
+          $env:ARRANJAMENTS_ACTUALITZACIO_URL = ""
+          & $Ordre versio
+          & $Ordre comprovar
+          if ($LASTEXITCODE -ne 0) { throw "comprovar ha fallat després d'actualitzar" }
+          # tornar enrere
+          & $Ordre actualitzar --torna-enrere
+          if ($LASTEXITCODE -ne 0) { throw "tornar enrere ha fallat" }
+          if ((Llig "$D\VERSION") -ne $V0) { throw "No s'ha tornat a $V0" }
+          if (Test-Path "$D\scripts\partitures\marca_prova.txt") { throw "La marca continua" }
+          if ((Get-FileHash "$W\.opencode\AGENTS.md").Hash -ne (Get-FileHash "$env:ARRANJAMENTS\AGENTS.md").Hash) { throw "AGENTS.md no s'ha restaurat" }
+          if ((Llig "$W\eixida\no-tocar.txt") -ne "partitura de la professora") { throw "S'ha tocat una partitura" }
+          & $Ordre comprovar
+          if ($LASTEXITCODE -ne 0) { throw "comprovar ha fallat després de tornar enrere" }
+          $env:ARRANJAMENTS_ACTUALITZACIO_URL = Url $S
+          & $Py -I -m partitures.actualitzar --silenci
+          if ((Llig "$D\VERSION") -ne $V0) { throw "S'ha tornat a actualitzar a la versió rebutjada" }
       - name: Sense la carpeta del ZIP, les ordres funcionen des de la carpeta de treball
         shell: pwsh
         run: |
@@ -473,6 +597,55 @@ jobs:
           cat "$L"
           xvfb-run -a sh -c '"$0" --disable-gpu >"$RUNNER_TEMP/opencode.log" 2>&1 & p=$!; sleep 25; kill -0 $p && echo "OpenCode segueix obert" ; kill $p 2>/dev/null; wait $p 2>/dev/null; true' "$L"
           tail -20 "$RUNNER_TEMP/opencode.log" || true
+      - name: Actualització silenciosa (simulada), fitxers de la professora intactes i tornar enrere
+        run: |
+          set -ex
+          W="$HOME/Documentos/Arranjaments"
+          D="$HOME/.local/share/Arranjaments"
+          PY="$D/.venv/bin/python"
+          grep -q actualitzar "$D/arranjaments-obrir.sh"
+          test "$(cat "$D/VERSION")" = "$(cat "$ARRANJAMENTS/VERSION")"
+          V0="$(cat "$D/VERSION")"
+          # el paquet «nou»: el real, amb una marca i una versió molt alta
+          F="$RUNNER_TEMP/fals"; rm -rf "$F" "$RUNNER_TEMP/servidor" "$RUNNER_TEMP/servidor-mal"; mkdir -p "$F"
+          unzip -q "$RUNNER_TEMP/actualitzacio.zip" -d "$F"
+          echo "marca" > "$F/scripts/partitures/marca_prova.txt"
+          echo "LINIA-DE-PROVA" >> "$F/AGENTS.md"
+          "$PY" -m partitures.actualitzar --fes-paquet "$F" 99.0.0 "$RUNNER_TEMP/servidor"
+          echo "partitura de la professora" > "$W/eixida/no-tocar.txt"
+          # sha256 incorrecte: es rebutja i no canvia res
+          cp -R "$RUNNER_TEMP/servidor" "$RUNNER_TEMP/servidor-mal"
+          "$PY" -c "import json,sys;p=sys.argv[1];d=json.load(open(p));d['sha256']='0'*64;json.dump(d,open(p,'w'))" "$RUNNER_TEMP/servidor-mal/versio.json"
+          if ARRANJAMENTS_ACTUALITZACIO_URL="file://$RUNNER_TEMP/servidor-mal" "$HOME/.local/bin/partitures" actualitzar; then echo "Hauria de rebutjar-ho"; exit 1; fi
+          test "$(cat "$D/VERSION")" = "$V0"
+          # sense internet: la icona obri igualment, sense error
+          ARRANJAMENTS_ACTUALITZACIO_URL="file:///no/hi/ha/res" "$PY" -I -m partitures.actualitzar --silenci
+          grep -q "Sense connexió" "$D/actualitzacio.log"
+          test "$(cat "$D/VERSION")" = "$V0"
+          # la mateixa ordre que executa la icona
+          ARRANJAMENTS_ACTUALITZACIO_URL="file://$RUNNER_TEMP/servidor" "$PY" -I -m partitures.actualitzar --silenci
+          test "$(cat "$D/VERSION")" = "99.0.0"
+          test -f "$D/scripts/partitures/marca_prova.txt"
+          test -f "$D/anterior/ESTAT.json"
+          grep -q "LINIA-DE-PROVA" "$W/.opencode/AGENTS.md"
+          test -f "$W/.opencode/NOVETATS.md"
+          test "$(cat "$W/eixida/no-tocar.txt")" = "partitura de la professora"
+          test "$(ls -A "$W" | sort | tr '\n' ' ')" = ".opencode eixida entrada "
+          test "$(ls -A "$W/.opencode" | sort | tr '\n' ' ')" = "AGENTS.md NOVETATS.md opencode.json skills "
+          P() { env -i HOME="$HOME" PATH=/usr/bin:/bin "$HOME/.local/bin/partitures" "$@"; }
+          P versio | grep -q "99.0.0"
+          P comprovar
+          # tornar enrere
+          P actualitzar --torna-enrere
+          test "$(cat "$D/VERSION")" = "$V0"
+          test ! -e "$D/scripts/partitures/marca_prova.txt"
+          ! grep -q "LINIA-DE-PROVA" "$W/.opencode/AGENTS.md"
+          cmp "$W/.opencode/AGENTS.md" "$ARRANJAMENTS/AGENTS.md"
+          test "$(cat "$W/eixida/no-tocar.txt")" = "partitura de la professora"
+          P comprovar
+          # i la icona no torna a posar la versió que s'ha rebutjat
+          ARRANJAMENTS_ACTUALITZACIO_URL="file://$RUNNER_TEMP/servidor" "$PY" -I -m partitures.actualitzar --silenci
+          test "$(cat "$D/VERSION")" = "$V0"
       - name: Sense la carpeta del ZIP, les ordres funcionen des de la carpeta de treball (i MuseScore fa un PDF sense pantalla)
         run: |
           set -x
@@ -527,8 +700,10 @@ jobs:
           NOTES
           if gh release view ultima >/dev/null 2>&1; then
             gh api -X PATCH "repos/$GH_REPO/git/refs/tags/ultima" -f sha="$GITHUB_SHA" -F force=true
-            gh release upload ultima arranjaments.zip --clobber
+            gh release upload ultima arranjaments.zip actualitzacio.zip --clobber
+            # versio.json l'últim: quan apareix, el paquet ja hi és
+            gh release upload ultima versio.json --clobber
             gh release edit ultima --title "Arranjaments" --notes-file notes.md --latest
           else
-            gh release create ultima arranjaments.zip --target "$GITHUB_SHA" --title "Arranjaments" --notes-file notes.md --latest
+            gh release create ultima arranjaments.zip actualitzacio.zip versio.json --target "$GITHUB_SHA" --title "Arranjaments" --notes-file notes.md --latest
           fi
