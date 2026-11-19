@@ -39,6 +39,17 @@ function Progres($t) { if ($Visual) { Write-Host "@@$t" } }
 function IniciPas($id) { $script:PasId = $id; $script:PasMal = $false; Progres "PAS $id inici" }
 function FiPas { if ($script:PasMal) { Progres "PAS $($script:PasId) falla" } else { Progres "PAS $($script:PasId) ok" }; $script:PasId = "" }
 
+# Arquitectura del Windows (no la del procés): un PowerShell x64 dins d'un Windows 11 ARM diu «AMD64» a PROCESSOR_ARCHITECTURE.
+# Primer es pregunta al sistema; si no es pot, PROCESSOR_ARCHITEW6432 (que diu l'arquitectura real des d'un procés emulat).
+# Torna «arm64» o «x64».
+function ArquitecturaWindows {
+    $a = ""
+    try { $a = [string][System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture } catch { }
+    if (-not $a) { $a = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE } }
+    if ($a -match "ARM64") { return "arm64" } else { return "x64" }
+}
+$Arq = ArquitecturaWindows
+
 function Pas($t)   { Write-Host ""; Write-Host "== $t ==" }
 function Fet($t)   { Write-Host "  [fet]    $t" }
 function Falta($t) { $script:PasMal = $true; Write-Host "  [falta]  $t" }
@@ -180,6 +191,7 @@ function PreparaCarpeta {
 }
 
 if ($Prova) { Write-Host "Mode prova: només es comprova què hi ha instal·lat, no es canvia res." }
+if ($Arq -eq "arm64") { Write-Host "Windows per a processadors ARM64: OpenCode s'instal·la en la versió ARM64; MuseScore i Audiveris no en tenen i s'usa la versió x64, que Windows 11 emula." }
 ActualitzaPath
 
 # ---------------------------------------------------------------- 1. uv
@@ -205,8 +217,9 @@ if (TrobaOpenCode) { Fet "OpenCode ja està instal·lat" }
 elseif ($Prova) { Falta "OpenCode" }
 else {
     # Instal·lador NSIS d'un sol clic, per a la usuària actual: /S és silenciós i no demana administrador.
-    $exe = Join-Path $env:TEMP "opencode-desktop-win-x64.exe"
-    if (Baixa "https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-x64.exe" $exe) {
+    # (versió ARM64 en els ordinadors ARM, x64 en els altres)
+    $exe = Join-Path $env:TEMP "opencode-desktop-win-$Arq.exe"
+    if (Baixa "https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-$Arq.exe" $exe) {
         Write-Host "  Instal·lant OpenCode..."
         $p = Start-Process $exe -ArgumentList "/S" -Wait -PassThru
         Remove-Item $exe -Force -ErrorAction SilentlyContinue
@@ -224,6 +237,7 @@ if ($env:MUSESCORE_PATH -or (TrobaMuseScore).Count -gt 0) { Fet "MuseScore ja es
 elseif ($Prova) { Falta "MuseScore 4" }
 else {
     Write-Host "  Buscant l'última versió..."
+    # MuseScore només publica la versió x64; en Windows 11 ARM64 funciona per emulació
     $url = UrlGithub "musescore/MuseScore" '-x86_64\.msi$'
     if ($url -and (InstalMsi $url "MuseScore") -and (TrobaMuseScore).Count -gt 0) { Fet "MuseScore instal·lat (sense MuseHub)" }
     else { Fallada "No he pogut instal·lar MuseScore automàticament." "https://musescore.org/ca/download (opció «sense MuseHub»)" }

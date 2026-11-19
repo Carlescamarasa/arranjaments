@@ -10,7 +10,8 @@
 //   --prova-error       com --prova, però un pas falla
 //   --captura fitxer    guarda una imatge PNG de la finestra en acabar (i una altra «-mig» a mitjan procés)
 //   --registre fitxer   guarda en un fitxer de text tot el que ha escrit l'instal·lador
-//   --carpeta ruta      carpeta del projecte (si no, la carpeta on és este programa)
+//   --carpeta ruta      carpeta del projecte (si no, la carpeta on és este programa o, si no n'hi ha, el projecte que
+//                       porta enganxat al final del fitxer: així és «Arranjaments-Windows.exe», un sol fitxer)
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -18,6 +19,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -80,6 +82,7 @@ namespace Arranjaments
         Process proces;
         bool avisatAMitges;
         public int CodiEixida;
+        bool usaProjecte;     // el projecte és dins d'este fitxer (ZIP enganxat al final)
 
         float f = 1f;  // escala de la pantalla (1 = 96 ppp)
         int angle;
@@ -106,7 +109,12 @@ namespace Arranjaments
             passos.Add(new Pas("icona", "Icona a l'Escriptori", "Per a obrir Arranjaments amb doble clic"));
 
             carpeta = o.Carpeta != null ? o.Carpeta : Path.GetDirectoryName(Application.ExecutablePath);
-            if (!TeInstalador(carpeta)) { carpeta = null; if (!o.Prova) fase = Fase.SenseCarpeta; }
+            if (!TeInstalador(carpeta))
+            {
+                carpeta = null;
+                usaProjecte = ProjecteIntern() != null;
+                if (!usaProjecte && !o.Prova) fase = Fase.SenseCarpeta;
+            }
 
             Text = "Instal·lar Arranjaments";
             Font = new Font("Segoe UI", 9f);
@@ -220,6 +228,79 @@ namespace Arranjaments
                 }
             }
             catch { return null; }
+        }
+
+        // ---------------------------------------------------------------- El projecte dins d'este fitxer
+
+        // «Arranjaments-Windows.exe» és este programa amb un ZIP del projecte enganxat al final, i després 16 bytes:
+        // la mida del ZIP (8 bytes, petit endian) i la marca «ARRPAYL1». Torna {inici, mida} o null si no n'hi ha.
+        static long[] ProjecteIntern()
+        {
+            try
+            {
+                using (FileStream f = new FileStream(Application.ExecutablePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    if (f.Length < 32) return null;
+                    byte[] cua = new byte[16];
+                    f.Seek(-16, SeekOrigin.End);
+                    if (f.Read(cua, 0, 16) != 16) return null;
+                    if (Encoding.ASCII.GetString(cua, 8, 8) != "ARRPAYL1") return null;
+                    long mida = BitConverter.ToInt64(cua, 0);
+                    if (mida <= 0 || mida > f.Length - 16) return null;
+                    return new long[] { f.Length - 16 - mida, mida };
+                }
+            }
+            catch { return null; }
+        }
+
+        static string CarpetaDades()
+        {
+            string d = Environment.GetEnvironmentVariable("ARRANJAMENTS_DADES");
+            if (string.IsNullOrEmpty(d)) d = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arranjaments");
+            return d;
+        }
+
+        static string CarpetaTemporal() { return Path.Combine(CarpetaDades(), "staging"); }
+
+        // Descomprimeix el projecte a una carpeta temporal de %LOCALAPPDATA%\Arranjaments (sempre de nou) i en torna la ruta.
+        static string ExtreuProjecte()
+        {
+            long[] pos = ProjecteIntern();
+            if (pos == null) throw new InvalidDataException("este programa no porta el projecte a dins; torna a baixar-lo");
+            string desti = CarpetaTemporal();
+            EsborraTemporal();
+            Directory.CreateDirectory(desti);
+            byte[] zip = new byte[pos[1]];
+            using (FileStream f = new FileStream(Application.ExecutablePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                f.Seek(pos[0], SeekOrigin.Begin);
+                int llegit = 0;
+                while (llegit < zip.Length) { int n = f.Read(zip, llegit, zip.Length - llegit); if (n <= 0) throw new EndOfStreamException(); llegit += n; }
+            }
+            string arrel = Path.GetFullPath(desti).TrimEnd('\\') + "\\";
+            using (ZipArchive z = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read))
+            {
+                foreach (ZipArchiveEntry e in z.Entries)
+                {
+                    if (e.FullName.EndsWith("/")) continue;
+                    string ruta = Path.GetFullPath(Path.Combine(desti, e.FullName.Replace('/', '\\')));
+                    if (!ruta.StartsWith(arrel, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("ruta no vàlida al paquet: " + e.FullName);
+                    Directory.CreateDirectory(Path.GetDirectoryName(ruta));
+                    using (Stream ent = e.Open())
+                    using (FileStream sor = new FileStream(ruta, FileMode.Create, FileAccess.Write))
+                    {
+                        byte[] b = new byte[81920]; int n;
+                        while ((n = ent.Read(b, 0, b.Length)) > 0) sor.Write(b, 0, n);
+                    }
+                }
+            }
+            if (!TeInstalador(desti)) throw new InvalidDataException("el paquet no és complet; torna a baixar-lo");
+            return desti;
+        }
+
+        static void EsborraTemporal()
+        {
+            try { if (Directory.Exists(CarpetaTemporal())) Directory.Delete(CarpetaTemporal(), true); } catch { }
         }
 
         static bool TeInstalador(string c)
@@ -417,6 +498,19 @@ namespace Arranjaments
             rellotge.Start();
             if (opcions.Prova) { Simula(); return; }
 
+            if (usaProjecte)
+            {
+                estat.Text = "Preparant els fitxers...";
+                estat.Update();
+                try { carpeta = ExtreuProjecte(); }
+                catch (Exception ex)
+                {
+                    RepLinia("No s'han pogut preparar els fitxers de la instal·lació: " + ex.Message);
+                    Acaba(1);
+                    return;
+                }
+            }
+
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo();
@@ -472,6 +566,7 @@ namespace Arranjaments
             if (fase != Fase.Installant) return;
             proces = null;
             rellotge.Stop();
+            if (usaProjecte) { EsborraTemporal(); carpeta = null; }   // la còpia temporal ja no cal
             bool be = codi == 0 && finalRebut == true;
             List<string> fallats = new List<string>();
             foreach (Pas p in passos)

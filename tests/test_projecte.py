@@ -93,9 +93,13 @@ def test_opencode_json_format_v2_amb_les_regles_clau():
 def test_ci_a_windows_i_mac():
     t = _text(ARREL / ".github" / "workflows" / "proves.yml")
     assert "windows-latest" in t and "macos-latest" in t and "pytest" in t and "uv" in t
-    assert "Instalar-Mac.command" in t and "Instalar-Windows.bat" in t
-    # l'instal·lador visual es construeix, es prova en mode automàtic i es publica dins del ZIP
-    for clau in ("construir.sh", "construir.ps1", "--auto", "empaqueta.py", "arranjaments.zip", "gh release"):
+    # un sol fitxer per sistema: es fa, es baixa a una carpeta amb accents i espais i s'obri com la professora
+    for clau in ("Arranjaments-Windows.exe", "Arranjaments-Mac.dmg", "Arranjaments-LliureX.run", "paquets.py", "fes-dmg.sh", "hdiutil attach"):
+        assert clau in t, clau
+    # també a ARM64 (Windows 11 ARM i Linux ARM; macos-latest ja és Apple Silicon)
+    assert "windows-11-arm" in t and "ubuntu-24.04-arm" in t
+    # l'instal·lador visual es construeix, es prova en mode automàtic i es publica
+    for clau in ("construir.sh", "construir.ps1", "--auto", "empaqueta.py", "arranjaments.zip", "actualitzacio.zip", "versio.json", "gh release"):
         assert clau in t, clau
     # carpeta de treball neta, partitures conservades en repetir, i ordres de veritat des de la carpeta de treball
     for clau in ("Documents/Arranjaments", "Application Support/Arranjaments", "no-tocar.txt", "partitures comprovar",
@@ -203,12 +207,16 @@ def test_installadors_creen_la_icona_i_tenen_mode_sense_preguntes():
     assert "osacompile" in mac and "--sense-preguntes" in mac and "opencode-desktop-mac-" in mac
     win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
     assert "WScript.Shell" in win and "GetFolderPath('Desktop')" in win and "-SensePreguntes" in win
-    assert "opencode-desktop-win-x64.exe" in win and '"/S"' in win
+    assert "opencode-desktop-win-$Arq.exe" in win and '"/S"' in win
+    # arquitectura del sistema, no la del procés (un PowerShell x64 dins d'un Windows ARM diu AMD64)
+    assert "OSArchitecture" in win and "PROCESSOR_ARCHITEW6432" in win and "ARM64" in win
 
 
 def test_readme_explica_la_instalacio_amb_doble_clic_i_els_avisos():
     t = _text(ARREL / "README.md")
     for clau in ("Instal·lar Arranjaments", "releases/latest/download/arranjaments.zip", "Instalar-Mac.command",
+                 "releases/latest/download/Arranjaments-Windows.exe", "releases/latest/download/Arranjaments-Mac.dmg",
+                 "releases/latest/download/Arranjaments-LliureX.run", "És executable", "sh Arranjaments-LliureX.run",
                  "`Arranjaments` de Documents", "Application Support/Arranjaments", "%LOCALAPPDATA%\\Arranjaments",
                  "Instalar-Windows.bat", "Obre de tota manera", "Abrir igualmente", "Més informació", "Executa igualment",
                  "Desbloquejar", "Privacitat i seguretat", "Instal·lació manual", "potser", 'id="manual"', 'id="avisos"'):
@@ -330,8 +338,106 @@ def test_el_desktop_de_doble_clic_executa_l_instalador_des_de_qualsevol_carpeta(
     assert shlex.split(escapat.replace("%k", "x"))[0] == "sh"
 
 
-def test_ci_a_linux_i_el_zip_porta_els_fitxers_de_linux():
+def test_ci_a_linux_prova_el_fitxer_run():
     t = _text(ARREL / ".github" / "workflows" / "proves.yml")
-    assert "ubuntu-22.04" in t and "instalar-linux.sh" in t and "instalacio-linux" in t
-    assert "QT_QPA_PLATFORM" in t and "Arranjaments (Linux).desktop" in t
+    assert "ubuntu-22.04" in t and "ubuntu-24.04" in t and "instalacio-linux" in t
+    assert "QT_QPA_PLATFORM" in t and "Arranjaments-LliureX.run" in t
     assert re.search(r"publicar:\n\s+needs: \[[^\]]*instalacio-linux", t)
+
+
+def _paquets():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("paquets", ARREL / "instalacio" / "visual" / "paquets.py")
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def _projecte_de_prova(tmp_path):
+    c = tmp_path / "muntatge"
+    (c / "instalacio").mkdir(parents=True)
+    (c / "instalacio" / "instalar-linux.sh").write_text("#!/bin/bash\necho INSTAL-LA \"$@\"\n")
+    (c / "instalacio" / "Instalar-Linux-Terminal.sh").write_text('#!/bin/bash\ncd "$(dirname "$0")/.." || exit 1\nbash instalacio/instalar-linux.sh "$@"\n')
+    (c / "instalacio" / "Instalar-Linux-Terminal.sh").chmod(0o755)
+    (c / "VERSION").write_text("1.2.3\n")
+    for sobra in ("docs", "tests", ".github"):
+        (c / sobra).mkdir()
+        (c / sobra / "x.txt").write_text("no")
+    (c / "Instal·lar Arranjaments (Linux).desktop").write_text("[Desktop Entry]\n")
+    return c
+
+
+def test_el_paquet_del_projecte_porta_el_necessari_en_zip_i_targz(tmp_path):
+    import tarfile
+    import zipfile
+    m = _paquets()
+    c = _projecte_de_prova(tmp_path)
+    m.projecte(c, tmp_path / "p.zip", tmp_path / "p.tar.gz")
+    with zipfile.ZipFile(tmp_path / "p.zip") as z:
+        noms = {n for n in z.namelist() if not n.endswith("/")}
+    with tarfile.open(tmp_path / "p.tar.gz") as t:
+        noms_tar = {i.name: i for i in t.getmembers()}
+    esperats = {"VERSION", "instalacio/instalar-linux.sh", "instalacio/Instalar-Linux-Terminal.sh"}
+    assert noms == esperats and set(noms_tar) == esperats
+    assert noms_tar["instalacio/Instalar-Linux-Terminal.sh"].mode & 0o111 and noms_tar["VERSION"].uid == 0
+
+
+def test_l_exe_de_windows_porta_el_zip_enganxat_amb_la_marca_al_final(tmp_path):
+    import struct
+    import zipfile
+    m = _paquets()
+    c = _projecte_de_prova(tmp_path)
+    m.projecte(c, tmp_path / "p.zip", tmp_path / "p.tar.gz")
+    (tmp_path / "base.exe").write_bytes(b"MZ" + b"\0" * 100)
+    m.windows(tmp_path / "base.exe", tmp_path / "p.zip", tmp_path / "Arranjaments-Windows.exe")
+    b = (tmp_path / "Arranjaments-Windows.exe").read_bytes()
+    assert b.startswith(b"MZ") and b.endswith(b"ARRPAYL1")
+    mida = struct.unpack("<Q", b[-16:-8])[0]
+    assert mida == (tmp_path / "p.zip").stat().st_size
+    (tmp_path / "dins.zip").write_bytes(b[-16 - mida:-16])
+    assert "VERSION" in zipfile.ZipFile(tmp_path / "dins.zip").namelist()
+    # el programa de Windows llig exactament este format
+    cs = _text(ARREL / "instalacio" / "visual" / "windows" / "InstalarArranjaments.cs")
+    assert '"ARRPAYL1"' in cs and "BitConverter.ToInt64" in cs and "ZipArchive" in cs
+
+
+def test_el_fitxer_run_s_auto_extrau_i_executa_l_instalador(tmp_path):
+    """El guió de capçalera amb el tar.gz enganxat: descomprimeix a staging, executa l'instal·lador i l'esborra."""
+    import shutil
+    import subprocess
+    import sys
+    if sys.platform.startswith("win") or not shutil.which("sh"):
+        pytest.skip("només on hi ha sh")
+    m = _paquets()
+    c = _projecte_de_prova(tmp_path)
+    m.projecte(c, tmp_path / "p.zip", tmp_path / "p.tar.gz")
+    run = tmp_path / "Carpeta àè amb espais" / "Arranjaments-LliureX.run"
+    run.parent.mkdir()
+    m.linux(ARREL / "instalacio" / "visual" / "linux" / "capcalera.sh", tmp_path / "p.tar.gz", run)
+    assert run.stat().st_mode & 0o111
+    dades = tmp_path / "dades àè"
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "ARRANJAMENTS_DADES": str(dades)}
+    r = subprocess.run(["sh", str(run), "--sense-terminal", "--sense-preguntes", "--prova"], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert "INSTAL-LA --sense-preguntes --prova" in r.stdout and "--sense-terminal" not in r.stdout
+    assert not (dades / "staging").exists(), "la còpia temporal s'esborra"
+    # un fitxer trencat no instal·la res i ho diu
+    trencat = tmp_path / "trencat.run"
+    trencat.write_bytes(run.read_bytes()[:-300])
+    r = subprocess.run(["sh", str(trencat), "--sense-terminal"], capture_output=True, text=True, env=env)
+    assert r.returncode == 1 and "trencat" in r.stderr and not (dades / "staging").exists()
+
+
+def test_la_capcalera_del_run_obri_un_terminal_nomes_amb_pantalla_i_sense_terminal():
+    cap = (ARREL / "instalacio" / "visual" / "linux" / "capcalera.sh").read_text(encoding="utf-8")
+    assert cap.startswith("#!/bin/sh") and cap.endswith("\n__ARXIU__\n") and "\r" not in cap
+    assert "konsole" in cap and "[ ! -t 1 ]" in cap and "DISPLAY" in cap and "ARRANJAMENTS_EN_TERMINAL" in cap
+    assert "sudo" not in cap.replace("sense sudo", "")
+
+
+def test_el_dmg_porta_el_projecte_dins_de_l_aplicacio_i_l_app_el_descomprimeix_abans_d_executar():
+    sh = (ARREL / "instalacio" / "visual" / "mac" / "fes-dmg.sh").read_text(encoding="utf-8")
+    assert "Contents/Resources/projecte.tar.gz" in sh and "codesign --force --deep --sign -" in sh and "hdiutil create" in sh and "UDZO" in sh
+    swift = _text(ARREL / "instalacio" / "visual" / "mac" / "InstalarArranjaments.swift")
+    assert 'forResource: "projecte", withExtension: "tar.gz"' in swift and "/usr/bin/tar" in swift
+    assert "Application Support/Arranjaments/staging" in swift

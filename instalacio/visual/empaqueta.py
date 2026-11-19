@@ -16,16 +16,21 @@ import zipfile
 from pathlib import Path
 
 
-def empaqueta(carpeta: Path, eixida: Path, arrel: str = "arranjaments") -> int:
+def empaqueta(carpeta: Path, eixida: Path, arrel: str = "arranjaments", exclou: frozenset = frozenset()) -> int:
+    """arrel buida: els fitxers van a l'arrel del ZIP. exclou: noms d'elements de la carpeta principal que no hi van."""
     fitxers = 0
     with zipfile.ZipFile(eixida, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         for actual, carpetes, noms in os.walk(carpeta):
+            if Path(actual) == Path(carpeta):
+                carpetes[:] = [c for c in carpetes if c not in exclou]
+                noms = [n for n in noms if n not in exclou]
             carpetes.sort()
             for nom in sorted(noms + carpetes):
                 ruta = Path(actual) / nom
                 if ruta.is_symlink():
                     raise SystemExit(f"Enllaç simbòlic no admés: {ruta}")
-                dins = unicodedata.normalize("NFC", f"{arrel}/{ruta.relative_to(carpeta).as_posix()}")
+                rel = ruta.relative_to(carpeta).as_posix()
+                dins = unicodedata.normalize("NFC", f"{arrel}/{rel}" if arrel else rel)
                 mode = ruta.stat().st_mode
                 data = time.localtime(ruta.stat().st_mtime)[:6]
                 if ruta.is_dir():

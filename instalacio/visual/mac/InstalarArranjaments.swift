@@ -8,7 +8,8 @@
 //   --prova-error       com --prova, però un pas falla
 //   --captura fitxer    guarda una imatge PNG de la finestra en acabar (i una altra «-mig» a mitjan procés)
 //   --registre fitxer   guarda en un fitxer de text tot el que ha escrit l'instal·lador
-//   --carpeta ruta      carpeta del projecte (si no, la carpeta on és esta aplicació)
+//   --carpeta ruta      carpeta del projecte (si no, la carpeta on és esta aplicació o, si no n'hi ha, el projecte que
+//                       porta dins de l'aplicació: Contents/Resources/projecte.tar.gz, com a «Arranjaments-Mac.dmg»)
 import AppKit
 import SwiftUI
 
@@ -71,6 +72,16 @@ func carpetaDelProjecte(_ opcions: Opcions) -> URL? {
     return teInstalador(c) ? c : nil
 }
 
+/// El projecte que porta l'aplicació dins (a «Arranjaments-Mac.dmg»). Una aplicació oberta des d'un DMG viu en un volum
+/// de només lectura: per això no s'executa res des d'ací, sinó que primer es descomprimeix a la carpeta de dades de l'usuari.
+func projecteIntern() -> URL? {
+    Bundle.main.url(forResource: "projecte", withExtension: "tar.gz")
+}
+
+func carpetaTemporal() -> URL {
+    FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Arranjaments/staging")
+}
+
 // MARK: - Model
 
 /// Barra de progrés pròpia: el ProgressView del sistema es torna grisa quan la finestra no està activa
@@ -122,6 +133,8 @@ final class Model: ObservableObject {
 
     let opcions: Opcions
     var carpeta: URL?
+    let projecte: URL?          // el projecte de dins de l'aplicació, si no hi ha cap carpeta al costat
+    var usaProjecte = false
     var canviDeMida: (() -> Void)?
     var enAcabar: ((Bool) -> Void)?
     var aMitges: (() -> Void)?
@@ -135,7 +148,9 @@ final class Model: ObservableObject {
     init(opcions: Opcions) {
         self.opcions = opcions
         carpeta = carpetaDelProjecte(opcions)
-        if carpeta == nil && !opcions.prova { fase = .senseCarpeta }
+        projecte = projecteIntern()
+        usaProjecte = carpeta == nil && projecte != nil
+        if carpeta == nil && projecte == nil && !opcions.prova { fase = .senseCarpeta }
     }
 
     var installant: Bool { fase == .installant }
@@ -195,6 +210,14 @@ final class Model: ObservableObject {
         fase = .installant
         canviDeMida?()
         if opcions.prova { simula(); return }
+        if usaProjecte, let projecte = projecte {
+            estat = "Preparant els fitxers..."
+            do { carpeta = try extrauProjecte(projecte) } catch {
+                rep(linia: "No s'han pogut preparar els fitxers de la instal·lació: \(error.localizedDescription)")
+                acaba(codi: 1)
+                return
+            }
+        }
         guard let carpeta = carpeta else { fase = .senseCarpeta; return }
 
         let p = Process()
@@ -227,7 +250,29 @@ final class Model: ObservableObject {
         }
     }
 
+    /// Descomprimeix el projecte de dins de l'aplicació a una carpeta temporal de la carpeta de dades (sempre de nou).
+    private func extrauProjecte(_ arxiu: URL) throws -> URL {
+        let desti = carpetaTemporal()
+        let fm = FileManager.default
+        try? fm.removeItem(at: desti)
+        try fm.createDirectory(at: desti, withIntermediateDirectories: true)
+        let t = Process()
+        t.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        t.arguments = ["-xzf", arxiu.path, "-C", desti.path]
+        t.standardInput = FileHandle.nullDevice
+        try t.run()
+        t.waitUntilExit()
+        guard t.terminationStatus == 0, teInstalador(desti) else {
+            throw NSError(domain: "Arranjaments", code: Int(t.terminationStatus), userInfo: [NSLocalizedDescriptionKey: "el fitxer de l'aplicació està trencat; torna a baixar-lo"])
+        }
+        return desti
+    }
+
     private func acaba(codi: Int32) {
+        if usaProjecte {   // la còpia temporal ja no cal (la instal·lació se n'ha endut el que li feia falta)
+            try? FileManager.default.removeItem(at: carpetaTemporal())
+            carpeta = nil
+        }
         if !pendent.isEmpty { rep(dades: Data([0x0A])) }
         proces = nil
         let be = codi == 0 && finalRebut == true && !passos.contains { $0.estat != .fet }
