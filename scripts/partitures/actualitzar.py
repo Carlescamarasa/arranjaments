@@ -126,7 +126,7 @@ def _treball(dades: Path) -> Path | None:
             return t
     except (OSError, ValueError):
         pass
-    for d in ("Documents", "Documentos", "OneDrive/Documents", "OneDrive/Documentos"):
+    for d in ("Documents", "Documentos", "OneDrive/Documents", "OneDrive/Documentos", ""):   # «» = la carpeta d'usuària
         t = Path.home() / d / "Arranjaments"
         if (t / ".opencode").is_dir():
             return t
@@ -481,6 +481,34 @@ def sync_uv(dades: Path) -> bool:
     return r.returncode == 0
 
 
+def python_de(dades: Path) -> Path | None:
+    for rel in (".venv/bin/python", ".venv/Scripts/python.exe"):
+        if (dades / rel).is_file():
+            return dades / rel
+    return None
+
+
+def prova_de_fum(dades: Path) -> bool:
+    """Després de canviar les peces: les eines noves s'han de poder importar (python -I -c «import ...»).
+
+    Si el Python de les eines no hi és (instal·lació sense entorn, com a les proves), no hi ha res a provar."""
+    py = python_de(dades)
+    if py is None:
+        return True
+    kw = {}
+    if sys.platform == "win32":
+        kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    try:
+        r = subprocess.run([str(py), "-I", "-c", "import partitures.cli, partitures.actualitzar"], cwd=dades,
+                           capture_output=True, text=True, timeout=120, **kw)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        registra(dades, f"La prova de les eines noves ha fallat: {type(e).__name__}: {e}")
+        return False
+    if r.returncode != 0:
+        registra(dades, f"La prova de les eines noves ha fallat ({r.returncode}): {(r.stderr or '')[-400:]}")
+    return r.returncode == 0
+
+
 def _llig(ruta: Path) -> bytes | None:
     try:
         return ruta.read_bytes()
@@ -491,14 +519,14 @@ def _llig(ruta: Path) -> bytes | None:
 # ---------------------------------------------------------------- l'actualització
 
 def actualitza(inst: Instalacio, *, forca: bool = False, sync: Callable[[Path], bool] = sync_uv,
-               ara: Callable[[], float] = time.time) -> Resultat:
+               ara: Callable[[], float] = time.time, fum: Callable[[Path], bool] = prova_de_fum) -> Resultat:
     """Comprova si hi ha versió nova i l'aplica. Mai llança excepcions."""
     dades = inst.dades
     try:
         with _Pany(dades) as pany:
             if not pany.te:
                 return Resultat("ocupat", "Ja s'està actualitzant.")
-            return _actualitza(inst, forca, sync, ara)
+            return _actualitza(inst, forca, sync, ara, fum)
     except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
         registra(dades, f"Sense connexió o sense resposta ({type(e).__name__}: {e}). Es continua amb la versió actual.")
         return Resultat("sense_xarxa", "No he pogut comprovar si hi ha novetats (sense internet?). Continues amb la versió actual.")
@@ -507,7 +535,7 @@ def actualitza(inst: Instalacio, *, forca: bool = False, sync: Callable[[Path], 
         return Resultat("error", "No he pogut actualitzar. Continues amb la versió actual.")
 
 
-def _actualitza(inst: Instalacio, forca: bool, sync, ara) -> Resultat:
+def _actualitza(inst: Instalacio, forca: bool, sync, ara, fum) -> Resultat:
     dades = inst.dades
     local = versio_de(dades)
     estat = _llig_estat(dades)
@@ -564,6 +592,11 @@ def _actualitza(inst: Instalacio, forca: bool, sync, ara) -> Resultat:
             if lock_vell is not None:
                 sync(dades)
             return Resultat("error", "No he pogut actualitzar (les peces noves no s'han preparat). Continues amb la versió actual.")
+        if not fum(dades):
+            registra(dades, f"Les eines de la versió {remot['versio']} no s'han pogut provar. Es torna a la versió anterior.")
+            _restaura(inst, sync)
+            _desa_estat(dades, omet_versio=remot["versio"])
+            return Resultat("error", "La versió nova no funcionava i he tornat a l'anterior. Continues amb la versió actual.")
     finally:
         _esborra(treb)
         if preparat_treball is not None:
