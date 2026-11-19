@@ -33,7 +33,7 @@ Si tornes a obrir «Instal·lar Arranjaments» (per exemple, amb un ZIP més nou
 - Windows: OpenCode s'instal·la sense permisos especials, però **MuseScore demana permís d'administrador** (finestra blava, prem «Sí»), perquè s'instal·la per a tots els usuaris de l'ordinador. Si la finestra blava no apareix, mira si parpelleja una icona a la barra de tasques i prem-la. Si l'ordinador és de la feina o del centre i no et deixa, consulta-ho amb qui l'administra.
 - Si alguna cosa no es pot instal·lar sola, la finestra t'ho diu i té un botó amb els passos per a fer-ho a mà.
 
-**Pas 3. Fes doble clic a la icona «Arranjaments» de l'Escriptori.** S'obri OpenCode. **La primera vegada**, obri la teua carpeta de treball: botó «Obrir projecte» (en anglés, «Open project») i selecciona la carpeta **`Arranjaments` de Documents**. Les vegades següents ja apareix a la llista de projectes recents. Després escriu el que vols, per exemple: «Busca'm un coral de Bach». Ja està.
+**Pas 3. Fes doble clic a la icona «Arranjaments» de l'Escriptori.** S'obri OpenCode. **La primera vegada**, obri la teua carpeta de treball: botó «Afegeix projecte» (en castellà, «Añadir proyecto»; en anglés, «Add project») i selecciona la carpeta **`Arranjaments` de Documents**. Les vegades següents ja apareix a la llista de projectes recents. Després escriu el que vols, per exemple: «Busca'm un coral de Bach». Ja està.
 
 (Ara per ara OpenCode no té cap manera documentada d'obrir-se directament dins d'una carpeta, per això la icona només obri l'aplicació i cal triar la carpeta una vegada.)
 
@@ -43,6 +43,142 @@ Els models gratuïts ja venen preparats: no cal compte ni clau. Les partitures q
 
 **Privacitat.** Tot el que escrius a l'ajudant viatja a l'empresa que ofereix el model, i els models gratuïts poden fer servir les converses per a entrenar-se. No escrigues mai noms d'alumnes ni dades personals.
 
+<a id="pas-a-pas"></a>
+
+## Instal·lació pas a pas
+
+El mateix d'abans, amb imatges. Les pantalles del sistema (navegador, carpetes, avisos) són recreacions i poden canviar un poc segons la versió i l'idioma de l'ordinador. Les de l'instal·lador i les d'OpenCode són captures reals; les de Windows mostren una conversa feta en un Mac, amb les rutes adaptades.
+
+<details>
+<summary><strong>Mac</strong></summary>
+
+1. Baixa `arranjaments.zip` des de l'enllaç de dalt.
+
+   ![Pas 1](docs/captures/mac/01-baixa-zip.png)
+
+2. Obri la carpeta Descàrregues. Si el Mac no ha descomprimit el ZIP, fes-hi doble clic. Entra a la carpeta `arranjaments`.
+
+   ![Pas 2](docs/captures/mac/02-descarregues.png)
+
+3. Fes doble clic a «Instal·lar Arranjaments» (la icona del pentagrama).
+
+   ![Pas 3](docs/captures/mac/03-carpeta-instalador.png)
+
+4. La primera vegada, el Mac avisa que no ha pogut verificar l'aplicació. Prem «Fet». No la mogues a la paperera.
+
+   ![Pas 4](docs/captures/mac/04-avis-no-verificat.png)
+
+5. Obri «Configuració del Sistema», «Privacitat i seguretat», baixa fins a «Seguretat» i prem «Obre de tota manera». Et demanarà la contrasenya de l'ordinador.
+
+   ![Pas 5](docs/captures/mac/05-obre-de-tota-manera.png)
+
+6. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba.
+
+   ![Pas 6](docs/captures/mac/06-instalant.png)
+
+7. Quan diu «Tot a punt», ja està instal·lat.
+
+   ![Pas 7](docs/captures/mac/07-tot-a-punt.png)
+
+8. Fes doble clic a la icona «Arranjaments» de l'Escriptori.
+
+   ![Pas 8](docs/captures/mac/08-icona-escriptori.png)
+
+9. S'obri OpenCode. La primera vegada, prem «Afegeix projecte».
+
+   ![Pas 9](docs/captures/mac/09-afegeix-projecte.png)
+
+10. Tria la carpeta `Arranjaments` de Documents i prem «Obre».
+
+   ![Pas 10](docs/captures/mac/10-tria-carpeta.png)
+
+11. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
+
+   ![Pas 11](docs/captures/mac/11-escriu-peticio.png)
+
+12. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
+
+   ![Pas 12](docs/captures/mac/12-pregunta.png)
+
+13. Quan acaba, et diu què ha fet i on són els fitxers.
+
+   ![Pas 13](docs/captures/mac/13-resultat.png)
+
+14. Els PDF són a Documents, `Arranjaments`, `eixida`.
+
+   ![Pas 14](docs/captures/mac/14-carpeta-eixida.png)
+
+15. Si un model deixa de contestar, prem el nom del model (o escriu `/models`) i tria'n un altre de gratuït.
+
+   ![Pas 15](docs/captures/mac/15-models.png)
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+1. Baixa `arranjaments.zip` des de l'enllaç de dalt.
+
+   ![Pas 1](docs/captures/windows/01-baixa-zip.png)
+
+2. A la carpeta Baixades, fes clic dret al ZIP, «Propietats», marca «Desbloquejar», «Aplica» i «D'acord».
+
+   ![Pas 2](docs/captures/windows/02-desbloqueja.png)
+
+3. Torna a fer clic dret al ZIP i tria «Extreure-ho tot».
+
+   ![Pas 3](docs/captures/windows/03-extreu.png)
+
+4. Entra a la carpeta `arranjaments` i fes doble clic a «Instal·lar Arranjaments» (la icona del pentagrama).
+
+   ![Pas 4](docs/captures/windows/04-carpeta-instalador.png)
+
+5. Si apareix la finestra blava «Windows ha protegit el teu PC», prem «Més informació» i després «Executa igualment».
+
+   ![Pas 5](docs/captures/windows/05-smartscreen.png)
+
+6. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba. Si MuseScore demana permís (finestra blava), prem «Sí».
+
+   ![Pas 6](docs/captures/windows/06-instalant.png)
+
+7. Quan diu «Tot a punt», ja està instal·lat.
+
+   ![Pas 7](docs/captures/windows/07-tot-a-punt.png)
+
+8. Fes doble clic a la icona «Arranjaments» de l'Escriptori.
+
+   ![Pas 8](docs/captures/windows/08-icona-escriptori.png)
+
+9. S'obri OpenCode. La primera vegada, prem «Afegeix projecte».
+
+   ![Pas 9](docs/captures/windows/09-afegeix-projecte.png)
+
+10. Tria la carpeta `Arranjaments` de Documents i prem «Selecciona una carpeta».
+
+   ![Pas 10](docs/captures/windows/10-tria-carpeta.png)
+
+11. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
+
+   ![Pas 11](docs/captures/windows/11-escriu-peticio.png)
+
+12. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
+
+   ![Pas 12](docs/captures/windows/12-pregunta.png)
+
+13. Quan acaba, et diu què ha fet i on són els fitxers.
+
+   ![Pas 13](docs/captures/windows/13-resultat.png)
+
+14. Els PDF són a Documents, `Arranjaments`, `eixida`.
+
+   ![Pas 14](docs/captures/windows/14-carpeta-eixida.png)
+
+15. Si un model deixa de contestar, prem el nom del model (o escriu `/models`) i tria'n un altre de gratuït.
+
+   ![Pas 15](docs/captures/windows/15-models.png)
+
+</details>
+
 <a id="linux"></a>
 
 ## LliureX i altres Linux (Ubuntu)
@@ -51,7 +187,7 @@ Sense finestra bonica, però amb la mateixa instal·lació i **sense contrasenya
 
 1. Baixa i descomprimeix [arranjaments.zip](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/arranjaments.zip) (clic dret, «Extraure ací»). La carpeta bona és on veus `README.md` i `instalacio`.
 2. Fes doble clic a **`Instal·lar Arranjaments (Linux).desktop`**. S'obri una finestra de Terminal amb el progrés (és normal) i, quan acaba, diu «Tot a punt». Si el sistema pregunta si el vols executar o confiar-hi, accepta. Tarda uns minuts (baixa OpenCode i MuseScore).
-3. Obri la icona **«Arranjaments»** de l'Escriptori (o del menú d'aplicacions), i després com al pas 3 de dalt: «Obrir projecte» i tria la carpeta `Arranjaments` de Documents.
+3. Obri la icona **«Arranjaments»** de l'Escriptori (o del menú d'aplicacions), i després com al pas 3 de dalt: «Afegeix projecte» i tria la carpeta `Arranjaments` de Documents.
 
 Si el doble clic no fa res: obri la carpeta amb el gestor de fitxers, prem **F4** (s'obri un terminal a baix, ja dins de la carpeta) i escriu `bash instalacio/instalar-linux.sh`. Fa el mateix. Al gestor de fitxers de KDE (Dolphin), fer doble clic en un fitxer `.sh` no obri cap terminal (només pregunta si s'executa o s'obri), per això l'entrada d'ací és un fitxer `.desktop`, que sí que ho fa.
 
@@ -151,7 +287,7 @@ En este repositori (per a qui vol canviar el programa):
 2. **MuseScore** (gratuït; potser ja el tens): https://musescore.org/ca/download. Tria l'opció «sense MuseHub» (MuseScore Studio «without MuseHub»), que és l'aplicació sola.
 3. **Linux:** OpenCode, «Linux (AppImage)» a https://opencode.ai/download, i MuseScore, l'AppImage de https://musescore.org/ca/download. Per a les eines i la carpeta: `bash "instalacio/instalar-linux.sh" --nomes eines` i `--nomes carpeta` (cal [uv](https://docs.astral.sh/uv/getting-started/installation/)).
 4. **Les eines musicals i la carpeta de treball (Mac i Windows):** instal·la [uv](https://docs.astral.sh/uv/getting-started/installation/) i després executa l'instal·lador només per a estes dues coses. Mac: `bash "instalacio/instalar-mac.sh" --nomes eines` i `bash "instalacio/instalar-mac.sh" --nomes carpeta`. Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes eines` i el mateix amb `-Nomes carpeta`.
-5. Obri OpenCode, tria «Obrir projecte» i selecciona la carpeta `Arranjaments` de Documents.
+5. Obri OpenCode, tria «Afegeix projecte» i selecciona la carpeta `Arranjaments` de Documents.
 
 ## Llicència
 
