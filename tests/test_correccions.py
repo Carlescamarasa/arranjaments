@@ -444,9 +444,22 @@ def mscore_fals(monkeypatch):
     def fals(mscore, origen, desti, temps_maxim=300):
         crides.append(Path(desti))
         Path(desti).parent.mkdir(parents=True, exist_ok=True)
-        Path(desti).write_bytes(b"x" * (len(crides) + 3))
+        if Path(desti).suffix == ".mscz":
+            # un .mscz de veritat és un zip amb l'estil: el codi hi escriu la mida de pauta i els multicompàs
+            import zipfile
+            with zipfile.ZipFile(desti, "w") as z:
+                z.writestr("score_style.mss", '<?xml version="1.0"?><museScore version="4.70"><Style/></museScore>')
+                z.writestr("x" * (len(crides) + 3) + ".mscx", "x")
+        else:
+            Path(desti).write_bytes(b"x" * (len(crides) + 3))
+
+    def fals_posicions(mscore, origen, pdf, mpos, temps_maxim=300):
+        Path(pdf).write_bytes(b"pdf")
+        Path(mpos).write_text('<score><elements><element id="0" x="0" y="0" sx="1" sy="1" page="0"></element>'
+                              '</elements></score>', encoding="utf-8")
     monkeypatch.setattr(eines, "trobar_musescore", lambda: "/fals/mscore")
     monkeypatch.setattr(externs, "_mscore_a_pdf", fals)
+    monkeypatch.setattr(externs, "_mscore_pdf_amb_posicions", fals_posicions)
     return crides
 
 

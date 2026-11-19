@@ -142,6 +142,8 @@ def cmd_exportar(a):
     print(f"Guió: {rutes.relativa(r['guio'])}")
     for p in r["parts"]:
         print(f"Particel·la: {rutes.relativa(p)}")
+    for l in r.get("informe", []):
+        print(l)
     if r["mscz"]:
         print(f"Fitxer de MuseScore: {rutes.relativa(r['mscz'])}")
     _actual(a.fitxer)   # per a continuar treballant, la partitura editable, no els PDF

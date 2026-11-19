@@ -76,6 +76,8 @@ def desar(score: stream.Score, ruta: str | Path) -> Path:
     temp = ruta.with_name(f".tmp-{os.getpid()}-{ruta.name}")
     try:
         score.write("musicxml", fp=str(temp))
+        from . import cues
+        cues.silencia_cues_xml(temp)    # les notes petites (cues) no sonen al reproduir
         os.replace(temp, ruta)
     finally:
         if temp.exists():
@@ -217,6 +219,8 @@ def _unitat(score: stream.Score, num0: int) -> list[int]:
 
 def parts_separades(score: stream.Score) -> list[tuple[str, stream.Score]]:
     """Una partitura per cada instrument (el piano, amb els dos pentagrames). Per a exportar les parts."""
+    from . import parts as _parts
+    lletres = _parts.lletres_de(score)   # les lletres d'assaig van al guió només a la pauta de dalt: cada part les copia
     res = []
     for num, u in enumerate(unitats(score)):
         s = stream.Score()
@@ -230,6 +234,7 @@ def parts_separades(score: stream.Score) -> list[tuple[str, stream.Score]]:
             s.insert(0, c)
         if len(copies) > 1:
             s.insert(0, layout.StaffGroup(copies, symbol="brace"))
+        _parts.copia_lletres(lletres, s)
         res.append((nom_part(score.parts[u[0]], u[0]), s))
     return res
 

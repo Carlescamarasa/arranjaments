@@ -21,7 +21,8 @@ from music21.common.numberTools import opFrac
 
 from . import gravat
 from . import instruments as inst
-from . import musica
+from . import cues, musica
+from . import parts as _parts
 from .errors import ErrorUsuari
 
 ESTILS = ("ragtime", "swing", "pop", "rock", "marxa", "vals", "classic")
@@ -1073,11 +1074,12 @@ def _vestir(part: stream.Part, instr: inst.Instrument, k_escrit, ks_concert: key
     return part
 
 
+# Ordre del guió segons Gould SCO-04: fusta, metall, percussió i làmines, guitarra i teclat, cordes al final.
 ORDRE_FAMILIES = ["flauti", "flauta", "oboe", "corn-angles", "clarinet-sib", "clarinet-la", "clarinet-baix",
                   "clarinet-contrabaix", "saxo-soprano", "saxo-alt", "saxo-tenor", "saxo-bari", "fagot", "contrafagot",
                   "trompa-fa", "trompeta-sib", "trompeta-do", "fliscorn-sib", "trombo", "trombo-baix", "bombardi", "tuba",
                   "carillo", "xilofon", "xilofon-orff", "metalofon", "vibrafon", "marimba", "bateria", "caixa",
-                  "percussio", "violi", "viola", "violoncel", "contrabaix", "guitarra", "piano"]
+                  "percussio", "guitarra", "piano", "violi", "viola", "violoncel", "contrabaix"]
 
 
 def _ordre(r: Rol) -> tuple:
@@ -1906,6 +1908,14 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
 
 # --------------------------------------------------------------------------- ordre principal
 
+def _posar_cues(construides, curs, seccions, rols) -> list:
+    """Cues d'orientació i d'instrument absent (paquet 12). La lògica és a `cues.py`."""
+    rang = lambda instr: _rang_concert(instr, curs)
+    fetes = cues.cues_orientacio(construides, rang, es_elemental(curs), seccions, rols)
+    fetes += cues.cues_absents(construides, rang, seccions, rols, article=_amb_article)
+    return fetes
+
+
 def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, curs: str | None = None,
              compassos_sel: tuple[int, int] | None = None, melodia_part: int | None = None,
              a_tonalitat: str | None = None, simplifica: bool = False, bordo: bool = False,
@@ -2008,6 +2018,7 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
                                                           informe)
     else:
         arranjar.pla = []
+        seccions = dividir_seccions(compassos, evs, segs, k)   # només per a les lletres d'assaig
         construides, linies, baix_ev = _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe)
 
     construides.sort(key=lambda x: _ordre(x[0]))
@@ -2021,6 +2032,7 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
     # els acords van damunt de la (primera) melodia, posats en so real ABANS d'escriure la part: si l'instrument
     # transporta, es transporten amb les notes (Fa -> Sol per a la trompeta en Sib, Fa -> Do per a la trompa en Fa)
     mel_simbols = next(r for r, _, _ in construides if r.rol == "melodia")
+    cues_fetes = _posar_cues(construides, curs, seccions, rols)   # en so real: es transposen al vestir cada part
     for n, (r, pp, _) in enumerate(construides):
         if not r.instr.percussio:
             if r is mel_simbols:
@@ -2044,9 +2056,17 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
             res.insert(0, p)
         if len(pp) > 1:
             res.insert(0, layout.StaffGroup(pp, name=r.instr.nom, abbreviation=r.instr.abreviatura, symbol="brace"))
+    lletres = _parts.posar_lletres(construides[0][1][0], _parts.inicis_seccio(seccions), compassos[0].anacrusi)
+    _parts.posar_claudators(res, _parts.grups_claudators([(r.instr.clau, pp) for r, pp, _ in construides]))
+    _parts.desa_nivell(res, curs)
 
     # ----- informe
     informe += pla
+    if lletres:
+        informe.append(_parts.text_lletres(lletres, compassos))
+    if cues_fetes:
+        informe.append("Cues (notes petites):")
+        informe += cues.text_cues(cues_fetes)
     informe += _text_acords(segs, compassos)
     informe += avisos_acords
     informe.append("Parts:")
