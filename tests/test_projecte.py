@@ -496,8 +496,30 @@ def test_la_icona_de_windows_obri_opencode_encara_que_l_actualitzador_estiga_tre
 def test_el_guio_de_la_conversa_i_l_ordre_arranjament():
     t = _text(ARREL / "AGENTS.md")
     assert t.index("# El guió de la conversa") < t.index("# Com treballes")
-    for clau in ("partitures peces", "partitures peces --eixida", "partitures carpeta", "Pregunta 1 de 4", "a) obrir la carpeta"):
+    for clau in ("partitures peces", "partitures peces --eixida", "partitures carpeta", "`question`", "Obrir la carpeta (recomanat)",
+                 "Tinc el meu fitxer", "partitures suggereix", "UNA sola crida"):
         assert clau in t, clau
+    assert "Pregunta 1 de" not in t and not re.search(r"(?m)^\s*a\) |Què vols fer\? a\)", t), "res de preguntes escrites a), b), c)"
     assert "c) Passar un PDF" not in t, "el PDF no s'ofereix als menús"
     cfg = json.loads(_text(ARREL / "opencode.json"))
-    assert "AGENTS.md" in cfg["commands"]["arranjament"]["template"]
+    assert "AGENTS.md" in cfg["commands"]["arranjament"]["template"] and "question" in cfg["commands"]["arranjament"]["template"]
+    regles = [(r["action"], r["resource"], r["effect"]) for r in cfg["permissions"]]
+    assert ("question", "*", "allow") in regles
+    # el web sense permís només per a les fonts lliures; la regla general («ask») va abans
+    permesos = [r for a, r, e in regles if a == "webfetch" and e == "allow"]
+    assert permesos and all(any(d in r for d in ("cpdl.org", "mutopiaproject.org", "OpenScore")) for r in permesos)
+    assert regles.index(("webfetch", "*", "ask")) < min(regles.index(("webfetch", r, "allow")) for r in permesos)
+
+
+def test_la_peca_es_tria_amb_suggeriments_dinamics_i_sempre_deixa_portar_el_fitxer():
+    sk = _text(ARREL / ".opencode" / "skills" / "buscar-partitura" / "SKILL.md")
+    agents = _text(ARREL / "AGENTS.md")
+    for clau in ("partitures suggereix", "NOMÉS si encaixen", "Tinc el meu fitxer", "partitures descarrega", "webfetch",
+                 "OpenScore", "CPDL", "Mutopia", "captcha"):
+        assert clau in sk, clau
+    assert "mai només de `entrada/`" in agents and "no insisteixes" in agents and "Tinc el meu fitxer" in agents
+    # cada skill amb pregunta d'opcions usa l'eina question i no lletres escrites
+    for nom in ("arranjar", "buscar-partitura", "biblioteca", "exportar"):
+        t = _text(ARREL / ".opencode" / "skills" / nom / "SKILL.md")
+        assert "question" in t, nom
+        assert "Pregunta 1 de" not in t and "a) obrir la carpeta" not in t, nom

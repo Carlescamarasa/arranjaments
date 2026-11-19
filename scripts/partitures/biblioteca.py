@@ -861,7 +861,12 @@ def copia(n: int) -> Path:
         raise ErrorUsuari("Primer cal fer una cerca: partitures biblioteca cerca <paraules>.")
     if not 1 <= n <= len(llista):
         raise ErrorUsuari(f"El número {n} no coincideix amb cap resultat de l'última cerca (de l'1 al {len(llista)}).")
-    origen = (arrel / llista[n - 1]).resolve()
+    return copia_fitxer(arrel, llista[n - 1])
+
+
+def copia_fitxer(arrel: Path, rel: str) -> Path:
+    """Copia un fitxer de la biblioteca (ruta relativa) a entrada/; la biblioteca no es toca."""
+    origen = (arrel / rel).resolve()
     try:
         origen.relative_to(arrel.resolve())
     except ValueError:

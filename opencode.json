@@ -41,13 +41,21 @@
     { "action": "shell", "resource": "git push*", "effect": "deny" },
     { "action": "edit", "resource": "*", "effect": "deny" },
     { "action": "webfetch", "resource": "*", "effect": "ask" },
+    { "action": "webfetch", "resource": "https://www.cpdl.org/*", "effect": "allow" },
+    { "action": "webfetch", "resource": "https://cpdl.org/*", "effect": "allow" },
+    { "action": "webfetch", "resource": "https://www.mutopiaproject.org/*", "effect": "allow" },
+    { "action": "webfetch", "resource": "https://mutopiaproject.org/*", "effect": "allow" },
+    { "action": "webfetch", "resource": "https://github.com/OpenScore/*", "effect": "allow" },
+    { "action": "webfetch", "resource": "https://api.github.com/repos/OpenScore/*", "effect": "allow" },
+    { "action": "webfetch", "resource": "https://raw.githubusercontent.com/OpenScore/*", "effect": "allow" },
+    { "action": "question", "resource": "*", "effect": "allow" },
     { "action": "external_directory", "resource": "*", "effect": "ask" },
     { "action": "skill", "resource": "*", "effect": "allow" }
   ],
   "commands": {
     "arranjament": {
       "description": "Fer un arranjament, pas a pas, fins a tindre el guió i les particel·les",
-      "template": "Comença el guió de la conversa d'AGENTS.md des del principi: saluda en una línia i mostra el menú de dues opcions (a, b). $ARGUMENTS"
+      "template": "Comença el guió de la conversa d'AGENTS.md des del principi: saluda en una línia i fes la pregunta del menú inicial amb l'eina question (un selector amb dues opcions). Si ja diu què vol, ves directe al camí. $ARGUMENTS"
     }
   }
 }

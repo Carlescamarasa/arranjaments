@@ -176,6 +176,24 @@ def cmd_corpus(a):
         _actual(musica.desar(s, desti))
 
 
+def cmd_suggereix(a):
+    from . import suggeriments as sug
+    if a.copia:
+        _actual(sug.copia(int(a.copia)))
+        return
+    text = " ".join(a.text).strip()
+    if not text:
+        raise ErrorUsuari("Digues què busques, per exemple: partitures suggereix \"trio de canyes clàssic\" --nivell \"4t elemental\"")
+    candidates, linies = sug.suggereix(text, a.nivell, a.instruments, a.maxim)
+    sug.desa_ultims(candidates)
+    print("\n".join(linies))
+
+
+def cmd_descarrega(a):
+    from . import baixades
+    _actual(baixades.descarrega(a.url))
+
+
 EXT_PARTITURA = (".musicxml", ".xml", ".mxl", ".mscz", ".mscx")
 
 
@@ -471,6 +489,18 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--copia", help="Número del resultat que vols copiar a entrada/")
     s.add_argument("--eixida", help="Ruta de la còpia, dins d'entrada/")
     s.set_defaults(f=cmd_corpus)
+
+    s = sub.add_parser("suggereix", help="Suggereix peces reals (biblioteca, corpus, entrada) per a una petició lliure")
+    s.add_argument("text", nargs="*", help="La petició tal com la diu la persona (època, estil, compositor...)")
+    s.add_argument("--nivell", help="Curs, per exemple «4t elemental»")
+    s.add_argument("--instruments", help="Els instruments, per exemple «oboè, clarinet, fagot»")
+    s.add_argument("--maxim", type=int, default=6)
+    s.add_argument("--copia", help="Número del suggeriment que vols deixar a entrada/")
+    s.set_defaults(f=cmd_suggereix)
+
+    s = sub.add_parser("descarrega", help="Baixa un MusicXML o fitxer de MuseScore lliure (CPDL, Mutopia, OpenScore) a entrada/")
+    s.add_argument("url", help="Adreça https del fitxer")
+    s.set_defaults(f=cmd_descarrega)
     return p
 
 

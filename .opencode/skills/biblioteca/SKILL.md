@@ -7,12 +7,12 @@ description: Cerca partitures a la biblioteca compartida del professorat (carpet
 
 És una carpeta «Biblioteca d'arranjaments» de Teams que cada docent té dins de la seua carpeta OneDrive. Les eines només la LLIGEN: mai hi escriuen ni hi esborren res, i tu tampoc.
 
-## Procediment (sense preguntes extra: és part de la pregunta 1 d'«arranjament nou»)
+## Procediment (sense preguntes extra: és part de la pregunta de la peça d'«arranjament nou», amb `partitures suggereix`, que ja mira la biblioteca)
 
-1. Quan et demanen una obra, cerca PRIMER ací: `partitures biblioteca cerca <paraules>`, amb `--nivell`, `--estil` o `--instrument` només si la persona ja els ha dit (mai els preguntes ara). Mostra els resultats numerats tal com ixen (com a molt 5: títol, tonalitat, compàs, parts) i pregunta el número.
+1. Quan et demanen una obra, cerca PRIMER ací: `partitures biblioteca cerca <paraules>`, amb `--nivell`, `--estil` o `--instrument` només si la persona ja els ha dit (mai els preguntes ara). Si en trobes diversos, ofereix-los amb l'eina `question` (header «Quina peça?», com a molt 4 opcions: títol curt i, a la descripció, tonalitat, compàs i parts; la primera, «(recomanat)»); si només n'hi ha una, usa-la i digues-ho. Només si la persona ha demanat veure la llista, mostra-la numerada.
 2. Si l'ordre diu «No hi ha biblioteca compartida en este ordinador», passa a la skill `buscar-partitura` (corpus lliure) SENSE explicar res de OneDrive ni de Teams. Només si la persona pregunta per la biblioteca, ves al pas «Si pregunta per la biblioteca».
 3. Si diu que l'índex està buit, executa `partitures biblioteca actualitza`. Si diu que en queden per analitzar, torna-la a executar (fins a 2 vegades) i, si encara en queden, deixa que cerque igualment pels noms. Si diu que alguns fitxers no s'han pogut llegir (sense connexió o encara no baixats), no passa res: es troben pel nom.
-4. Per a usar-ne una: `partitures biblioteca copia <número>`; el fitxer queda a `entrada/` i continues SENSE parar amb la skill `arranjar` (pregunta 2). Si és un PDF, skill `importar-pdf` (i revisar amb MuseScore). Si és de MuseScore, `partitures obrir` i exportar a MusicXML.
+4. Per a usar-ne una: `partitures biblioteca copia <número>` (o, si ve de `partitures suggereix`, `partitures suggereix --copia <número>`); el fitxer queda a `entrada/` i continues SENSE parar amb la skill `arranjar` (rols, estil i curs). Si és un PDF, skill `importar-pdf` (i revisar amb MuseScore). Si és de MuseScore, `partitures obrir` i exportar a MusicXML.
 5. Si no hi ha res a la biblioteca, ho dius i continues amb el corpus lliure.
 
 ## Si pregunta per la biblioteca, o no la troba i vol arreglar-ho
