@@ -20,6 +20,7 @@ from music21 import (bar, chord, clef, expressions, harmony, instrument as m21i,
 from music21.common.numberTools import opFrac
 
 from . import gravat
+from . import contracant, simplificar
 from . import instruments as inst
 from . import cues, musica
 from . import parts as _parts
@@ -564,8 +565,10 @@ def _rang_concert(instr, curs):
 
 # --------------------------------------------------------------------------- rols
 
-def rol_melodia(evs: list[Ev], instr: inst.Instrument, curs: str | None) -> tuple[list[Ev], int]:
-    """La melodia, a l'octava on més notes cauen dins de la zona còmoda de l'instrument."""
+def rol_melodia(evs: list[Ev], instr: inst.Instrument, curs: str | None,
+                compassos: list[Compas] | None = None) -> tuple[list[Ev], int]:
+    """La melodia, a l'octava on més notes cauen dins de la zona còmoda de l'instrument; després, les frases que encara
+    en surten canvien d'octava senceres (mai a mig motiu)."""
     lo, hi = _rang_concert(instr, curs)
     ab_lo, ab_hi = (x + instr.semitons() for x in inst.rang_midi(instr.abast))
     mids = [e.alt[0].midi for e in evs if e.alt]
@@ -580,7 +583,9 @@ def rol_melodia(evs: list[Ev], instr: inst.Instrument, curs: str | None) -> tupl
         return (-fora, dins, -abs(mitja + sh - centre), sh == 0)   # mai fora d'abast per a guanyar zona còmoda
 
     sh = max((-24, -12, 0, 12, 24), key=nota)
-    return [Ev(e.ini, e.dur, [_octava(x, sh // 12) for x in e.alt]) for e in evs], sh
+    res = [Ev(e.ini, e.dur, [_octava(x, sh // 12) for x in e.alt]) for e in evs]
+    res, _ = simplificar.octava_per_frases(res, lo, hi, ab_lo, ab_hi, compassos)
+    return res, sh
 
 
 def _octava(p: pitch.Pitch, n: int) -> pitch.Pitch:
@@ -629,7 +634,7 @@ def _escala_pcs(k: key.Key) -> set[int]:
 
 
 def rol_contracant(evs_mel: list[Ev], segs: list[Segment], instr: inst.Instrument, curs: str | None,
-                   k: key.Key, baix: list[Ev] | None) -> list[Ev]:
+                   k: key.Key, baix: list[Ev] | None, objectiu: dict | None = None, filtre_pcs=None) -> list[Ev]:
     """Notes llargues de l'acord, per graus conjunts si es pot, a distància de 3a o 6a de la melodia,
     sense quintes ni octaves paral·leles. On la melodia s'atura (nota llarga o silenci), un petit farciment."""
     lo, hi = _rang_concert(instr, curs)
@@ -657,13 +662,16 @@ def rol_contracant(evs_mel: list[Ev], segs: list[Segment], instr: inst.Instrumen
     cands = []
     for i in actius:
         s = segs[i]
-        cs = [p for p in range(lo, hi + 1) if p % 12 in s.acord.pcs]
-        cands.append(cs or [lo])
+        pcs_ok = (filtre_pcs(s.acord) if filtre_pcs else None) or s.acord.pcs     # paquet 8: notes guia
+        cs = [p for p in range(lo, hi + 1) if p % 12 in pcs_ok]
+        cands.append(cs or [p for p in range(lo, hi + 1) if p % 12 in s.acord.pcs] or [lo])
 
     def local(i, p):
         s = segs[i]
         m = mel(s)
         c = 0.12 * abs(p - centre) + 0.4 * max(0, p - sostre)
+        if objectiu is not None and i in objectiu:      # paquet 8: contorn oposat al de la melodia
+            c += contracant.PES_OBJECTIU * min(abs(p - objectiu[i]), contracant.DISTANCIA_MAXIMA_OBJECTIU)
         if m is not None:
             iv = p - m
             if (damunt and iv <= 0) or (not damunt and iv >= 0):
@@ -1127,7 +1135,7 @@ def _repara_paral(e: list[Ev], mel: list[Ev], baix: list[Ev] | None, segs: list[
     def total(x):
         return len(_paral_temps(x, mel)) + (len(_paral_temps(x, baix)) if baix else 0)
 
-    for _ in range(4):
+    for _ in range(10):
         ts = {t for t, _ in _paral_temps(e, mel)} | ({t for t, _ in _paral_temps(e, baix)} if baix else set())
         if not ts:
             break
@@ -1136,19 +1144,28 @@ def _repara_paral(e: list[Ev], mel: list[Ev], baix: list[Ev] | None, segs: list[
             ev = next((x for x in e if abs(x.ini - t) < _EPS and x.alt), None)
             if ev is None:
                 continue
-            a = _acord_en(segs, t)
-            orig = ev.alt[0]
-            m = _sonant(mel, t)
             ara = total(e)
-            cands = sorted((p for p in range(max(lo, orig.midi - 6), min(hi, orig.midi + 6) + 1)
-                            if p != orig.midi and (a is None or p % 12 in a.pcs)
-                            and (m is None or (p - m) % 12 not in (0, 1, 6, 11))), key=lambda p: (abs(p - orig.midi), p))
-            for p in cands:
-                ev.alt = [pitch.Pitch(midi=p)]
-                if total(e) < ara:
-                    canviat = True
+            # primer la nota que fa el paral·lel i, si no hi ha manera, l'anterior (el paral·lel són dues notes)
+            ant = next((x for x in reversed(e) if x.ini < t - _EPS and x.alt), None)
+            for ev in (ev, ant):
+                if ev is None:
+                    continue
+                a = _acord_en(segs, ev.ini)
+                orig = ev.alt[0]
+                m = _sonant(mel, ev.ini)
+                cands = sorted((p for p in range(max(lo, orig.midi - 12), min(hi, orig.midi + 12) + 1)
+                                if p != orig.midi and (a is None or p % 12 in a.pcs)
+                                and (m is None or (p - m) % 12 not in (0, 1, 6, 11))),
+                               key=lambda p: (abs(p - orig.midi), p))
+                fet = False
+                for p in cands:
+                    ev.alt = [pitch.Pitch(midi=p)]
+                    if total(e) < ara:
+                        canviat = fet = True
+                        break
+                    ev.alt = [orig]
+                if fet:
                     break
-                ev.alt = [orig]
         if not canviat:
             break
     return _ortografia(e, k, segs)
@@ -1536,7 +1553,8 @@ def _finestres_resposta(evs_mel: list[Ev], compassos: list[Compas], seccions: li
 
 
 def _farciments(linia: list[Ev], evs_mel: list[Ev], segs: list[Segment], compassos: list[Compas],
-                seccions: list[Seccio], lo: int, hi: int, k, curs_corxeres: bool, melodic: bool) -> list[Ev]:
+                seccions: list[Seccio], lo: int, hi: int, k, curs_corxeres: bool, melodic: bool,
+                pool_pcs=None) -> list[Ev]:
     """Respostes curtes (2-4 notes amb el ritme de la melodia) on la melodia manté una nota llarga o descansa."""
     minim = 0.5 if curs_corxeres else 1.0
     escala = _escala_pcs(k)
@@ -1571,7 +1589,8 @@ def _farciments(linia: list[Ev], evs_mel: list[Ev], segs: list[Segment], compass
         if ref is None:
             ref = _sonant(linia, w0 - _EPS) or (lo + hi) // 2
         pcs = set(a.pcs)
-        pool = [p for p in range(lo, hi + 1) if p % 12 in (pcs if not melodic else pcs | escala)]
+        pool = [p for p in range(lo, hi + 1)
+                if p % 12 in (pcs if not melodic else pcs | (pool_pcs(a) if pool_pcs else escala))]
         p0 = min((p for p in pool if p % 12 in pcs), key=lambda p: (abs(p - ref), p), default=None)
         if p0 is None:
             continue
@@ -1725,10 +1744,11 @@ def _pad(evs: list[Ev], instr: inst.Instrument, curs: str | None) -> list[Ev]:
 def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bordo, informe):
     """Les parts amb la melodia repartida entre veus. Retorna (construides, linies, baix_ref)."""
     idx_mel = next(i for i, r in enumerate(rols) if r.rol == "melodia")
-    e_m, sh = rol_melodia(evs, rols[idx_mel].instr, curs)
+    e_m, sh = rol_melodia(evs, rols[idx_mel].instr, curs, compassos)
     if sh:
         informe.append(f"{rols[idx_mel].instr.nom}: melodia {abs(sh) // 12} octava{'es' if abs(sh) > 12 else ''} "
                        f"{'amunt' if sh > 0 else 'avall'} perquè caiga en la zona còmoda.")
+    informe += simplificar.text_octaves(simplificar.canvis_octava(evs, e_m, sh), compassos)
     n = len(seccions)
     mel_sec: dict = {}
     comp_mel: list[Ev] = []
@@ -1762,9 +1782,10 @@ def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bor
         elif f == "pad":
             e = _pad(rol_acompanyament(segs, instr, curs, "coral", k)[0], instr, curs)
         elif f == "contracant":
-            e = rol_contracant(comp_mel, segs, instr, curs, k, baix_ref or None)
+            e = contracant.linia(comp_mel, segs, instr, curs, k, baix_ref or None)
             e = _imitacions(e, comp_mel, segs, compassos, seccions, lo, hi, k, corx)
-            e = _farciments(e, comp_mel, segs, compassos, seccions, lo, hi, k, corx, True)
+            e = _farciments(e, comp_mel, segs, compassos, seccions, lo, hi, k, corx, True,
+                            pool_pcs=contracant.pool_farciment(curs))
             e = _repara_paral(e, comp_mel, baix_ref or None, segs, lo, hi, k)
         else:
             raise ValueError(f)
@@ -1856,13 +1877,14 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
     elem = es_elemental(curs)
     for r in rols:
         if r.rol == "melodia":
-            e, sh = rol_melodia(evs, r.instr, curs)
+            e, sh = rol_melodia(evs, r.instr, curs, compassos)
             linies.setdefault("melodia", e)
             e, resp = gravat.respiracions(e, [(q.ini, q.fi, "melodia") for q in frases], r.instr, compassos, elem,
                                           _permet_corxeres(r.instr, curs))
             if sh:
                 informe.append(f"{r.instr.nom}: melodia {abs(sh) // 12} octava{'es' if abs(sh) > 12 else ''} "
                                f"{'amunt' if sh > 0 else 'avall'} perquè caiga en la zona còmoda.")
+            informe += simplificar.text_octaves(simplificar.canvis_octava(evs, e, sh), compassos)
             pm = part_des_de_evs(e, compassos)
             gravat.marca_respiracions(pm, resp)
             construides.append((r, [pm], e))
@@ -1889,7 +1911,7 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
                 construides.append((r, [part_des_de_evs(e, compassos)], e))
     for r in rols:
         if r.rol == "contracant":
-            e = rol_contracant(linies["melodia"], segs, r.instr, curs, k, baix_ev)
+            e = contracant.linia(linies["melodia"], segs, r.instr, curs, k, baix_ev)
             linies.setdefault("contracant", e)
             e, resp = gravat.respiracions(e, [(q.ini, q.fi, "contracant") for q in frases], r.instr, compassos, elem,
                                           _permet_corxeres(r.instr, curs))
@@ -1995,11 +2017,15 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
     # ----- melodia de partida i nivell
     mel_rols = [r for r in rols if r.rol == "melodia"]
     if simplifica:
-        f_ok = _figures_permeses(mel_rols[0].instr, curs)
+        f_ok = _figures_permeses(mel_rols[0].instr, curs) or simplificar.figures_del_nivell(curs)
         if f_ok is None:
             informe.append("No he simplificat el ritme: no sé quines figures toca este nivell "
                            f"({mel_rols[0].instr.clau}, {curs or 'sense curs'}). Desa-les amb «partitures nivell desa».")
+        elif simplificar.figura_minima(f_ok, curs) <= 0:
+            informe.append(f"No he simplificat la melodia: el nivell «{curs}» admet totes les figures.")
         else:
+            evs, notes_esquelet = simplificar.simplifica_melodia(evs, compassos, curs, f_ok)
+            informe += notes_esquelet
             evs, canvis = simplificar_ritme(evs, compassos, f_ok)
             informe.append(f"He simplificat el ritme de la melodia a les figures del nivell ({canvis} llocs).")
 
@@ -2112,6 +2138,7 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
             f"compàs {c} ({t} amb {amb})" for c, t, amb in sorted(set(par))[:12]))
     elif "contracant" in linies:
         informe.append("  Quintes o octaves paral·leles del contracant: cap.")
+    informe += contracant.comprovacions(linies, curs)
     buits = []
     primer_acord = next((s.compas.num for s in segs if s.acord is not None and not s.compas.anacrusi
                          and s.acord.origen != "forma"), None)
