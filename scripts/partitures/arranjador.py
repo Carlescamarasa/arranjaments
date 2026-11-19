@@ -876,17 +876,11 @@ def _veus_acomp(instr: inst.Instrument) -> int:
     return 1
 
 
-_PATRONS = {
-    # per cada estil: llista de tipus de pols per a 2, 3 i 4 temps. B=baix, C=acord, A=arpegi, c=acord en corxeres,
-    # L=acord llarg (tot el segment)
-    "ragtime": {2: "BC", 3: "BCC", 4: "BCBC"},
-    "swing": {2: "BC", 3: "BCC", 4: "BCBC"},
-    "marxa": {2: "BC", 3: "BCC", 4: "BCBC"},
-    "vals": {2: "BC", 3: "BCC", 4: "BCCC"},
-    "pop": {2: "AA", 3: "AAA", 4: "AAAA"},
-    "rock": {2: "cc", 3: "ccc", 4: "cccc"},
-    "classic": {2: "L-", 3: "L--", 4: "L-L-"},
-}
+# Patrons, ritmes i motius: vegeu acompanyament.py (dades per estil i nivell). Alias per compatibilitat.
+from . import acompanyament as _acomp   # noqa: E402
+from . import voicing as _voicing        # noqa: E402
+
+_PATRONS = _acomp.PATRONS
 
 
 def _veu_baixa(pc: int, lo: int, prev: int | None, marge: int = 12) -> int:
@@ -898,128 +892,17 @@ def _veu_baixa(pc: int, lo: int, prev: int | None, marge: int = 12) -> int:
     return min(opcions, key=lambda m: (abs(m - prev), m))
 
 
-def _disposicio(acord: Acord, n: int, lo: int, hi: int, prev: list[int] | None) -> list[int]:
-    """Notes de l'acord per a la mà dreta (o les dues baquetes): tercera i quinta, o tercera i sèptima."""
-    if n <= 1:
-        pcs = [acord.pcs[1] if len(acord.pcs) > 1 else acord.pcs[0]]
-    elif n == 2:
-        pcs = [acord.pcs[1], acord.pcs[3]] if acord.te_septima else [acord.pcs[1], acord.pcs[2]]
-    else:
-        pcs = [acord.pcs[1], acord.pcs[3], acord.pcs[0]] if acord.te_septima else list(acord.pcs[:3])
-    opcions = []
-    for base in range(lo, hi + 1):
-        if base % 12 not in pcs:
-            continue
-        nots = [base]
-        for pc in pcs:
-            if pc == base % 12:
-                continue
-            x = nots[-1] + 1
-            while x % 12 != pc:
-                x += 1
-            nots.append(x)
-        nots = sorted(nots)
-        if nots[-1] <= hi and nots[-1] - nots[0] <= 9:
-            opcions.append(nots)
-    if not opcions:
-        return [lo + ((pcs[0] - lo) % 12)]
-    if prev is None:
-        mig = (lo + hi) / 2
-        return min(opcions, key=lambda v: (abs(sum(v) / len(v) - mig), v))
-    return min(opcions, key=lambda v: (sum(abs(a - b) for a, b in zip(v, prev)) + abs(len(v) - len(prev)) * 3, v))
+def _disposicio(acord: Acord, n: int, lo: int, hi: int, prev: list[int] | None, estil: str = "classic",
+                nivell: str = "mitja", **mes) -> list[int]:
+    """Notes de l'acord per a la mà dreta (o les dues baquetes). La lògica és a voicing.py (clàssic i jazz)."""
+    return _voicing.disposicio(acord, n, lo, hi, prev, estil, nivell, **mes)
 
 
 def rol_acompanyament(segs: list[Segment], instr: inst.Instrument, curs: str | None, estil: str, k: key.Key,
-                      bordo: bool = False) -> tuple[list[Ev], list[Ev]]:
-    """Patró de l'estil sobre els acords. Retorna (acompanyament, línia de baix que hi ha dins)."""
-    lo, hi = _rang_concert(instr, curs)
-    lo = min(max(lo, 43), hi - 12)
-    hi = min(hi, lo + 30)
-    n = _veus_acomp(instr)
-    corxeres = _permet_corxeres(instr, curs)
-    zona_baix_hi = lo + 11
-    res: list[Ev] = []
-    baixos: list[Ev] = []
-    prev_v = None
-    prev_b = None
-    ultim = max((s.compas.ini for s in segs if s.acord), default=None)
-    per_compas: dict[int, list[Segment]] = {}
-    ordre = []
-    for s in segs:
-        if id(s.compas) not in per_compas:
-            ordre.append(s.compas)
-        per_compas.setdefault(id(s.compas), []).append(s)
-    for c in ordre:
-        meus = per_compas[id(c)]
-        if c.anacrusi or all(s.acord is None for s in meus):
-            continue
-        n_pols = max(1, int(round(c.dur / c.pols)))
-        if bordo:
-            t = k.tonic.pitchClass
-            ton = _veu_baixa(t, lo, None)
-            v = [ton, ton + 7] if ton + 7 <= hi else [ton - 5, ton]
-            res.append(Ev(c.ini, c.dur, [pitch.Pitch(midi=x) for x in v]))
-            continue
-        final = abs(c.ini - ultim) < _EPS
-        patro = _PATRONS.get(estil, _PATRONS["pop"]).get(n_pols, "BC" * (n_pols // 2) + "B" * (n_pols % 2))
-        if final:
-            patro = "F" + "-" * (n_pols - 1)
-        for b in range(n_pols):
-            t = opFrac(c.ini + b * c.pols)
-            s = next((x for x in meus if x.ini <= t + _EPS < x.fi), None)
-            if s is None or s.acord is None:
-                continue
-            a = s.acord
-            tipus = patro[b] if b < len(patro) else "-"
-            if tipus == "-":
-                continue
-            primer_del_segment = abs(t - s.ini) < _EPS
-            if tipus == "B":
-                pc = a.pcs[0] if primer_del_segment or len(a.pcs) < 3 else a.pcs[2]
-                prev_b = _veu_baixa(pc, lo, prev_b)
-                res.append(Ev(t, c.pols, [pitch.Pitch(midi=prev_b)]))
-                baixos.append(Ev(t, c.pols, [pitch.Pitch(midi=prev_b)]))
-            elif tipus in ("C", "c", "L", "F"):
-                v = _disposicio(a, n, max(lo, zona_baix_hi - 2, 60 if instr.clau == "piano" else 0) if n > 1 else lo,
-                                hi, prev_v)
-                prev_v = v
-                if tipus == "L":
-                    dur = opFrac(s.fi - t)
-                    if n >= 3:
-                        prev_b = _veu_baixa(a.pcs[0], lo, prev_b)
-                        v = sorted(set([prev_b] + v))
-                        baixos.append(Ev(t, dur, [pitch.Pitch(midi=prev_b)]))
-                    res.append(Ev(t, dur, [pitch.Pitch(midi=x) for x in v]))
-                elif tipus == "F":
-                    prev_b = _veu_baixa(a.pcs[0], lo, prev_b)
-                    tot = sorted(set(([prev_b] if n != 2 else []) + v))
-                    res.append(Ev(t, c.pols, [pitch.Pitch(midi=x) for x in tot]))
-                    baixos.append(Ev(t, c.pols, [pitch.Pitch(midi=prev_b)]))
-                elif tipus == "c" and corxeres:
-                    mig = opFrac(c.pols / 2)
-                    res.append(Ev(t, mig, [pitch.Pitch(midi=x) for x in v]))
-                    res.append(Ev(opFrac(t + mig), mig, [pitch.Pitch(midi=x) for x in v]))
-                else:
-                    res.append(Ev(t, c.pols, [pitch.Pitch(midi=x) for x in v]))
-            elif tipus == "A":
-                arp = [a.pcs[0], a.pcs[2] if len(a.pcs) > 2 else a.pcs[0], a.pcs[1], a.pcs[2] if len(a.pcs) > 2 else a.pcs[0]]
-                if primer_del_segment:
-                    prev_b = _veu_baixa(a.pcs[0], lo, prev_b)
-                    baixos.append(Ev(t, c.pols, [pitch.Pitch(midi=prev_b)]))
-                base = prev_b if prev_b is not None else _veu_baixa(a.pcs[0], lo, None)
-                rel = int(round((t - s.ini) / c.pols))
-                if corxeres and c.pols >= 1:
-                    mig = opFrac(c.pols / 2)
-                    for h, pc in enumerate(arp[(rel * 2) % 4:(rel * 2) % 4 + 2]):
-                        x = base + ((pc - base) % 12) + (12 if h and pc == arp[0] else 0)
-                        while x > hi:
-                            x -= 12
-                        res.append(Ev(opFrac(t + h * mig), mig, [pitch.Pitch(midi=x)]))
-                else:
-                    pc = arp[rel % 4]
-                    x = base + ((pc - base) % 12)
-                    res.append(Ev(t, c.pols, [pitch.Pitch(midi=x)]))
-    return _ortografia(res, k, segs), _ortografia(baixos, k, segs)
+                      bordo: bool = False, melodia: list[Ev] | None = None, fi_frases: list[float] | None = None,
+                      amb_baix: bool = False) -> tuple[list[Ev], list[Ev]]:
+    """Acompanyament de l'estil sobre els acords (tipus i motiu: acompanyament.py). Retorna (acompanyament, baix)."""
+    return _acomp.genera(segs, instr, curs, estil, k, bordo, melodia, fi_frases, amb_baix)
 
 
 def rol_baix(segs: list[Segment], instr: inst.Instrument, curs: str | None, estil: str, k: key.Key) -> list[Ev]:
@@ -1912,9 +1795,10 @@ def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bor
         elif f == "suport":
             e = rol_baix(segs, instr, curs, "classic", k)
         elif f == "acompanyament":
-            e, baixos_acomp[i] = rol_acompanyament(segs, instr, curs, estil, k, bordo)
+            e, baixos_acomp[i] = rol_acompanyament(segs, instr, curs, estil, k, bordo, comp_mel, [x.fi for x in seccions],
+                                                   any(r.rol == "baix" for r in rols))
         elif f == "pad":
-            e = _pad(rol_acompanyament(segs, instr, curs, "classic", k)[0], instr, curs)
+            e = _pad(rol_acompanyament(segs, instr, curs, "coral", k)[0], instr, curs)
         elif f == "contracant":
             e = rol_contracant(comp_mel, segs, instr, curs, k, baix_ref or None)
             e = _imitacions(e, comp_mel, segs, compassos, seccions, lo, hi, k, corx)
@@ -2020,7 +1904,8 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
             construides.append((r, [part_des_de_evs(e, compassos)], e))
     for r in rols:
         if r.rol == "acompanyament":
-            e, baixos = rol_acompanyament(segs, r.instr, curs, estil, k, bordo)
+            e, baixos = rol_acompanyament(segs, r.instr, curs, estil, k, bordo, linies.get("melodia"), None,
+                                          baix_ev is not None)
             if baix_ev is None and baixos and r is acomp_rol:
                 baix_ev = baixos
             if r.instr.clau == "piano":
