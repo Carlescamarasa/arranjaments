@@ -1794,11 +1794,18 @@ def _imitacions(linia: list[Ev], evs_mel: list[Ev], segs: list[Segment], compass
     return linia
 
 
-def rol_baix_viu(segs: list[Segment], instr: inst.Instrument, curs: str | None, estil: str, k: key.Key) -> list[Ev]:
-    """Baix amb patró d'estil: arrel i quinta (ragtime, marxa), passant per graus (swing), arpegi (vals, clàssic)."""
+def rol_baix_viu(segs: list[Segment], instr: inst.Instrument, curs: str | None, estil: str, k: key.Key,
+                 melodia: list[Ev] | None = None) -> list[Ev]:
+    """Baix amb patró d'estil: arrel i quinta (ragtime, marxa), passant per graus (swing), arpegi (vals, clàssic).
+    A partir del nivell mitjà, amb inversions, aproximació i caminant (`baix.py`)."""
     lo, hi = _rang_concert(instr, curs)
     lo = min(max(lo, 36), hi - 12)
     marge = min(19, max(12, hi - lo))
+    from . import baix as _baix
+    personal = _baix.linia(segs, estil, curs, lo, hi, marge, k.tonic.pitchClass, _escala_pcs(k),
+                           (lambda t: _sonant(melodia, t)) if melodia else None)
+    if personal is not None:
+        return _ortografia([Ev(i, d, [pitch.Pitch(midi=m)]) for i, d, m in personal], k, segs)
     corxeres = _permet_corxeres(instr, curs)
     escala = _escala_pcs(k)
     actius = [s for s in segs if s.acord is not None and not s.compas.anacrusi]
@@ -1906,7 +1913,7 @@ def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bor
         lo, hi = _rang_concert(instr, curs)
         corx = _permet_corxeres(instr, curs)
         if f == "baix":
-            e = rol_baix_viu(segs, instr, curs, estil, k)
+            e = rol_baix_viu(segs, instr, curs, estil, k, comp_mel)
             blo = min(max(lo, 36), hi - 12)
             e = _farciments(e, comp_mel, segs, compassos, seccions, blo, min(hi, blo + 12), k, corx, False)
         elif f == "suport":
