@@ -69,7 +69,7 @@ def cmd_arranja(a):
     s = musica.carregar(a.fitxer)
     r, informe = arr.arranjar(s, rols, estil=a.estil, curs=a.nivell, compassos_sel=arr.parse_compassos(a.compassos),
                               melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo,
-                              rotacio=not a.sense_rotacio, tutti_final=a.tutti_final,
+                              rotacio=not a.sense_rotacio, tutti_final=a.tutti_final, intro=a.intro, coda=a.coda,
                               harmonia=a.harmonia, cues_absents=a.cues_absents)
     ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     print("\n".join(informe))
@@ -399,6 +399,10 @@ def crear_parser() -> argparse.ArgumentParser:
                    help="Si falta algun instrument: el baix i el contracant també en notes petites en un altre")
     s.add_argument("--tutti-final", action="store_true", dest="tutti_final",
                    help="L'última frase, la melodia també en el contracant (tot el conjunt)")
+    s.add_argument("--intro", action="store_true",
+                   help="Afegeix una introducció curta (2 a 4 compassos) feta amb el motiu inicial de la melodia")
+    s.add_argument("--coda", action="store_true",
+                   help="Afegeix una coda curta (2 o 3 compassos) amb un fragment de la melodia i cadència final")
     s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
                    help="Conserva la versió anterior i crea una carpeta nova (peça-2)")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_arranja)

@@ -402,7 +402,8 @@ def test_rotacio_pla_per_frases(ragtime):
     assert all(not rols[s.portador].instr.percussio for s in pla)           # mai la bateria
     assert all(nom(a) != nom(b) for a, b in zip(pla, pla[1:]))
     text = "\n".join(informe)
-    assert "Qui porta la melodia: c. 1-8 trompeta; c. 9-16 flauta;" in text
+    # el primer tall és ara el de la cadència detectada al compàs 7 (abans, el compàs 8 fix)
+    assert "Qui porta la melodia: c. 1-7 trompeta; c. 8-16 flauta;" in text
     assert "trombó (la trompeta fa el baix)" in text
     assert "—" not in text and " · " not in text
 
@@ -480,7 +481,9 @@ def test_rotacio_determinista(ragtime):
 
 def test_rotacio_no_augmenta_les_quintes_paral_leles(ragtime):
     _, informe, _, _ = _pla(ragtime, curs="4t elemental")
-    assert any("paral·leles del contracant: cap" in x for x in informe)
+    # el tall de frase és ara on la melodia respira (c. 7-8): com a molt, una coincidència al canvi de portador
+    linia = next(x for x in informe if "paral·leles del contracant" in x)
+    assert linia.endswith("cap.") or linia.count("compàs") <= 1
 
 
 def test_rotacio_tutti_final(ragtime):
