@@ -6,6 +6,7 @@ Cada vegada que s'obri la icona, Arranjaments busca sol si hi ha una versió nov
 
 Esta és una primera versió de proves: pot canviar i tindre errors. Ens ho pots dir.
 
+- Arranjaments amb guió: l'ajudant et diu quantes preguntes et farà, te les fa numerades i amb poques opcions, i amb l'última resposta ja et dona la partitura i els PDF, sense tornar a demanar permís. Després, una sola pregunta: vols canviar alguna cosa?
 - Ordre nova `partitures arranja`: a partir d'una melodia (o un full de melodia amb acords) crea les parts que falten, cadascuna amb un rol: melodia, contracant, acompanyament, baix i percussió (bateria, caixa o percussió menuda). Estils ragtime, swing, pop, rock, marxa, vals i clàssic; té en compte el nivell, i mostra els acords i les comprovacions. És un esborrany per a revisar amb MuseScore.
 - Instruments nous: xilòfon, xilòfon alt Orff, metal·lòfon, carilló, marimba, vibràfon, bateria, caixa i percussió. «Làmines» és un grup (xilòfon, metal·lòfon, carilló).
 - L'ajudant, si no coneix una paraula o una manera de fer (per exemple «làmines»), ara et pregunta de seguida què vol dir i com ho feu a classe.

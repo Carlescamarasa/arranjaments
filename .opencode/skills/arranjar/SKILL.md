@@ -35,25 +35,45 @@ Opcions:
 - `--bordo`: acompanyament amb bordó Orff (tònica i quinta).
 - `--melodia-part 2`: si la melodia no és a la part més aguda.
 
-L'ordre mostra l'informe: la tonalitat, els **acords** (els que porta la partitura i, amb `*`, els que ha posat l'eina), la tessitura de cada part, el que passa del nivell i les comprovacions (quintes i octaves paral·leles, compassos buits). **Ensenya-li els acords i els avisos tal com apareixen.** Digues SEMPRE que és un esborrany i que cal revisar-lo amb MuseScore (`partitures obrir "<fitxer>"`).
+L'ordre mostra l'informe: la tonalitat, els **acords** (els que porta la partitura i, amb `*`, els que ha posat l'eina), la tessitura de cada part, el que passa del nivell i les comprovacions (quintes i octaves paral·leles, compassos buits). Mostra els avisos importants tal com apareixen (Pas 4). Digues SEMPRE que és un esborrany i que cal revisar-lo amb MuseScore (`partitures obrir "<fitxer>"`).
 
-### Què preguntar (una cosa cada vegada) i res més
+### La conversa: un guió fix, curt i amb final
 
-1. Quins instruments i quin rol fa cadascun. Proposa tu un repartiment raonable i demana que el confirme. Per defecte:
-   - `melodia`: l'instrument de vent o de corda més melòdic (trompeta, flauta, clarinet, violí...).
-   - `contracant`: un altre instrument melòdic (si n'hi ha dos de vent, el segon).
-   - `acompanyament`: làmines (xilòfon, metal·lòfon, carilló), piano o guitarra.
-   - `baix`: un instrument greu (trombó, tuba, fagot, violoncel, contrabaix), si n'hi ha.
-   - `percussio`: bateria, caixa o percussió.
-2. L'estil (ragtime, swing, pop, rock, marxa, vals o classic).
-3. El nivell (curs), si no l'ha dit.
-4. Si la peça és llarga (més de 32 compassos), quins compassos.
+Segueix SEMPRE este guió, pas a pas. La persona no està acostumada a la IA: tu portes la conversa.
 
-Exemple: «Vull este ragtime per a trompeta, flauta, xilòfon i bateria, per a 4t d'elemental». Proposa: «Faria: trompeta la melodia, flauta un contracant, xilòfon l'acompanyament i bateria la percussió, en estil ragtime. Et sembla bé?». Amb el sí: `partitures arranja "entrada/ragtime.musicxml" --rols "melodia=trompeta-sib,contracant=flauta,acompanyament=xilofon,percussio=bateria" --estil ragtime --nivell "4t elemental"`.
+**Pas 0. Mira què ja saps.** Llig `partitures nivell mostra` i `partitures info "<fitxer>"`. El que la persona ja ha dit (instruments, estil, curs) no ho tornes a preguntar.
 
-Si la persona diu «làmines», pregunta quines té a classe (xilòfon, metal·lòfon, carilló...). Si no ho sap, `lamines` tria el xilòfon alt Orff i ho diu.
+**Pas 1. Anuncia les preguntes.** En un sol missatge, digues quantes en faràs i quines, i fes ja la primera: «Per a fer l'arranjament necessite saber 3 coses. Te les pregunte d'una en una: 1) qui fa cada part, 2) l'estil, 3) el curs.» Només les que falten, d'esta llista i en este ordre:
+1. El repartiment de rols (el proposes tu).
+2. L'estil.
+3. El curs.
+4. Quins compassos (només si la peça passa de 32 compassos).
 
-Després: comprova la tessitura si cal (ordre 4), i quan estiga conforme, skill `exportar`.
+**Pas 2. Una pregunta cada vegada, numerada i amb poques opcions.** Format: «Pregunta 2 de 3: quin estil vols? a) ragtime (el que et propose), b) swing, c) un altre (digues quin).» Com a molt 3 opcions, i la primera és la teua proposta. Si respon «sí», «la primera», «el que vulgues» o «tu mateix», tria la primera i passa a la següent. Si no entens la resposta, UNA pregunta per aclarir-ho i continua.
+
+Proposta de rols per defecte:
+- `melodia`: l'instrument de vent o de corda més melòdic (trompeta, flauta, clarinet, violí...).
+- `contracant`: un altre instrument melòdic (si n'hi ha dos de vent, el segon).
+- `acompanyament`: làmines (xilòfon, metal·lòfon, carilló), piano o guitarra.
+- `baix`: un instrument greu (trombó, tuba, fagot, violoncel, contrabaix), si n'hi ha.
+- `percussio`: bateria, caixa o percussió.
+
+Exemple de pregunta 1: «Pregunta 1 de 3: et propose trompeta la melodia, flauta un contracant, xilòfon l'acompanyament i bateria el ritme. a) així, b) vull canviar-ho (digues com).» Si diu «làmines», posa-ho com a opció: «a) xilòfon, b) metal·lòfon, c) carilló».
+
+**Pas 3. Amb l'última resposta, genera-ho tot sense demanar permís.** NO preguntes «et sembla bé?» ni «vols que el genere?»: les respostes ja són el sí. Digues «Perfecte, el faig ara.» i executa, sense parar entre ordre i ordre:
+1. `partitures arranja "entrada/peça.musicxml" --rols "..." --estil ... --nivell "..."`
+2. Si l'informe diu notes FORA d'abast en una part, prova UNA vegada `partitures transport "<Fitxer actual>" --octava 1 --part N` (o `-1`) i digues-ho en una frase.
+3. `partitures exportar "<Fitxer actual>"` (PDF de la partitura i de cada part).
+
+**Pas 4. Lliura i tanca, en un sol missatge curt.**
+- «Fet. És un esborrany: revisa'l amb MuseScore (`partitures obrir "<fitxer>"`) abans de repartir-lo.»
+- On són els PDF i el fitxer MusicXML (l'últim «Fitxer actual»).
+- Els avisos importants, com a molt 3 línies (els acords que ha posat l'eina, en una línia).
+- UNA sola pregunta final: «Vols canviar alguna cosa? Per exemple, un altre estil, un altre instrument o un tros més curt. Si no, ja està.»
+
+**Pas 5. Si demana un canvi**, fes-lo i torna a generar-ho tot (arranja i exportar) sense preguntar res més; després, torna al Pas 4. Només pregunta si el canvi no s'entén. Si vol retocar notes concretes, que òbriga el fitxer amb MuseScore.
+
+**Nivell sense perfil.** Si el curs no té perfil desat, NO pares la conversa: genera amb la zona còmoda de cada instrument. Al Pas 4, afig una línia: «Si vols que el pròxim arranjament s'ajuste millor a este curs, et faré una pregunta per instrument (la nota més greu i la més aguda).» Si diu que sí, anuncia-les i fes-les numerades com al Pas 2, i desa cada resposta amb `partitures nivell desa`.
 
 ## Coses que cal saber (explica-ho si cal)
 

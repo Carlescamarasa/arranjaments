@@ -488,3 +488,12 @@ def test_valencia_sense_castellanismes_ni_formes_del_central():
             assert p not in t, (f.name, p)
     assert "aquest" not in (ARREL / "scripts" / "partitures" / "eines.py").read_text(encoding="utf-8").lower().split("edita aquest")[0]
     assert "aquest" not in (ARREL / "instalacio" / "instalar-mac.sh").read_text(encoding="utf-8").lower()
+
+
+def test_l_arranjament_segueix_un_guio_curt_i_genera_sense_tornar_a_preguntar():
+    sk = (ARREL / ".opencode" / "skills" / "arranjar" / "SKILL.md").read_text(encoding="utf-8")
+    agents = (ARREL / "AGENTS.md").read_text(encoding="utf-8")
+    assert "Pregunta 1 de 3" in sk and "Necessite saber 3 coses" in agents
+    assert "sense demanar permís" in sk and "ja són el sí" in sk and "ja són el sí" in agents
+    assert "`partitures exportar" in sk.split("**Pas 3.")[1].split("**Pas 4.")[0]
+    assert "NO pares la conversa" in sk

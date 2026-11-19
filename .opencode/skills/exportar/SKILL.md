@@ -7,7 +7,8 @@ description: Genera en PDF la partitura general i les parts soltes de cada instr
 
 ## Procediment
 
-1. Pregunta quin fitxer vol exportar (normalment l'últim «Fitxer actual»; si no el tens, mira `ls eixida`).
+0. Si véns del guió de la skill `arranjar`, no preguntes res: exporta directament l'últim «Fitxer actual» (pas 3).
+1. Si no, pregunta quin fitxer vol exportar (normalment l'últim «Fitxer actual»; si no el tens, mira `ls eixida`).
 2. Si encara no s'ha comprovat la tessitura (skill `arranjar`), proposa fer-ho abans. Si la partitura ve d'un PDF, comprova que s'ha revisat a MuseScore.
 3. Executa: `partitures exportar "eixida/nom.musicxml"`
    Això crea, dins una carpeta nova `eixida/nom/` (si ja existeix, `nom-2`...), un PDF de la partitura completa i un PDF per cada instrument, amb nom `nom - 1. Trompeta en Si bemoll.pdf`, etc. (Per a la partitura sola: afegir `--sense-parts`.)
