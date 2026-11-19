@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import sys
+import threading
 import time
 import unicodedata
 from pathlib import Path
@@ -26,7 +27,7 @@ from .errors import ErrorUsuari
 
 NOM_CARPETA = "Biblioteca d'arranjaments"
 CLAU_NOM = "bibliotecadarranjaments"
-PROFUNDITAT_CERCA = 5          # nivells de carpetes a mirar dins de cada carpeta de OneDrive
+PROFUNDITAT_CERCA = 3          # nivells de carpetes a mirar dins de cada carpeta de OneDrive
 MAX_CARPETES_CERCA = 20000     # límit de seguretat
 PROFUNDITAT_MAXIMA = 12
 EXT_PARTITURA = {".musicxml", ".xml", ".mxl"}
@@ -35,8 +36,14 @@ EXT_PDF = {".pdf"}
 EXT_INDEXADES = EXT_PARTITURA | EXT_MUSESCORE | EXT_PDF
 MIDA_MAXIMA_ANALISI = 30 * 1024 * 1024
 MAX_NOVES = 200
-MAX_SEGONS = 120
+MAX_SEGONS = 60                # temps màxim de cada tanda de «actualitza»
+SEGONS_CERCA = 10              # temps màxim de la cerca automàtica de la carpeta
+SEGONS_PER_FITXER = 20         # si un fitxer no es llig en tant de temps, el deixem per a més endavant
+MAX_INTENTS = 3                # vegades que es reintenta un fitxer que no s'ha pogut llegir
+DESA_CADA = 20                 # l'índex es desa cada tants fitxers analitzats
 VERSIO_INDEX = 1
+MAX_NOM = 80                   # lletres màximes d'un nom de fitxer que es mostra al model
+VIGENCIA_MEMO = 60             # segons que es recorda en memòria on és la biblioteca
 
 URL_ONEDRIVE = "https://www.microsoft.com/microsoft-365/onedrive/download"
 URL_ONEDRIVE_MAC_PKG = "https://go.microsoft.com/fwlink/?linkid=823060"       # OneDrive.pkg (enllaç oficial de Microsoft)
@@ -90,8 +97,11 @@ def _dades() -> Path:
     return dades_per_defecte()
 
 
-def arrels_onedrive(home: Path | None = None, entorn: dict | None = None, plataforma: str | None = None) -> list[Path]:
-    """Carpetes de OneDrive (locals) on pot aparéixer la biblioteca, ordenades de més a menys probable."""
+def arrels_onedrive(home: Path | None = None, entorn: dict | None = None, plataforma: str | None = None,
+                    denegats: list | None = None) -> list[Path]:
+    """Carpetes de OneDrive (locals) on pot aparéixer la biblioteca, ordenades de més a menys probable.
+
+    Si el sistema no deixa mirar una carpeta (macOS demana permís per a OneDrive), s'afig a `denegats`."""
     home = Path(home) if home else Path.home()
     entorn = os.environ if entorn is None else entorn
     plataforma = plataforma or _plataforma()
@@ -104,6 +114,10 @@ def arrels_onedrive(home: Path | None = None, entorn: dict | None = None, plataf
     def fills(base: Path):
         try:
             return sorted(c for c in base.iterdir() if c.is_dir() and not c.name.startswith("."))
+        except PermissionError:
+            if denegats is not None:
+                denegats.append(base)
+            return []
         except OSError:
             return []
 
@@ -134,16 +148,24 @@ def arrels_onedrive(home: Path | None = None, entorn: dict | None = None, plataf
     return res
 
 
-def _buscar_dins(arrel: Path) -> list[Path]:
-    """Cerca per amplada (el més superficial primer) carpetes amb el nom de la biblioteca, amb límits."""
+def _buscar_dins(arrel: Path, denegats: list | None = None, limit: float | None = None) -> list[Path]:
+    """Cerca per amplada (el més superficial primer) carpetes amb el nom de la biblioteca, amb límits.
+
+    Mira com a molt PROFUNDITAT_CERCA nivells i s'atura passat `limit` (instant de time.monotonic)."""
     trobades: list[Path] = []
     nivell = [arrel]
     visitades = 0
     for profunditat in range(PROFUNDITAT_CERCA + 1):
         seguent = []
         for d in nivell:
+            if limit is not None and time.monotonic() > limit:
+                return trobades
             try:
                 entrades = sorted(os.scandir(d), key=lambda e: e.name)
+            except PermissionError:
+                if denegats is not None:
+                    denegats.append(Path(d))
+                continue
             except OSError:
                 continue
             for e in entrades:
@@ -179,19 +201,81 @@ def guarda_ruta(ruta: str) -> Path:
     f = fitxer_config()
     f.parent.mkdir(parents=True, exist_ok=True)
     f.write_text(str(p.resolve()) + "\n", encoding="utf-8")
+    esborra_cache()
     return p
 
 
+_MEMO: dict = {}
+
+
+def esborra_cache() -> None:
+    """Oblida on era la biblioteca (en memòria i al disc). Les proves i `on-es --ruta` ho usen."""
+    _MEMO.clear()
+    try:
+        fitxer_localitzacio().unlink()
+    except OSError:
+        pass
+    try:
+        from . import nivells
+        nivells.esborra_cache()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def fitxer_localitzacio() -> Path:
+    return _dades() / "biblioteca-localitzacio.json"
+
+
+def _recorda(ruta: Path) -> None:
+    try:
+        _desa_json(fitxer_localitzacio(), {"ruta": str(ruta)})
+    except OSError:
+        pass
+
+
+def _recordada() -> Path | None:
+    """La carpeta trobada altres vegades, si encara hi és (si ha desaparegut, s'oblida i es torna a cercar)."""
+    try:
+        d = json.loads(fitxer_localitzacio().read_text(encoding="utf-8"))
+        p = Path(d["ruta"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if p.is_dir() and es_la_biblioteca(p.name):
+        return p
+    try:
+        fitxer_localitzacio().unlink()
+    except OSError:
+        pass
+    return None
+
+
 def localitzar(home: Path | None = None, entorn: dict | None = None, plataforma: str | None = None) -> dict:
-    """Retorna {"ruta": Path|None, "origen": str, "altres": [Path], "mirat": [Path], "avis": str|None}."""
+    """Retorna {"ruta": Path|None, "origen": str, "altres": [Path], "mirat": [Path], "avis": str|None, "denegat": [Path]}.
+
+    Quan es crida sense arguments (l'ús normal) el resultat es recorda un minut en memòria i la carpeta trobada
+    es recorda al disc, perquè cada ordre no haja de recórrer OneDrive. Si la carpeta desapareix, es torna a cercar."""
+    normal = home is None and entorn is None and plataforma is None
+    if normal:
+        clau = (os.environ.get("ARRANJAMENTS_BIBLIOTECA"), str(fitxer_config()), str(Path.home()))
+        recordat = _MEMO.get("res")
+        if recordat and recordat[0] == clau and time.monotonic() - recordat[1] < VIGENCIA_MEMO \
+                and (recordat[2]["ruta"] is None or Path(recordat[2]["ruta"]).is_dir()):
+            return recordat[2]
+        res = _localitza(None, None, None, usa_disc=True)
+        _MEMO["res"] = (clau, time.monotonic(), res)
+        return res
+    return _localitza(home, entorn, plataforma, usa_disc=False)
+
+
+def _localitza(home, entorn, plataforma, usa_disc: bool) -> dict:
     entorn = os.environ if entorn is None else entorn
     plataforma = plataforma or _plataforma()
     forcada = entorn.get("ARRANJAMENTS_BIBLIOTECA")
     if forcada:
         p = Path(forcada).expanduser()
         if p.is_dir():
-            return {"ruta": p, "origen": "variable ARRANJAMENTS_BIBLIOTECA", "altres": [], "mirat": [], "avis": None}
-        return {"ruta": None, "origen": "variable ARRANJAMENTS_BIBLIOTECA", "altres": [], "mirat": [],
+            return {"ruta": p, "origen": "variable ARRANJAMENTS_BIBLIOTECA", "altres": [], "mirat": [], "avis": None, "denegat": []}
+        return {"ruta": None, "origen": "variable ARRANJAMENTS_BIBLIOTECA", "altres": [], "mirat": [], "denegat": [],
                 "avis": f"La variable ARRANJAMENTS_BIBLIOTECA apunta a «{forcada}», però esta carpeta no existeix."}
     try:
         text = fitxer_config().read_text(encoding="utf-8-sig").strip().splitlines()
@@ -200,20 +284,37 @@ def localitzar(home: Path | None = None, entorn: dict | None = None, plataforma:
     if text and text[0].strip():
         p = Path(text[0].strip()).expanduser()
         if p.is_dir():
-            return {"ruta": p, "origen": f"fitxer {fitxer_config()}", "altres": [], "mirat": [], "avis": None}
+            return {"ruta": p, "origen": f"fitxer {fitxer_config()}", "altres": [], "mirat": [], "avis": None, "denegat": []}
         avis = f"El fitxer biblioteca.txt apunta a «{p}», però esta carpeta no existeix (o OneDrive encara no l'ha creada)."
     else:
         avis = None
-    arrels = arrels_onedrive(home, entorn, plataforma)
+    if usa_disc:
+        r = _recordada()
+        if r is not None:
+            return {"ruta": r, "origen": "cerca automàtica a OneDrive (recordada)", "altres": [], "mirat": [],
+                    "avis": avis, "denegat": []}
+    denegats: list[Path] = []
+    arrels = arrels_onedrive(home, entorn, plataforma, denegats)
+    limit = time.monotonic() + SEGONS_CERCA
     trobades: list[Path] = []
     for a in arrels:
-        for t in _buscar_dins(a):
+        for t in _buscar_dins(a, denegats, limit):
             if t not in trobades:
                 trobades.append(t)
+    unics = list(dict.fromkeys(denegats))
     if trobades:
+        if usa_disc:
+            _recorda(trobades[0])
         return {"ruta": trobades[0], "origen": "cerca automàtica a OneDrive", "altres": trobades[1:],
-                "mirat": arrels, "avis": avis}
-    return {"ruta": None, "origen": "cerca automàtica a OneDrive", "altres": [], "mirat": arrels, "avis": avis}
+                "mirat": arrels, "avis": avis, "denegat": unics}
+    return {"ruta": None, "origen": "cerca automàtica a OneDrive", "altres": [], "mirat": arrels, "avis": avis, "denegat": unics}
+
+
+SENSE_BIBLIOTECA = "No hi ha biblioteca compartida en este ordinador; busque al corpus lliure."
+
+
+def hi_ha_biblioteca() -> bool:
+    return localitzar()["ruta"] is not None
 
 
 def biblioteca() -> Path:
@@ -260,6 +361,18 @@ def _guia_onedrive(plataforma: str, instalat: bool, arrels: list) -> list[str]:
             "biblioteca i prémer «Afegeix una drecera a Els meus fitxers» (o esperar uns minuts si ja ho has fet)."]
 
 
+def _text_permis(denegats: list) -> str:
+    """El sistema no ha deixat llegir una carpeta de OneDrive (típic de macOS)."""
+    dins = "; ".join(str(d) for d in denegats[:3])
+    if _plataforma() == "mac":
+        return (f"El Mac no m'ha deixat mirar dins de «{dins}». Això no vol dir que la biblioteca no hi siga: cal donar permís. "
+                "Quan el Mac pregunte si Arranjaments (o OpenCode) pot accedir als fitxers de OneDrive, prem «Permet». "
+                "Si ja has dit que no: Configuració del Sistema, Privacitat i seguretat, «Fitxers i carpetes» (o «Accés total al disc»), "
+                "i activa-ho per a OpenCode.")
+    return (f"El sistema no m'ha deixat mirar dins de «{dins}». Comprova que la carpeta és teua i que OneDrive "
+            "ha acabat de sincronitzar-la.")
+
+
 def text_on_es() -> str:
     r = localitzar()
     ll = []
@@ -275,6 +388,8 @@ def text_on_es() -> str:
         return "\n".join(ll)
     if r["avis"]:
         ll.append(r["avis"])
+    if r.get("denegat"):
+        ll.append(_text_permis(r["denegat"]))
     if _plataforma() == "altre" and not r["mirat"]:
         ll.append("Este ordinador no té OneDrive (per exemple LliureX o Linux): la biblioteca compartida no hi funciona, "
                   "perquè no hi ha cap programa de OneDrive que la baixe. Pots usar-la des d'un Mac o Windows.")
@@ -339,14 +454,20 @@ def estadistica(arrel: Path) -> dict:
 
 # --------------------------------------------------------------------------- etiquetes (nivell i estil)
 
-_PARAULES_NIVELL = ("elemental", "professional", "mitja", "mitjana", "mitjano", "basic", "basico", "iniciacio",
-                    "superior", "avancat", "avanzado", "principiant", "intermedi", "intermedio", "grau", "grado")
-_RE_CURS = re.compile(r"^\d{1,2}\s?(r|n|t|e|er|o|a)?(\s|$)")
+_ETAPES = (r"elementals?|professionals?|ee|ep|mitja|mitjana|grau\s+mitja|grau\s+superior|basic|basico|iniciacio|superior")
+_ORDINALS = (r"primer|primera|segon|segona|tercer|tercera|quart|quarta|cinque|quint|quinta|sise|sext|sexta|"
+             r"primero|segundo|cuarto|quinto|sexto")
+_RE_CURS = re.compile(rf"^(\d{{1,2}}\s?(r|n|t|e|er|o|a|\u00ba|\u00aa)?|{_ORDINALS})\s*(curs\s+)?(d['\u2019]\s*|de\s+|del\s+)?({_ETAPES})\b")
+_RE_NIVELL = re.compile(r"^((nivell|nivel|level)\s*[:\-]?\s*\S+|grau\s+(mitja|superior|professional|elemental)\b)")
+_PARAULES_NIVELL = {"elemental", "professional", "mitja", "mitjana", "basic", "basico", "iniciacio", "superior",
+                    "avancat", "avanzado", "principiant", "intermedi", "intermedio"}
 
 
 def es_nivell(etiqueta: str) -> bool:
+    """Només és un nivell si té forma de nivell: «4t elemental», «2n EP», «nivell B»... o una paraula de nivell sola.
+    Carpetes com «2 trompetes», «4 mans», «3 peces fàcils» o «Graun» NO són nivells."""
     n = norm(etiqueta)
-    return bool(_RE_CURS.match(n)) or any(p in n.split() or p in n for p in _PARAULES_NIVELL)
+    return bool(_RE_CURS.match(n) or _RE_NIVELL.match(n) or n in _PARAULES_NIVELL)
 
 
 def _llista(text: str) -> list[str]:
@@ -435,11 +556,35 @@ def _desa_json(ruta: Path, dades: dict) -> None:
     os.replace(tmp, ruta)
 
 
+def _registre_valid(reg) -> dict | None:
+    """Un registre de l'índex amb la forma esperada (o None si no es pot aprofitar)."""
+    if not isinstance(reg, dict):
+        return None
+    for camp in ("nivell", "estil"):
+        v = reg.get(camp, [])
+        reg[camp] = [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
+    parts = reg.get("parts", [])
+    reg["parts"] = [p for p in parts if isinstance(p, dict) and isinstance(p.get("nom", ""), str)] if isinstance(parts, list) else []
+    for camp in ("nota", "titol", "compositor", "titol_f", "compositor_f", "tonalitat", "compas"):
+        if camp in reg and not isinstance(reg[camp], str):
+            reg[camp] = "" if camp == "nota" else None
+    if not isinstance(reg.get("estat"), str):
+        reg["estat"] = "pendent"
+    return reg
+
+
 def llig_index(arrel: Path) -> dict:
+    """L'índex desat. Si té una forma inesperada (fitxer malmés o d'una altra versió), es descarta i es refà."""
+    buit = {"versio": VERSIO_INDEX, "arrel": str(arrel), "fitxers": {}}
     d = _llig_json(fitxer_index())
-    if d.get("versio") != VERSIO_INDEX or d.get("arrel") != str(arrel):
-        return {"versio": VERSIO_INDEX, "arrel": str(arrel), "fitxers": {}}
-    d.setdefault("fitxers", {})
+    if d.get("versio") != VERSIO_INDEX or d.get("arrel") != str(arrel) or not isinstance(d.get("fitxers"), dict):
+        return buit
+    fitxers = {}
+    for rel, reg in d["fitxers"].items():
+        r = _registre_valid(reg) if isinstance(rel, str) else None
+        if r is not None:
+            fitxers[rel] = r
+    d["fitxers"] = fitxers
     return d
 
 
@@ -460,9 +605,36 @@ def _registre_base(rel: str, st: os.stat_result) -> dict:
             "estat": "pendent" if tipus == "musicxml" else "nomes-nom"}
 
 
+def _llig_amb_limit(ruta: Path, segons: float) -> None:
+    """Llig el fitxer sencer (si només és al núvol, OneDrive el baixa) amb un temps màxim.
+
+    Si OneDrive no té connexió, la lectura pot quedar-se penjada: ho fem en un fil apart i, passat el temps, el deixem anar."""
+    res: dict = {}
+
+    def fil():
+        try:
+            with open(ruta, "rb") as f:
+                while f.read(1 << 20):
+                    pass
+            res["ok"] = True
+        except BaseException as e:  # noqa: BLE001
+            res["e"] = e
+
+    t = threading.Thread(target=fil, daemon=True)
+    t.start()
+    t.join(segons)
+    if t.is_alive():
+        raise TimeoutError("el fitxer tarda massa a baixar-se")
+    if "e" in res:
+        raise res["e"]
+
+
 def actualitza(arrel: Path | None = None, maxim_noves: int = MAX_NOVES, segons: float = MAX_SEGONS,
-               sortida=print) -> dict:
-    """Posa l'índex al dia. Només analitza fitxers nous o canviats, amb un límit per vegada."""
+               sortida=print, segons_per_fitxer: float = SEGONS_PER_FITXER) -> dict:
+    """Posa l'índex al dia. Només analitza fitxers nous o canviats, amb un límit per vegada (de fitxers i de temps).
+
+    L'índex es desa cada DESA_CADA fitxers, així que una tanda tallada no perd la feina feta. Un fitxer que no es pot
+    llegir (sense connexió, encara no baixat, massa lent) no atura la tanda: es deixa per a més endavant."""
     import warnings
     arrel = Path(arrel) if arrel else biblioteca()
     antic = llig_index(arrel)["fitxers"]
@@ -470,37 +642,65 @@ def actualitza(arrel: Path | None = None, maxim_noves: int = MAX_NOVES, segons: 
     pendents: list[str] = []
     for rel, st in recorre(arrel):
         reg = antic.get(rel)
-        if reg and reg.get("mida") == st.st_size and reg.get("mtime") == int(st.st_mtime) and reg.get("estat") != "pendent":
-            reg["al_nuvol"] = al_nuvol(st) if reg.get("al_nuvol") else False
-            nou[rel] = reg
-            continue
+        nuvol = al_nuvol(st)
+        if reg and reg.get("mida") == st.st_size and reg.get("mtime") == int(st.st_mtime):
+            if reg.get("estat") == "lent":
+                # no s'havia pogut llegir: es reintenta només quan ja és baixat, i com a molt MAX_INTENTS vegades
+                if not nuvol and reg.get("intents", 0) < MAX_INTENTS:
+                    reg["estat"] = "pendent"
+                    reg["al_nuvol"] = False
+                    nou[rel] = reg
+                    pendents.append(rel)
+                else:
+                    reg["al_nuvol"] = nuvol
+                    nou[rel] = reg
+                continue
+            if reg.get("estat") != "pendent":
+                reg["al_nuvol"] = nuvol if reg.get("al_nuvol") else False
+                nou[rel] = reg
+                continue
         nou[rel] = _registre_base(rel, st)
+        if reg and reg.get("estat") == "pendent" and isinstance(reg.get("intents"), int):
+            nou[rel]["intents"] = reg["intents"]
         if nou[rel]["estat"] == "pendent":
             if st.st_size > MIDA_MAXIMA_ANALISI:
                 nou[rel]["estat"] = "nomes-nom"
             else:
                 pendents.append(rel)
-    inici = time.monotonic()
-    fets = errors = 0
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        for rel in pendents:
-            if fets + errors >= maxim_noves or time.monotonic() - inici > segons:
-                break
-            try:
-                nou[rel].update(_analitza(arrel / rel))
-                fets += 1
-            except Exception as e:  # un fitxer dolent no atura la resta
-                nou[rel].update({"estat": "error", "error": type(e).__name__})
-                errors += 1
-            if (fets + errors) % 20 == 0:
-                sortida(f"  ... {fets + errors} de {len(pendents)} analitzades")
-    queden = sum(1 for r in nou.values() if r["estat"] == "pendent")
     # les etiquetes es calculen sempre (una carpeta o un fitxer de text pot canviar sense tocar la partitura)
     for rel, reg in nou.items():
         reg.update(etiquetes_de(rel, arrel))
-    _desa_json(fitxer_index(), {"versio": VERSIO_INDEX, "arrel": str(arrel), "fitxers": nou})
-    return {"total": len(nou), "analitzades": fets, "errors": errors, "queden": queden,
+
+    def desa():
+        _desa_json(fitxer_index(), {"versio": VERSIO_INDEX, "arrel": str(arrel), "fitxers": nou})
+
+    desa()   # el que ja se sap queda guardat encara que la tanda es talle
+    inici = time.monotonic()
+    fets = errors = no_llegits = 0
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for rel in pendents:
+            if fets + errors + no_llegits >= maxim_noves or time.monotonic() - inici > segons:
+                break
+            try:
+                if nou[rel].get("al_nuvol"):
+                    _llig_amb_limit(arrel / rel, segons_per_fitxer)
+                nou[rel].update(_analitza(arrel / rel))
+                nou[rel].pop("intents", None)
+                fets += 1
+            except (OSError, TimeoutError):   # sense connexió, fitxer encara no baixat, o massa lent
+                nou[rel].update({"estat": "lent", "intents": nou[rel].get("intents", 0) + 1})
+                no_llegits += 1
+            except Exception as e:  # un fitxer dolent no atura la resta
+                nou[rel].update({"estat": "error", "error": type(e).__name__})
+                errors += 1
+            fets_ara = fets + errors + no_llegits
+            if fets_ara % DESA_CADA == 0:
+                desa()
+                sortida(f"  ... {fets_ara} de {len(pendents)} mirades")
+    desa()
+    queden = sum(1 for r in nou.values() if r["estat"] == "pendent")
+    return {"total": len(nou), "analitzades": fets, "errors": errors, "queden": queden, "no_llegits": no_llegits,
             "pdf": sum(1 for r in nou.values() if r["tipus"] == "pdf"),
             "musescore": sum(1 for r in nou.values() if r["tipus"] == "musescore"),
             "al_nuvol": sum(1 for r in nou.values() if r.get("al_nuvol"))}
@@ -509,6 +709,9 @@ def actualitza(arrel: Path | None = None, maxim_noves: int = MAX_NOVES, segons: 
 def text_actualitza(r: dict) -> str:
     ll = [f"Biblioteca: {r['total']} fitxers a l'índex ({r['analitzades']} analitzats ara"
           + (f", {r['errors']} que no he pogut llegir" if r["errors"] else "") + ")."]
+    if r.get("no_llegits"):
+        ll.append(f"{r['no_llegits']} fitxers no s'han pogut llegir ara (no hi ha connexió o el fitxer encara no s'ha baixat); "
+                  "els deixe per a més endavant. Mentrestant es troben pel nom.")
     if r["queden"]:
         ll.append(f"Encara en queden {r['queden']} per analitzar: torna a executar «partitures biblioteca actualitza» "
                   "i continuaré on ho havia deixat. Mentrestant ja pots cercar (pels noms i carpetes).")
@@ -542,6 +745,16 @@ def _coincideix(consulta: str, text: str) -> bool:
     return all(w in text for w in _paraules(c)) if c else True
 
 
+def _coincideix_nivell(consulta: str, etiquetes: list) -> bool:
+    """«4t elemental» troba «4t d'elemental», «quart elemental» i «4t EE»."""
+    try:
+        from .nivells import normalitza_curs
+        c = normalitza_curs(consulta)
+        return bool(c) and any(c in normalitza_curs(e) for e in etiquetes) or _coincideix(consulta, norm(" ".join(etiquetes)))
+    except Exception:  # noqa: BLE001
+        return _coincideix(consulta, norm(" ".join(etiquetes)))
+
+
 def cerca(paraules: str, nivell: str | None = None, estil: str | None = None, instrument: str | None = None,
           arrel: Path | None = None) -> list[tuple[int, str, dict]]:
     arrel = Path(arrel) if arrel else biblioteca()
@@ -553,7 +766,7 @@ def cerca(paraules: str, nivell: str | None = None, estil: str | None = None, in
         tot = f"{fort} {carpetes} {extra}"
         if not all(w in tot for w in ws):
             continue
-        if nivell and not _coincideix(nivell, norm(" ".join(reg.get("nivell", [])))):
+        if nivell and not _coincideix_nivell(nivell, reg.get("nivell", [])):
             continue
         if estil and not _coincideix(estil, norm(" ".join(reg.get("estil", [])))):
             continue
@@ -574,6 +787,12 @@ def cerca(paraules: str, nivell: str | None = None, estil: str | None = None, in
 
 def _rang(p: dict) -> str:
     return f"{p['mes_greu']}-{p['mes_agut']}" if p.get("mes_greu") else ""
+
+
+def _nom_curt(rel: str) -> str:
+    """Ruta per a mostrar al model: sense caràcters de control i com a molt MAX_NOM lletres (conservant el final)."""
+    net = re.sub(r"[\x00-\x1f\x7f]", " ", rel)
+    return net if len(net) <= MAX_NOM else "..." + net[-(MAX_NOM - 3):]
 
 
 def format_resultat(k: int, rel: str, reg: dict) -> str:
@@ -602,7 +821,7 @@ def format_resultat(k: int, rel: str, reg: dict) -> str:
         ll.append("   (encara no analitzada: executa «partitures biblioteca actualitza»)")
     else:
         ll.append("   (no he pogut llegir el contingut; potser cal obrir-la amb MuseScore)")
-    ll.append("   " + rel)
+    ll.append("   " + _nom_curt(rel))
     return "\n".join(ll)
 
 
@@ -615,6 +834,9 @@ def _avisos_nivell(reg: dict, nivell: str) -> list[str]:
 
 
 def ordre_cerca(paraules: str, nivell=None, estil=None, instrument=None, maxim: int = 10, sortida=print) -> None:
+    if not hi_ha_biblioteca():
+        sortida(SENSE_BIBLIOTECA)   # UNA sola línia: qui no té biblioteca no necessita explicacions
+        return
     arrel = biblioteca()
     if not llig_index(arrel)["fitxers"]:
         raise ErrorUsuari("L'índex de la biblioteca està buit. Executa primer «partitures biblioteca actualitza».")

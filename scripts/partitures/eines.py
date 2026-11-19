@@ -78,7 +78,7 @@ def _trobar(var_entorn: str, candidats: list[str], noms_path: list[str]) -> str 
         if Path(forçada).exists():
             return forçada
         raise ErrorUsuari(
-            f"La variable {var_entorn} apunta a «{forçada}», però aquest fitxer no existeix."
+            f"La variable {var_entorn} apunta a «{forçada}», però este fitxer no existeix."
         )
     for c in candidats:
         if c and Path(c).exists():
@@ -113,7 +113,19 @@ def trobar_audiveris() -> str:
     return ruta
 
 
-COSES_INSTALABLES = ("musescore", "audiveris", "opencode", "icona", "eines", "carpeta", "uv", "onedrive")
+def coses_instalables(plataforma: str | None = None) -> tuple:
+    plataforma = plataforma or sys.platform
+    # a Linux no hi ha OneDrive: no s'ofereix
+    return ("musescore", "audiveris", "opencode", "icona", "eines", "carpeta", "uv") + (
+        () if plataforma.startswith("linux") else ("onedrive",))
+
+
+COSES_INSTALABLES = coses_instalables()
+
+
+def es_opcional(nom: str) -> bool:
+    """Coses que, si falten, només són un avís (no impedeixen obrir Arranjaments)."""
+    return "opcional" in nom or nom.startswith("MuseScore")
 
 
 def instalar(cosa: str | None, prova: bool = False) -> int:
@@ -150,7 +162,7 @@ def comprovar() -> list[tuple[str, bool, str]]:
         res.append(("Eines musicals (music21)", True, "preparades"))
     except ImportError:
         res.append(("Eines musicals (music21)", False, "falten; torna a obrir «Instal·lar Arranjaments»"))
-    for nom, fn, ajuda in (("MuseScore", trobar_musescore, "Revisar partitures i fer PDF"),
+    for nom, fn, ajuda in (("MuseScore (per a fer PDF)", trobar_musescore, "Revisar partitures i fer PDF"),
                            ("Audiveris (opcional, només per a PDF)", trobar_audiveris, "Convertir PDF en partitura editable")):
         try:
             res.append((nom, True, fn()))

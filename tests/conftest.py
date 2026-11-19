@@ -11,6 +11,10 @@ def projecte(tmp_path, monkeypatch):
     monkeypatch.setenv("PARTITURES_ARREL", str(arrel))
     monkeypatch.chdir(arrel)
     monkeypatch.delenv("PARTITURES_DEBUG", raising=False)
+    # res es recorda entre proves (on és la biblioteca, perfils compartits)
+    from partitures import biblioteca, nivells
+    biblioteca._MEMO.clear()
+    nivells.esborra_cache()
     return arrel
 
 

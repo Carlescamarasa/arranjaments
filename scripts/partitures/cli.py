@@ -61,6 +61,11 @@ def cmd_nivell(a):
             raise ErrorUsuari("Cal dir l'instrument i el curs: partitures nivell desa --instrument flauta --curs \"4t elemental\" --tessitura \"Do3-Sol4\".")
         camps = {c: getattr(a, c) for c in nivells.CAMPS}
         print("\n".join(nivells.desa(a.instrument, a.curs, camps, a.substitueix)))
+    elif a.accio == "esborra":
+        if not a.instrument or not a.curs:
+            raise ErrorUsuari("Cal dir l'instrument i el curs: partitures nivell esborra --instrument flauta --curs \"4t elemental\" "
+                              "(i, si només vols treure una dada, --camp tessitura).")
+        print(nivells.esborra(a.instrument, a.curs, a.camp))
     elif a.accio == "exporta":
         r = nivells.exporta(a.eixida)
         print(f"Fitxer creat: {rutes.relativa(r)}")
@@ -72,6 +77,8 @@ def cmd_preferencia(a):
     from . import nivells
     if a.accio == "desa":
         print(nivells.desa_preferencia(" ".join(a.text)))
+    elif a.accio == "esborra":
+        print(nivells.esborra_preferencia(" ".join(a.text)))
     else:
         print(nivells.text_preferencies())
 
@@ -138,19 +145,27 @@ def cmd_corpus(a):
 def cmd_comprovar(a):
     from . import eines
     falten = 0
-    opcionals = 0
+    avisos = []
     for nom, ok, msg in eines.comprovar():
-        print(f"  [{'fet' if ok else 'falta'}]  {nom}" + ("" if ok else f": {msg}"))
-        if not ok:
-            if "opcional" in nom:
-                opcionals += 1
-            else:
-                falten += 1
+        if ok:
+            print(f"  [fet]  {nom}")
+        elif eines.es_opcional(nom):
+            print(f"  [avís]  {nom}: {msg}")
+            avisos.append(nom)
+        else:
+            print(f"  [falta]  {nom}: {msg}")
+            falten += 1
     if falten:
         print(f"\nFalten {falten} cosa(es). Es poden instal·lar amb «partitures instalar musescore» "
               "o tornant a obrir «Instal·lar Arranjaments».")
         raise ErrorUsuari("L'ordinador encara no està preparat del tot.")
-    print("\nTot a punt." + (" (Audiveris només cal si vols convertir PDF.)" if opcionals else ""))
+    if any("MuseScore" in n for n in avisos):
+        print("\nTot a punt, però encara no podràs fer PDF ni obrir partitures: falta MuseScore "
+              "(«partitures instalar musescore»; a Windows demana permís d'administrador).")
+    elif avisos:
+        print("\nTot a punt. (Audiveris només cal si vols convertir PDF.)")
+    else:
+        print("\nTot a punt.")
 
 
 def cmd_instalar(a):
@@ -190,11 +205,19 @@ def cmd_biblioteca(a):
             print(f"Ruta desada: {bib.guarda_ruta(a.ruta)}")
         print(bib.text_on_es())
     elif a.accio == "actualitza":
+        if not bib.hi_ha_biblioteca():
+            print(bib.SENSE_BIBLIOTECA)
+            return
         print(bib.text_actualitza(bib.actualitza(maxim_noves=a.noves, segons=a.segons)))
     elif a.accio == "cerca":
         bib.ordre_cerca(" ".join(a.text), a.nivell, a.estil, a.instrument, a.maxim)
     elif a.accio == "copia":
         _actual(bib.copia(a.numero))
+
+
+def nivells_camps():
+    from . import nivells
+    return list(nivells.CAMPS)
 
 
 class _Parser(argparse.ArgumentParser):
@@ -242,6 +265,9 @@ def crear_parser() -> argparse.ArgumentParser:
                  ("articulacions", "picat, lligat"), ("notes", "text lliure")):
         x.add_argument(f"--{c}", help=f"Per exemple: {h}")
     x.add_argument("--substitueix", action="store_true", help="Canvia les llistes en lloc de sumar-hi")
+    x = n.add_parser("esborra", help="Esborra un perfil (o una dada d'un perfil) que s'ha desat malament")
+    x.add_argument("--instrument"); x.add_argument("--curs")
+    x.add_argument("--camp", choices=nivells_camps(), help="Només esta dada (si no, tot el perfil)")
     x = n.add_parser("exporta", help="Crea un fitxer a eixida/ per a compartir els perfils")
     x.add_argument("--eixida")
     s.set_defaults(f=cmd_nivell)
@@ -249,6 +275,8 @@ def crear_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("preferencia", help="Preferències del professor o professora que l'ajudant recorda")
     pf = s.add_subparsers(dest="accio", required=True, parser_class=_Parser)
     x = pf.add_parser("desa", help="Desa una preferència (frase entre cometes)")
+    x.add_argument("text", nargs="+")
+    x = pf.add_parser("esborra", help="Esborra una preferència (unes paraules d'ella)")
     x.add_argument("text", nargs="+")
     pf.add_parser("mostra", help="Mostra les preferències desades")
     s.set_defaults(f=cmd_preferencia)
@@ -290,7 +318,7 @@ def crear_parser() -> argparse.ArgumentParser:
     x.add_argument("--ruta", help="Desa la carpeta de la biblioteca si té un altre nom o és en un altre lloc")
     x = b.add_parser("actualitza", help="Posa al dia l'índex (analitza les partitures noves, per tandes)")
     x.add_argument("--noves", type=int, default=200, help="Màxim de partitures noves per vegada")
-    x.add_argument("--segons", type=int, default=120, help="Temps màxim per vegada")
+    x.add_argument("--segons", type=int, default=60, help="Temps màxim per vegada")
     x = b.add_parser("cerca", help="Cerca per paraules (títol, compositor, carpeta, instrument...)")
     x.add_argument("text", nargs="*")
     x.add_argument("--nivell"); x.add_argument("--estil"); x.add_argument("--instrument")
