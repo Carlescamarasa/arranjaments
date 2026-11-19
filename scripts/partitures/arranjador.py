@@ -1908,11 +1908,13 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
 
 # --------------------------------------------------------------------------- ordre principal
 
-def _posar_cues(construides, curs, seccions, rols) -> list:
-    """Cues d'orientació i d'instrument absent (paquet 12). La lògica és a `cues.py`."""
+def _posar_cues(construides, curs, seccions, rols, absents: bool = False) -> list:
+    """Cues d'orientació i, si es demana, d'instrument absent (paquet 12). La lògica és a `cues.py`.
+    Les d'instrument absent omplin molts silencis: només amb `--cues-absents` (conjunt incomplet)."""
     rang = lambda instr: _rang_concert(instr, curs)
     fetes = cues.cues_orientacio(construides, rang, es_elemental(curs), seccions, rols)
-    fetes += cues.cues_absents(construides, rang, seccions, rols, article=_amb_article)
+    if absents:
+        fetes += cues.cues_absents(construides, rang, seccions, rols, article=_amb_article)
     return fetes
 
 
@@ -1920,7 +1922,7 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
              compassos_sel: tuple[int, int] | None = None, melodia_part: int | None = None,
              a_tonalitat: str | None = None, simplifica: bool = False, bordo: bool = False,
              rotacio: bool = True, tutti_final: bool = False,
-             harmonia: str = "auto") -> tuple[stream.Score, list[str]]:
+             harmonia: str = "auto", cues_absents: bool = False) -> tuple[stream.Score, list[str]]:
     informe: list[str] = []
     avisos_acords: list[str] = []
     md0 = score.metadata
@@ -2032,7 +2034,7 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
     # els acords van damunt de la (primera) melodia, posats en so real ABANS d'escriure la part: si l'instrument
     # transporta, es transporten amb les notes (Fa -> Sol per a la trompeta en Sib, Fa -> Do per a la trompa en Fa)
     mel_simbols = next(r for r, _, _ in construides if r.rol == "melodia")
-    cues_fetes = _posar_cues(construides, curs, seccions, rols)   # en so real: es transposen al vestir cada part
+    cues_fetes = _posar_cues(construides, curs, seccions, rols, cues_absents)   # en so real: es transposen al vestir cada part
     for n, (r, pp, _) in enumerate(construides):
         if not r.instr.percussio:
             if r is mel_simbols:

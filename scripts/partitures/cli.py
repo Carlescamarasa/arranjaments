@@ -70,7 +70,7 @@ def cmd_arranja(a):
     r, informe = arr.arranjar(s, rols, estil=a.estil, curs=a.nivell, compassos_sel=arr.parse_compassos(a.compassos),
                               melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo,
                               rotacio=not a.sense_rotacio, tutti_final=a.tutti_final,
-                              harmonia=a.harmonia)
+                              harmonia=a.harmonia, cues_absents=a.cues_absents)
     ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     print("\n".join(informe))
     _actual(ruta)
@@ -395,6 +395,8 @@ def crear_parser() -> argparse.ArgumentParser:
                    help="Si la melodia va sola: auto (segons el nivell), simple (un acord per compàs: I, IV, V) o modal")
     s.add_argument("--sense-rotacio", action="store_true", dest="sense_rotacio",
                    help="La melodia, el contracant i el baix es queden sempre en el mateix instrument (per defecte van canviant)")
+    s.add_argument("--cues-absents", action="store_true", dest="cues_absents",
+                   help="Si falta algun instrument: el baix i el contracant també en notes petites en un altre")
     s.add_argument("--tutti-final", action="store_true", dest="tutti_final",
                    help="L'última frase, la melodia també en el contracant (tot el conjunt)")
     s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
