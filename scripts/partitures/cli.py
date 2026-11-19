@@ -139,6 +139,26 @@ def cmd_instalar(a):
         raise ErrorUsuari("La instal·lació no ha acabat bé. Llig els avisos [falta] de dalt.")
 
 
+def cmd_actualitzar(a):
+    from . import actualitzar as act
+    inst = act.instalacio_actual()
+    if inst is None:
+        raise ErrorUsuari("Això s'executa des del repositori, no des d'una instal·lació: no hi ha res a actualitzar. "
+                          "Dins del repositori, usa git.")
+    if a.torna_enrere:
+        r = act.torna_enrere(inst)
+    else:
+        r = act.actualitza(inst, forca=True)
+    print(r.missatge)
+    if not r.be:
+        raise ErrorUsuari("Si continua passant, torna a obrir «Instal·lar Arranjaments».")
+
+
+def cmd_versio(a):
+    from . import actualitzar as act
+    print(act.text_versio(act.instalacio_actual()))
+
+
 class _Parser(argparse.ArgumentParser):
     def error(self, message):
         self.print_usage(sys.stderr)
@@ -195,6 +215,13 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("cosa", nargs="?", choices=COSES_INSTALABLES)
     s.add_argument("--prova", action="store_true", help="Només comprova què hi ha instal·lat, no canvia res")
     s.set_defaults(f=cmd_instalar)
+
+    s = sub.add_parser("actualitzar", help="Busca i instal·la la versió nova d'Arranjaments (o torna a l'anterior)")
+    s.add_argument("--torna-enrere", action="store_true", dest="torna_enrere", help="Torna a la versió anterior")
+    s.set_defaults(f=cmd_actualitzar)
+
+    s = sub.add_parser("versio", help="Mostra la versió d'Arranjaments que tens")
+    s.set_defaults(f=cmd_versio)
 
     s = sub.add_parser("corpus", help="Busca en el corpus de música lliure que ve amb music21")
     s.add_argument("text", nargs="*", help="Què busques (compositor, títol o nom de fitxer)")
