@@ -27,9 +27,15 @@ class Instrument:
     comoda: tuple
     alies: tuple = ()
     clef: str = "treble"  # clau habitual: treble, bass, alto o auto (la tria music21 segons les notes)
+    percussio: bool = False   # percussió sense altura (bateria, caixa...): no té tessitura ni es transporta
+    lamina: bool = False      # percussió de làmines (xilòfon, metal·lòfon...): normalment a dues baquetes
 
     def semitons(self) -> int:
         return interval.Interval(self.transposicio).semitones if self.transposicio != "P1" else 0
+
+    @property
+    def abreviatura(self) -> str:
+        return ABREVIATURES.get(self.clau, self.nom)
 
 
 CATALEG: list[Instrument] = [
@@ -88,7 +94,42 @@ CATALEG: list[Instrument] = [
     Instrument("contrabaix", "Contrabaix", "Contrabass", "P-8", ("E2", "G4"), ("E2", "D4"),
                ("double bass", "contrabass", "contrabaix", "contrabajo"), "bass"),
     Instrument("piano", "Piano", "Piano", "P1", ("A0", "C8"), ("A0", "C8"), ("piano", "klavier"), "auto"),
+    # Làmines. Xilòfon d'orquestra: sona una octava més agut del que s'escriu. Carilló (glockenspiel): dues octaves.
+    Instrument("xilofon", "Xilòfon", "Xylophone", "P8", ("F3", "C7"), ("C4", "C6"),
+               ("xylophone", "xilofon", "xilofono", "xilòfon"), lamina=True),
+    Instrument("xilofon-orff", "Xilòfon alt (Orff)", "Xylophone", "P1", ("C4", "A5"), ("C4", "A5"),
+               ("xilofon orff", "xilofon alt", "xilofono alto", "alto xylophone", "orff xylophone"), lamina=True),
+    Instrument("metalofon", "Metal·lòfon alt (Orff)", "Instrument", "P1", ("C4", "A5"), ("C4", "A5"),
+               ("metalofon", "metal·lofon", "metallofon", "metalofono", "metallophone"), lamina=True),
+    Instrument("carillo", "Carilló (glockenspiel)", "Glockenspiel", "P15", ("G3", "C6"), ("C4", "A5"),
+               ("glockenspiel", "carillo", "carillon", "lira", "campanetes"), lamina=True),
+    Instrument("marimba", "Marimba", "Marimba", "P1", ("A2", "C7"), ("C3", "C6"),
+               ("marimba",), "auto", lamina=True),
+    Instrument("vibrafon", "Vibràfon", "Vibraphone", "P1", ("F3", "F6"), ("A3", "E6"),
+               ("vibraphone", "vibrafon", "vibrafono", "vibes"), lamina=True),
+    # Percussió sense altura (pentagrama de percussió; no té tessitura).
+    Instrument("bateria", "Bateria", "UnpitchedPercussion", "P1", ("C4", "C4"), ("C4", "C4"),
+               ("bateria", "drums", "drum set", "drumset", "drum kit"), "percussion", percussio=True),
+    Instrument("caixa", "Caixa", "SnareDrum", "P1", ("C4", "C4"), ("C4", "C4"),
+               ("caixa", "caja", "snare", "snare drum", "tambor"), "percussion", percussio=True),
+    Instrument("percussio", "Percussió", "UnpitchedPercussion", "P1", ("C4", "C4"), ("C4", "C4"),
+               ("percussio", "percusion", "percussion", "percussio menuda", "pandero", "pandereta", "claves"),
+               "percussion", percussio=True),
 ]
+
+# Noms de grup: una paraula que vol dir diversos instruments. El primer és el que es tria si no es diu res més.
+GRUPS = {
+    "lamines": ("xilofon-orff", "metalofon", "carillo", "xilofon"),
+}
+
+ABREVIATURES = {
+    "trompeta-sib": "Tpt.", "trompeta-do": "Tpt.", "fliscorn-sib": "Flisc.", "trompa-fa": "Tpa.", "trombo": "Tbn.",
+    "trombo-baix": "Tbn. b.", "bombardi": "Bomb.", "tuba": "Tuba", "flauti": "Flautí", "flauta": "Fl.", "oboe": "Ob.",
+    "clarinet-sib": "Cl.", "clarinet-la": "Cl.", "saxo-alt": "Sx. a.", "saxo-tenor": "Sx. t.", "fagot": "Fg.",
+    "guitarra": "Guit.", "violi": "Vl.", "viola": "Vla.", "violoncel": "Vc.", "contrabaix": "Cb.", "piano": "Pno.",
+    "xilofon": "Xil.", "xilofon-orff": "Xil.", "metalofon": "Met.", "carillo": "Car.", "marimba": "Mar.",
+    "vibrafon": "Vib.", "bateria": "Bat.", "caixa": "Cx.", "percussio": "Perc.",
+}
 
 _PER_CLAU = {i.clau: i for i in CATALEG}
 
@@ -118,11 +159,21 @@ def _coincidencies(text: str) -> list[tuple[int, Instrument]]:
     return res
 
 
+def grup(text: str) -> list[Instrument] | None:
+    """Si el text és un nom de grup (per exemple «làmines»), els instruments del grup; si no, None."""
+    n = _norm(text).replace("·", "").replace("-", " ").strip()
+    claus = GRUPS.get(n) or GRUPS.get(n.rstrip("s"))
+    return [_PER_CLAU[c] for c in claus] if claus else None
+
+
 def obtenir(text: str) -> Instrument:
     """Accepta la clau exacta o un nom habitual: «trompeta», «Trompeta en Sib», «trombon», «saxo»..."""
     n = _norm(text).replace(" ", "-").replace("_", "-")
     if n in _PER_CLAU:
         return _PER_CLAU[n]
+    g = grup(text)
+    if g:
+        return g[0]
     trobades = _coincidencies(text)
     if trobades:
         return trobades[0][1]
@@ -149,6 +200,8 @@ def detectar(nom_text: str, semitons_transposicio: int | None) -> Instrument | N
 def crear_objecte_music21(inst: Instrument):
     classe = getattr(m21i, inst.classe, m21i.Instrument)  # si music21 no la coneix, instrument genèric
     obj = classe()
+    if inst.percussio:
+        obj.midiChannel = 9   # canal 10 (percussió)
     obj.instrumentName = inst.nom
     obj.partName = inst.nom
     obj.transposition = interval.Interval(inst.transposicio) if inst.transposicio != "P1" else None

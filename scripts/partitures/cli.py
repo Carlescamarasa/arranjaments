@@ -33,8 +33,17 @@ def cmd_instruments(a):
     if not a.assigna:
         print("Instruments que conec (nom per a escriure a l'ordre, nom complet, transposició):")
         for i in inst.CATALEG:
-            t = "sona igual que s'escriu" if i.semitons() == 0 else f"sona {abs(i.semitons())} semitons {'més greu' if i.semitons() < 0 else 'més agut'} del que s'escriu"
+            if i.percussio:
+                t = "percussió sense altura"
+            elif i.semitons() == 0:
+                t = "sona igual que s'escriu"
+            else:
+                n = abs(i.semitons())
+                quant = {12: "una octava", 24: "dues octaves"}.get(n, f"{n} semitons")
+                t = f"sona {quant} {'més greu' if i.semitons() < 0 else 'més agut'} del que s'escriu"
             print(f"  {i.clau:20} {i.nom} ({t})")
+        for g, claus in inst.GRUPS.items():
+            print(f"Grup «{'làmines' if g == 'lamines' else g}»: {', '.join(claus)} (si només dius el grup, tria el primer).")
         print("Les tessitures són orientatives.")
         return
     if not a.fitxer:
@@ -50,6 +59,19 @@ def cmd_instruments(a):
 def cmd_tessitura(a):
     d = musica.tessitura(musica.carregar(a.fitxer), a.instruments, a.nivell)
     print(json.dumps(d, ensure_ascii=False, indent=2) if a.json else musica.text_tessitura(d))
+
+
+def cmd_arranja(a):
+    from . import arranjador as arr
+    rols = arr.parse_rols(a.rols)
+    for x in arr.parse_rols.avisos:
+        print(x)
+    s = musica.carregar(a.fitxer)
+    r, informe = arr.arranjar(s, rols, estil=a.estil, curs=a.nivell, compassos_sel=arr.parse_compassos(a.compassos),
+                              melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo)
+    ruta = musica.desar(r, rutes.eixida_per_defecte(a.fitxer, "arranjament", sol_licitada=a.eixida))
+    print("\n".join(informe))
+    _actual(ruta)
 
 
 def cmd_nivell(a):
@@ -230,6 +252,20 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--instruments", help='Si el fitxer no diu quin instrument és cada part: "1=trompeta-sib,..."')
     s.add_argument("--nivell", help='Curs per a comparar amb el perfil desat, per exemple "4t elemental"')
     s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_tessitura)
+
+    s = sub.add_parser("arranja", help="Crea parts noves (melodia, contracant, acompanyament, baix, percussió): esborrany")
+    s.add_argument("fitxer")
+    s.add_argument("--rols", required=True,
+                   help='Rol=instrument: "melodia=trompeta-sib,contracant=flauta,acompanyament=xilofon,percussio=bateria" '
+                        "(rols: melodia, contracant, acompanyament, baix, percussio)")
+    s.add_argument("--estil", choices=("ragtime", "swing", "pop", "rock", "marxa", "vals", "classic"))
+    s.add_argument("--nivell", help='Curs, per exemple "4t elemental" (usa el perfil desat si n\'hi ha)')
+    s.add_argument("--compassos", help="Només estos compassos, per exemple 1-16")
+    s.add_argument("--melodia-part", type=int, dest="melodia_part", help="Número de la part que porta la melodia")
+    s.add_argument("--to", help='Transporta abans a esta tonalitat, per exemple "Sol major"')
+    s.add_argument("--simplifica", action="store_true", help="Simplifica el ritme de la melodia a les figures del nivell")
+    s.add_argument("--bordo", action="store_true", help="Acompanyament amb bordó (tònica i quinta), estil Orff")
+    s.add_argument("--eixida"); s.set_defaults(f=cmd_arranja)
 
     s = sub.add_parser("nivell", help="Perfils de nivell (curs i instrument) que l'ajudant va aprenent")
     n = s.add_subparsers(dest="accio", required=True, parser_class=_Parser)

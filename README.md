@@ -271,6 +271,7 @@ Ningú ha d'omplir fitxes. Quan l'ajudant necessita saber un nivell (per exemple
 - «Tinc un PDF a entrada/ i el vull convertir en partitura.»
 - «Què hi ha dins d'entrada/coral.musicxml?»
 - «Vull fer-ne un arranjament per a dues trompetes, trompa i trombó.»
+- «Arranja'm esta melodia per a trompeta, flauta, xilòfon i bateria, en estil ragtime, per a 4t d'elemental.» (L'ajudant crea les parts noves amb `partitures arranja`: un esborrany per a revisar amb MuseScore.)
 - «Comprova si les notes els van bé a cada instrument.»
 - «Passa la trompa una octava més amunt.»
 - «Transporta-ho un to més avall.»
