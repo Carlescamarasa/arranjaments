@@ -392,6 +392,12 @@ def _beat_feble(off_metric: float, m: Metrica) -> bool:
     return k is not None and k % 2 == 1
 
 
+def _contratemps(off_metric: float, m: Metrica) -> bool:
+    """Atac fora de la pulsació (per exemple la segona corxera d'un temps)."""
+    q = off_metric / m.pulsacio
+    return abs(q - round(q)) > 1e-6
+
+
 def posa_matisos_i_articulacions(construides, rols, seccions, compassos, estil: str, elemental: bool) -> dict:
     """Matisos coherents per funció (la melodia un graó per damunt de la resta) i articulacions per estil.
     `construides`: llista (Rol, [parts], ...) en so real. `seccions`: les Seccio de la rotació (o buida:
@@ -458,7 +464,8 @@ def _articula(n, estil: str, funcio: str, off: float, dur: float, m: Metrica) ->
             n.articulations.append(articulations.Staccato())
         elif funcio == "acompanyament" and feble and curta:
             n.articulations.append(articulations.Staccato())
-    elif estil == "swing" and funcio == "acompanyament" and feble and curta:
+    elif estil == "swing" and funcio == "acompanyament" and curta and (feble or _contratemps(off, m)):
+        # el comping de swing toca avançat mig temps (Levine CP01): l'accent va també al contratemps
         n.articulations.append(articulations.Accent())
     elif estil == "vals" and funcio in ("baix", "suport") and _iguals(off, 0.0):
         n.articulations.append(articulations.Accent())
