@@ -63,15 +63,15 @@ def test_desa_suma_mostra_i_historial(capsys, dades):
     out = capsys.readouterr().out
     assert "abans Do3-Sol4, ara Do3-La4" in out
     p = json.loads((dades / "perfil" / "nivells.json").read_text(encoding="utf-8"))
-    assert list(p["perfils"]) == ["flauta|4t elemental"]                  # curs i instrument normalitzats
-    perfil = p["perfils"]["flauta|4t elemental"]
+    assert list(p["perfils"]) == ["flauta|4 elemental"]                  # curs i instrument normalitzats
+    perfil = p["perfils"]["flauta|4 elemental"]
     assert perfil["tonalitats"] == ["Do major", "Sol major", "Fa major"]  # suma, sense repetir
     assert [h["camp"] for h in perfil["historial"]].count("tessitura") == 2 and perfil["historial"][0]["data"]
     assert executar("nivell", "mostra", "--instrument", "flauta", "--curs", "elemental") == 0
     out = capsys.readouterr().out
     assert "Do3-La4" in out and "Falta saber: compassos" in out
     assert desa("--tonalitats", "Re major", "--substitueix") == 0
-    assert nivells.carrega()["perfils"]["flauta|4t elemental"]["tonalitats"] == ["Re major"]
+    assert nivells.carrega()["perfils"]["flauta|4 elemental"]["tonalitats"] == ["Re major"]
     assert executar("nivell", "mostra", "--instrument", "trompeta") == 0
     assert "Encara no sé res" in capsys.readouterr().out
 
@@ -175,7 +175,7 @@ def test_exporta_i_perfils_compartits_de_la_biblioteca(tmp_path, monkeypatch, ca
     out = capsys.readouterr().out
     assert "Fitxer creat: eixida/nivells.json" in out
     exportat = json.loads((projecte / "eixida" / "nivells.json").read_text(encoding="utf-8"))
-    assert "historial" not in exportat["perfils"]["flauta|4t elemental"]
+    assert "historial" not in exportat["perfils"]["flauta|4 elemental"]
     # una altra persona, sense perfil propi, el llig de la biblioteca (només lectura)
     lib = tmp_path / "lib"
     (lib / "nivells").mkdir(parents=True)
