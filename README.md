@@ -1,5 +1,7 @@
 # Arranjaments de cambra amb OpenCode
 
+**[Guia ràpida per a imprimir](docs/guia-rapida.pdf)** (una pàgina A4; també la pots llegir [al navegador](docs/guia-rapida.html)).
+
 **Versió 0.1, en proves.** És un prototip: pot tindre errors i canviar. La versió exacta que tens la veus a l'instal·lador o escrivint `partitures versio`.
 
 Un ajudant per a professors i professores de música que volen fer arranjaments de cambra (per exemple, passar un coral a quartet de metalls) sense saber programar. Li parles en valencià, com a una persona, i ell s'encarrega de les gestions: buscar la partitura, transportar, comprovar que cada instrument pot tocar el que li toca i generar els PDF.
@@ -59,7 +61,7 @@ Els models gratuïts ja venen preparats: no cal compte ni clau. Les partitures q
 
 ## Instal·lació pas a pas
 
-El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, avisos) són recreacions i poden canviar un poc segons la versió i l'idioma de l'ordinador. Les de l'instal·lador i les d'OpenCode són captures reals; les de Windows mostren una conversa feta en un Mac, amb les rutes adaptades.
+El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, avisos) i les de la conversa amb l'ajudant (passos de «Crea una sessió» fins a la carpeta `eixida`) són recreacions fidels, fetes amb una peça real, i poden canviar un poc segons la versió i l'idioma de l'ordinador. Les de l'instal·lador i la del selector de models són captures reals; les de Windows mostren una conversa feta en un Mac, amb les rutes adaptades.
 
 <details>
 <summary><strong>Mac</strong></summary>
@@ -100,19 +102,23 @@ El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
    ![Pas 9](docs/captures/mac/09-tria-carpeta.png)
 
-10. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
+10. Crea una sessió nova, escriu «Hola» (o `/arranjament`) i envia-ho.
 
    ![Pas 10](docs/captures/mac/10-escriu-peticio.png)
 
-11. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
+11. L'ajudant et pregunta què vols fer: arranjament nou o canviar-ne un. Clica una opció (la recomanada va primera) i prem «Envia». Si vols dir una altra cosa, escriu-la a l'última opció.
 
    ![Pas 11](docs/captures/mac/11-pregunta.png)
 
-12. Quan acaba, et diu què ha fet i on són els fitxers.
+   Després et farà les preguntes d'una en una (la peça, el repartiment dels instruments, l'estil i el curs), sempre amb el mateix selector:
+
+   ![Pas 11, segona pregunta](docs/captures/mac/11b-pregunta-peca.png)
+
+12. Quan acaba, et diu on són els fitxers: una carpeta `eixida/peça/` amb el guió, les particel·les i el fitxer de MuseScore. Després et pregunta si vols obrir la carpeta, canviar alguna cosa o ja està.
 
    ![Pas 12](docs/captures/mac/12-resultat.png)
 
-13. Els PDF són a Documents, `Arranjaments`, `eixida`, dins la carpeta de la peça.
+13. Dins de Documents, `Arranjaments`, `eixida`, hi ha una carpeta per peça: el guió en PDF, el fitxer de MuseScore, el MusicXML i la subcarpeta `Particel·les` amb un PDF per instrument.
 
    ![Pas 13](docs/captures/mac/13-carpeta-eixida.png)
 
@@ -157,19 +163,23 @@ El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
    ![Pas 8](docs/captures/windows/08-tria-carpeta.png)
 
-9. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
+9. Crea una sessió nova, escriu «Hola» (o `/arranjament`) i envia-ho.
 
    ![Pas 9](docs/captures/windows/09-escriu-peticio.png)
 
-10. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
+10. L'ajudant et pregunta què vols fer: arranjament nou o canviar-ne un. Clica una opció (la recomanada va primera) i prem «Envia». Si vols dir una altra cosa, escriu-la a l'última opció.
 
    ![Pas 10](docs/captures/windows/10-pregunta.png)
 
-11. Quan acaba, et diu què ha fet i on són els fitxers.
+   Després et farà les preguntes d'una en una (la peça, el repartiment dels instruments, l'estil i el curs), sempre amb el mateix selector:
+
+   ![Pas 10, segona pregunta](docs/captures/windows/10b-pregunta-peca.png)
+
+11. Quan acaba, et diu on són els fitxers: una carpeta `eixida/peça/` amb el guió, les particel·les i el fitxer de MuseScore. Després et pregunta si vols obrir la carpeta, canviar alguna cosa o ja està.
 
    ![Pas 11](docs/captures/windows/11-resultat.png)
 
-12. Els PDF són a Documents, `Arranjaments`, `eixida`, dins la carpeta de la peça.
+12. Dins de Documents, `Arranjaments`, `eixida`, hi ha una carpeta per peça: el guió en PDF, el fitxer de MuseScore, el MusicXML i la subcarpeta `Particel·les` amb un PDF per instrument.
 
    ![Pas 12](docs/captures/windows/12-carpeta-eixida.png)
 
