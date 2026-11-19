@@ -10,3 +10,4 @@ Esta és una primera versió de proves: pot canviar i tindre errors. Ens ho pots
 - Actualització automàtica en obrir la icona «Arranjaments».
 - Ordres noves: `partitures versio` (quina versió tens) i `partitures actualitzar` (busca novetats ara). Per a tornar a la versió anterior: `partitures actualitzar --torna-enrere`.
 - Biblioteca compartida del professorat (Teams/OneDrive, només lectura): l'ajudant hi cerca partitures per títol, compositor, nivell, estil i instrument. Ordres `partitures biblioteca on-es`, `actualitza`, `cerca` i `copia`. Mira «Biblioteca compartida» al README per a la preparació d'una sola vegada.
+- L'ajudant aprén els nivells: quan necessita saber fins on arriba un instrument a un curs, t'ho pregunta i ho recorda (`partitures nivell mostra` i `desa`), igual que les teues preferències. L'ordre `tessitura --nivell "4t elemental"` comprova la partitura contra el nivell. Mira «L'ajudant aprén els nivells» al README.

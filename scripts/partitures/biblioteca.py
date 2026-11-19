@@ -555,6 +555,14 @@ def format_resultat(k: int, rel: str, reg: dict) -> str:
     return "\n".join(ll)
 
 
+def _avisos_nivell(reg: dict, nivell: str) -> list[str]:
+    try:
+        from . import nivells
+        return ["   " + a for a in nivells.avisos_cerca(reg, nivell)]
+    except Exception:
+        return []
+
+
 def ordre_cerca(paraules: str, nivell=None, estil=None, instrument=None, maxim: int = 10, sortida=print) -> None:
     arrel = biblioteca()
     if not llig_index(arrel)["fitxers"]:
@@ -565,7 +573,7 @@ def ordre_cerca(paraules: str, nivell=None, estil=None, instrument=None, maxim: 
         sortida("Cap resultat a la biblioteca. Prova amb menys paraules, o cerca al corpus lliure («partitures corpus ...»).")
         return
     for k, (_, rel, reg) in enumerate(trobats[:maxim], 1):
-        sortida(format_resultat(k, rel, reg))
+        sortida("\n".join([format_resultat(k, rel, reg)] + (_avisos_nivell(reg, nivell) if nivell else [])))
     if len(trobats) > maxim:
         sortida(f"... i {len(trobats) - maxim} més. Afina la cerca.")
     sortida("Per a copiar-ne una a entrada/: partitures biblioteca copia <número>")

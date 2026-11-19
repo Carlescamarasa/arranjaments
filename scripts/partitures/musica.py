@@ -386,7 +386,7 @@ def _posar_clau(part: stream.Part, i: inst.Instrument) -> None:
 
 # --------------------------------------------------------------------------- tessitura
 
-def tessitura(score: stream.Score, assignacions: str | None = None) -> dict:
+def tessitura(score: stream.Score, assignacions: str | None = None, curs: str | None = None) -> dict:
     forcades = _parse_assignacions(assignacions)
     resultats = []
     for num, u in enumerate(unitats(score)):
@@ -439,6 +439,9 @@ def tessitura(score: stream.Score, assignacions: str | None = None) -> dict:
             "escrit_max": nom_nota(max(escrits)) if escrits else None,
             "problemes": problemes, "avis": None,
         })
+        if curs:
+            from . import nivells
+            resultats[-1]["nivell"] = nivells.comprova(instr, curs, [score.parts[k] for k in u])
     return {"convencio_notes": CONVENCIO,
             "nota": "Els límits de cada instrument són orientatius (de manual): decideix qui coneix l'instrument.",
             "parts": resultats}
@@ -456,13 +459,22 @@ def text_tessitura(d: dict, maxim_detall: int = 12) -> str:
                   f"zona còmoda {r['comoda'][0]}-{r['comoda'][1]}")
         if not r["problemes"]:
             ll.append("   Tot dins de la zona còmoda.")
+            ll += _text_nivell(r)
             continue
         ll.append(f"   {r['fora_abast']} notes FORA d'abast i {r['incomodes']} en zona incòmoda (de {r['notes']}).")
         for pr in sorted(r["problemes"], key=lambda x: (x["tipus"].startswith("zona"), str(x["compas"]).zfill(5)))[:maxim_detall]:
             ll.append(f"   - compàs {pr['compas']}: {pr['nota_escrita']} ({pr['tipus']})")
         if len(r["problemes"]) > maxim_detall:
             ll.append(f"   ... i {len(r['problemes']) - maxim_detall} més.")
+        ll += _text_nivell(r)
     return "\n".join(ll)
+
+
+def _text_nivell(r: dict) -> list[str]:
+    if not r.get("nivell"):
+        return []
+    from . import nivells
+    return nivells.text_comprovacio(r["nivell"])
 
 
 # --------------------------------------------------------------------------- reducció

@@ -48,8 +48,32 @@ def cmd_instruments(a):
 
 
 def cmd_tessitura(a):
-    d = musica.tessitura(musica.carregar(a.fitxer), a.instruments)
+    d = musica.tessitura(musica.carregar(a.fitxer), a.instruments, a.nivell)
     print(json.dumps(d, ensure_ascii=False, indent=2) if a.json else musica.text_tessitura(d))
+
+
+def cmd_nivell(a):
+    from . import nivells
+    if a.accio == "mostra":
+        print(nivells.text_mostra(a.instrument, a.curs))
+    elif a.accio == "desa":
+        if not a.instrument or not a.curs:
+            raise ErrorUsuari("Cal dir l'instrument i el curs: partitures nivell desa --instrument flauta --curs \"4t elemental\" --tessitura \"Do3-Sol4\".")
+        camps = {c: getattr(a, c) for c in nivells.CAMPS}
+        print("\n".join(nivells.desa(a.instrument, a.curs, camps, a.substitueix)))
+    elif a.accio == "exporta":
+        r = nivells.exporta(a.eixida)
+        print(f"Fitxer creat: {rutes.relativa(r)}")
+        print("És un fitxer amb els perfils de nivell (no una partitura). Es pot compartir: si el deixes a la carpeta "
+              "«nivells» de la biblioteca, tot el professorat el podrà usar.")
+
+
+def cmd_preferencia(a):
+    from . import nivells
+    if a.accio == "desa":
+        print(nivells.desa_preferencia(" ".join(a.text)))
+    else:
+        print(nivells.text_preferencies())
 
 
 def cmd_reduir(a):
@@ -202,7 +226,30 @@ def crear_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("tessitura", help="Comprova l'abast de cada instrument (orientatiu)")
     s.add_argument("fitxer")
     s.add_argument("--instruments", help='Si el fitxer no diu quin instrument és cada part: "1=trompeta-sib,..."')
+    s.add_argument("--nivell", help='Curs per a comparar amb el perfil desat, per exemple "4t elemental"')
     s.add_argument("--json", action="store_true"); s.set_defaults(f=cmd_tessitura)
+
+    s = sub.add_parser("nivell", help="Perfils de nivell (curs i instrument) que l'ajudant va aprenent")
+    n = s.add_subparsers(dest="accio", required=True, parser_class=_Parser)
+    x = n.add_parser("mostra", help="Mostra el que sap")
+    x.add_argument("--instrument"); x.add_argument("--curs")
+    x = n.add_parser("desa", help="Desa (suma) dades d'un instrument i curs")
+    x.add_argument("--instrument"); x.add_argument("--curs")
+    for c, h in (("tessitura", "Do3-Sol4"), ("tonalitats", "Do major, Sol major, fins a 2 alteracions"),
+                 ("figures", "negra, corxera, blanca amb puntet"), ("compassos", "2/4, 3/4, 4/4"),
+                 ("articulacions", "picat, lligat"), ("notes", "text lliure")):
+        x.add_argument(f"--{c}", help=f"Per exemple: {h}")
+    x.add_argument("--substitueix", action="store_true", help="Canvia les llistes en lloc de sumar-hi")
+    x = n.add_parser("exporta", help="Crea un fitxer a eixida/ per a compartir els perfils")
+    x.add_argument("--eixida")
+    s.set_defaults(f=cmd_nivell)
+
+    s = sub.add_parser("preferencia", help="Preferències del professor o professora que l'ajudant recorda")
+    pf = s.add_subparsers(dest="accio", required=True, parser_class=_Parser)
+    x = pf.add_parser("desa", help="Desa una preferència (frase entre cometes)")
+    x.add_argument("text", nargs="+")
+    pf.add_parser("mostra", help="Mostra les preferències desades")
+    s.set_defaults(f=cmd_preferencia)
 
     s = sub.add_parser("reduir", help="Redueix: quedar-se només amb algunes parts")
     s.add_argument("fitxer")

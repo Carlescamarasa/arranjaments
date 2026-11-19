@@ -246,6 +246,16 @@ Les partitures poden estar «només al núvol» (no descarregades): quan l'ajuda
 
 *Tècnic.* Les eines busquen una carpeta «Biblioteca d'arranjaments» dins de `~/Library/CloudStorage/OneDrive-*` (Mac) o de les carpetes `OneDriveCommercial`, `OneDrive` i les del perfil que comencen per «OneDrive» (Windows). Es pot forçar amb la variable `ARRANJAMENTS_BIBLIOTECA` o amb una línia amb la ruta al fitxer `biblioteca.txt` de la carpeta de dades. L'índex es guarda a `biblioteca-index.json` de la carpeta de dades, fora de la biblioteca.
 
+## L'ajudant aprén els nivells
+
+Ningú ha d'omplir fitxes. Quan l'ajudant necessita saber un nivell (per exemple «fins on arriba la flauta a 4t elemental», quines tonalitats, quines figures rítmiques i quins compassos), t'ho pregunta, d'una cosa cada vegada, i **ho recorda** per a la propera vegada. També recorda les teues preferències quan el corregeixes («a 4t elemental la flauta no passa de Re5», «prefereixo la trompa en Fa sense armadura»).
+
+- Es guarda al teu ordinador, a la carpeta de dades d'Arranjaments (`perfil/nivells.json` i `perfil/preferencies.md`), en fitxers que pots llegir. No hi poses noms d'alumnes.
+- Quan el nivell ja és conegut, l'ordre de tessitura el compara amb la partitura (`partitures tessitura "eixida/x.musicxml" --nivell "4t elemental"`) i diu, compàs per compàs, què passa del nivell: notes massa greus o agudes, tonalitats, compassos i figures. Les articulacions només les mostra.
+- Si no coneix un nivell, diu exactament què li falta perquè t'ho pregunte.
+- Per a veure el que sap: `partitures nivell mostra` i `partitures preferencia mostra`.
+- Per a compartir-ho amb el departament: `partitures nivell exporta` crea un fitxer a `eixida/`; deixa'l a una carpeta `nivells` dins de la biblioteca compartida i tot el professorat el podrà usar (el que cadascú ha desat ell mateix té prioritat).
+
 ## Frases que pots escriure
 
 - «Busca'm un coral de Bach en format editable.» (Cerca en el corpus de música lliure que ja ve instal·lat; si l'obra no hi és, l'ajudant et proposa on buscar-la.)

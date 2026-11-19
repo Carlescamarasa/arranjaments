@@ -47,7 +47,8 @@ def test_les_skills_diuen_el_timeout_de_les_operacions_llargues():
 
 def test_un_sol_recordatori_de_drets_d_autor_a_les_skills():
     amb = [f.parent.name for f in (ARREL / ".opencode" / "skills").rglob("SKILL.md") if "drets" in _text(f).lower()]
-    assert amb == ["buscar-partitura"]
+    # buscar-partitura (llicències) i biblioteca (les còpies compartides han de quedar dins del grup de l'escola)
+    assert sorted(amb) == ["biblioteca", "buscar-partitura"]
 
 
 def test_el_ps1_es_utf8_amb_bom():
