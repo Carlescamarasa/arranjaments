@@ -369,7 +369,7 @@ def test_arranjament_s_exporta_a_pdf(ragtime, capsys, projecte):
 ROLS_BAIX = "melodia=trompeta-sib,contracant=flauta,acompanyament=xilofon,baix=trombo,percussio=bateria"
 # resum (notes, durades, altures) de la sortida de --sense-rotacio. Recalculat el 19/11/2026 en integrar els paquets
 # 1 a 12: gravat (figures lligades, respiracions), baix, acompanyament i voicing, contracant per curs, octaves per frase.
-RESUM_RAG_FIX = "ef4b08b82b6ebf65"
+RESUM_RAG_FIX = "1930e28347391a24"
 RESUM_BRESSOL_FIX = "e6493793e3a9b63b"
 
 
