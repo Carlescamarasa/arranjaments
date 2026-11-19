@@ -75,6 +75,7 @@ class Instalacio:
     treball: Path | None
     url: str = URL_BASE
     proves: bool = False   # True si l'adreça ve de la variable d'entorn (permet http local i file://)
+    sense_limit: bool = False   # True en proves: no s'aplica el límit d'una consulta per hora
 
 
 # ---------------------------------------------------------------- versions
@@ -142,7 +143,8 @@ def instalacio_actual() -> Instalacio | None:
     if not dins and not os.environ.get("ARRANJAMENTS_DADES"):
         return None
     url = os.environ.get(VAR_URL) or URL_BASE
-    return Instalacio(dades, _treball(dades), url.rstrip("/"), proves=bool(os.environ.get(VAR_URL)))
+    return Instalacio(dades, _treball(dades), url.rstrip("/"), proves=bool(os.environ.get(VAR_URL)),
+                      sense_limit=bool(os.environ.get(VAR_URL)))
 
 
 # ---------------------------------------------------------------- registre i estat
@@ -509,7 +511,7 @@ def _actualitza(inst: Instalacio, forca: bool, sync, ara) -> Resultat:
     dades = inst.dades
     local = versio_de(dades)
     estat = _llig_estat(dades)
-    if not forca:
+    if not forca and not inst.sense_limit:
         ultima = estat.get("ultima_comprovacio", 0)
         if isinstance(ultima, (int, float)) and 0 <= ara() - ultima < INTERVAL_COMPROVACIO:
             return Resultat("recent", "Comprovat fa poc.")
@@ -518,7 +520,8 @@ def _actualitza(inst: Instalacio, forca: bool, sync, ara) -> Resultat:
     except ErrorActualitzacio as e:
         registra(dades, str(e))
         return Resultat("error", "No he pogut comprovar les novetats.")
-    _desa_estat(dades, ultima_comprovacio=ara())
+    if not forca:
+        _desa_estat(dades, ultima_comprovacio=ara())
     if compara(remot["versio"], local) <= 0:
         return Resultat("al_dia", f"Ja tens l'última versió ({local}).")
     if not forca and estat.get("omet_versio") == remot["versio"]:
