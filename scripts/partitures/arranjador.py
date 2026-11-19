@@ -333,61 +333,12 @@ _TRANSICIONS = {(5, 1): 1.0, (4, 5): 0.6, (2, 5): 0.8, (1, 4): 0.4, (1, 5): 0.3,
                 (1, 6): 0.3, (5, 6): 0.3, (5, 4): -0.8, (2, 1): -0.5, (4, 1): 0.3, (3, 6): 0.4}
 
 
-def harmonitzar(evs: list[Ev], segs: list[Segment], k: key.Key, estil: str) -> None:
-    """Harmonització per regles amb programació dinàmica (sempre el mateix resultat)."""
-    cands = _candidats_diatonics(k, "harmonitzat")
-    jazz = estil in ("ragtime", "swing", "pop")
-    actius = [i for i, s in enumerate(segs) if not s.compas.anacrusi]
-    if not actius:
-        return
-    ordre_comp = {cid: n for n, (cid, _) in enumerate(sorted({id(segs[i].compas): segs[i].compas.ini
-                                                              for i in actius}.items(), key=lambda x: x[1]))}
-
-    def local(j, a: Acord) -> float:
-        s = segs[actius[j]]
-        val = 0.0
-        for e, x, y in _notes_entre(evs, s.ini, s.fi):
-            w = _pes(e, x, y, s)
-            val += w if e.alt[0].pitchClass in a.pcs else -0.6 * w
-        g = _grau(a, k)
-        if a.te_septima:
-            val += 0.2 if jazz else -0.2
-        if j == 0 and g == 1 and not a.te_septima:
-            val += 1.0
-        if j == len(actius) - 1:
-            val += 5.0 if (g == 1 and not a.te_septima) else -5.0
-        if j == len(actius) - 2 and g == 5:
-            val += 1.5
-        n = ordre_comp[id(s.compas)]
-        primer_del_compas = abs(s.ini - s.compas.ini) < _EPS
-        if primer_del_compas and n % 8 == 7 and g == 1 and not a.te_septima:
-            val += 0.8
-        if n % 8 == 3 and g == 5 and not primer_del_compas:
-            val += 0.5
-        return val
-
-    def trans(a: Acord, b: Acord) -> float:
-        ga, gb = _grau(a, k), _grau(b, k)
-        if a.figura == b.figura:
-            return 0.1
-        return _TRANSICIONS.get((ga, gb), 0.0)
-
-    n = len(actius)
-    punt = [[local(0, c) for c in cands]]
-    enrere = [[None] * len(cands)]
-    for j in range(1, n):
-        fila, ptr = [], []
-        for ci, c in enumerate(cands):
-            loc = local(j, c)
-            millor = max(range(len(cands)), key=lambda pi: (punt[-1][pi] + trans(cands[pi], c), -pi))
-            fila.append(punt[-1][millor] + trans(cands[millor], c) + loc)
-            ptr.append(millor)
-        punt.append(fila)
-        enrere.append(ptr)
-    ci = max(range(len(cands)), key=lambda i: (punt[-1][i], -i))
-    for j in range(n - 1, -1, -1):
-        segs[actius[j]].acord = copy.copy(cands[ci])
-        ci = enrere[j][ci] if enrere[j][ci] is not None else ci
+def harmonitzar(evs: list[Ev], segs: list[Segment], k: key.Key, estil: str, curs: str | None = None,
+                mode: str = "auto") -> str | None:
+    """Harmonització per regles amb programació dinàmica (sempre el mateix resultat). La lògica és a
+    `harmonitzacio.py` (ritme harmònic i vocabulari per nivell, mode modal); torna una frase per a l'informe."""
+    from . import harmonitzacio
+    return harmonitzacio.harmonitza(evs, segs, k, estil, curs, mode)
 
 
 def _nom_arrel(pc: int, k: key.Key) -> str:
@@ -2047,7 +1998,8 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
 def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, curs: str | None = None,
              compassos_sel: tuple[int, int] | None = None, melodia_part: int | None = None,
              a_tonalitat: str | None = None, simplifica: bool = False, bordo: bool = False,
-             rotacio: bool = True, tutti_final: bool = False) -> tuple[stream.Score, list[str]]:
+             rotacio: bool = True, tutti_final: bool = False,
+             harmonia: str = "auto") -> tuple[stream.Score, list[str]]:
     informe: list[str] = []
     avisos_acords: list[str] = []
     md0 = score.metadata
@@ -2108,8 +2060,8 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
         font = "de les notes de totes les veus (acords deduïts)"
     else:
         k = analitzar_tonalitat(evs, segs, score, False)
-        harmonitzar(evs, segs, k, estil)
-        font = "de la melodia sola (harmonització per regles: I, ii, IV, V, vi i cadència V-I)"
+        descripcio = harmonitzar(evs, segs, k, estil, curs, harmonia)
+        font = f"de la melodia sola ({descripcio})"
 
     ks_orig = next(iter(staff.recurse().getElementsByClass(key.KeySignature)), None)
     ks_concert = key.KeySignature(k.sharps)

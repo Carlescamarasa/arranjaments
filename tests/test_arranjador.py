@@ -369,7 +369,7 @@ def test_arranjament_s_exporta_a_pdf(ragtime, capsys, projecte):
 ROLS_BAIX = "melodia=trompeta-sib,contracant=flauta,acompanyament=xilofon,baix=trombo,percussio=bateria"
 # resum (notes, durades, altures) de la sortida de sempre: --sense-rotacio no l'ha de canviar
 RESUM_RAG_FIX = "20571e1d18df7d80"
-RESUM_BRESSOL_FIX = "c82a837541747b99"
+RESUM_BRESSOL_FIX = "707a688f99ed7f50"   # canviat al paquet 10: la harmonització de la melodia sola és nova
 
 
 def _resum(s):
