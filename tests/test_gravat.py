@@ -231,7 +231,8 @@ def test_pop_no_porta_articulacions(ragtime_xml):
 
 
 def test_respiracions_dels_vents_i_nota_anterior_mes_curta(ragtime_xml):
-    res, _ = _arranja(ragtime_xml, "melodia=trompeta-sib,acompanyament=piano")
+    # en elemental (respira cada 2 compassos): els talls de frase del paquet 9 ja cauen sovint en silencis
+    res, _ = _arranja(ragtime_xml, "melodia=trompeta-sib,acompanyament=piano", nivell="4t elemental")
     tpt = res.parts[0]
     amb = [n for n in tpt.recurse().notes if any(isinstance(a, articulations.BreathMark) for a in n.articulations)]
     assert amb
@@ -249,7 +250,7 @@ def test_elemental_respira_mes_que_la_resta(ragtime_xml):
         res, _ = _arranja(ragtime_xml, "melodia=trompeta-sib,acompanyament=piano", nivell=nivell)
         return [n for n in res.parts[0].recurse().notes if any(isinstance(a, articulations.BreathMark)
                                                                  for a in n.articulations)]
-    assert len(marques("4t elemental")) > len(marques(None)) >= 1
+    assert len(marques("4t elemental")) > len(marques(None))
 
 
 def test_cap_lligadura_de_frase_en_un_vent(ragtime_xml):
