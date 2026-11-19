@@ -19,7 +19,8 @@ jobs:
       - name: Eines musicals
         run: uv sync
       - name: Proves (les que necessiten MuseScore o Audiveris s'ometen si no hi són)
-        run: uv run pytest -v -o faulthandler_timeout=240
+        timeout-minutes: 12
+        run: uv run pytest -v -o faulthandler_timeout=150
       - name: Ordre per una canonada amb consola cp1252 (cas de Windows)
         env:
           PYTHONIOENCODING: cp1252
