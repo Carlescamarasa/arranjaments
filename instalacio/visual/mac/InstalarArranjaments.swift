@@ -579,7 +579,7 @@ final class Delegat: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.enAcabar = { [weak self] be in
             guard let self = self else { return }
             guard self.opcions.auto || self.opcions.captura != nil else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 if let ruta = self.opcions.captura { self.captura(a: ruta) }
                 if self.opcions.auto {
                     print(self.model.registre)
@@ -610,6 +610,10 @@ final class Delegat: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func captura(a ruta: String) {
         ajustaMida()
+        // deixa que la finestra acabe de dibuixar l'últim canvi (si no, la captura pot portar peces de l'estat anterior)
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.4))
+        vista.layoutSubtreeIfNeeded()
+        finestra.displayIfNeeded()
         // el marc sencer de la finestra (amb la barra de títol i el fons), no només el contingut
         guard let marc = vista.superview, let rep = marc.bitmapImageRepForCachingDisplay(in: marc.bounds) else { return }
         marc.cacheDisplay(in: marc.bounds, to: rep)
