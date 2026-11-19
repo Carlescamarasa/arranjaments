@@ -8,6 +8,7 @@
 //   --auto              comença a instal·lar sense prémer res i ix amb codi 0 (tot bé) o 1 (alguna cosa ha fallat)
 //   --prova             no instal·la res: simula els passos per a veure la finestra
 //   --prova-error       com --prova, però un pas falla
+//   --prova-sense-musescore   com --prova, però MuseScore no s'ha pogut instal·lar (només un avís: es pot obrir Arranjaments)
 //   --captura fitxer    guarda una imatge PNG de la finestra en acabar (i una altra «-mig» a mitjan procés)
 //   --registre fitxer   guarda en un fitxer de text tot el que ha escrit l'instal·lador
 //   --carpeta ruta      carpeta del projecte (si no, la carpeta on és este programa o, si no n'hi ha, el projecte que
@@ -45,7 +46,7 @@ namespace Arranjaments
 
     class Opcions
     {
-        public bool Auto, Prova, ProvaError;
+        public bool Auto, Prova, ProvaError, ProvaSenseMuseScore;
         public string Captura, Registre, Carpeta;
         public Opcions(string[] args)
         {
@@ -55,6 +56,7 @@ namespace Arranjaments
                 if (a == "--auto") Auto = true;
                 else if (a == "--prova") Prova = true;
                 else if (a == "--prova-error") { Prova = true; ProvaError = true; }
+                else if (a == "--prova-sense-musescore") { Prova = true; ProvaSenseMuseScore = true; }
                 else if (a == "--captura" && i + 1 < args.Length) Captura = args[++i];
                 else if (a == "--registre" && i + 1 < args.Length) Registre = args[++i];
                 else if (a == "--carpeta" && i + 1 < args.Length) Carpeta = args[++i];
@@ -78,6 +80,7 @@ namespace Arranjaments
         string carpeta;
         EstatPas comprovacio = EstatPas.Pendent;
         bool? finalRebut;
+        bool senseMuseScore;   // l'instal·lador ha dit que MuseScore no s'ha pogut instal·lar (@@NOTA musescore): és un avís
         string missatgeError = "";
         readonly StringBuilder registre = new StringBuilder();
         Process proces;
@@ -104,7 +107,7 @@ namespace Arranjaments
             opcions = o;
             passos.Add(new Pas("uv", "Preparació", "El programa que prepara les eines musicals"));
             passos.Add(new Pas("opencode", "OpenCode", "L'aplicació amb la qual parles amb l'ajudant"));
-            passos.Add(new Pas("musescore", "MuseScore", "Per a revisar partitures i fer PDF"));
+            passos.Add(new Pas("musescore", "MuseScore", "Per a revisar partitures i fer PDF") { Opcional = true });   // si falta (ordinador sense permís d'administrador), només és un avís
             passos.Add(new Pas("eines", "Eines musicals", "Queden guardades dins de l'ordinador, com les de qualsevol aplicació"));
             passos.Add(new Pas("carpeta", "Carpeta de treball", "Documents, Arranjaments: amb «entrada» i «eixida» per a les partitures"));
             passos.Add(new Pas("icona", "Icona a l'Escriptori", "Per a obrir Arranjaments amb doble clic"));
@@ -367,7 +370,7 @@ namespace Arranjaments
             if (estat.Visible) { estat.SetBounds(marge, y, dins, S(18)); y = estat.Bottom + S(8); }
 
             string rt = "", rx = "";
-            if (fase == Fase.Acabat) { rt = "Tot a punt."; rx = "Obri Arranjaments a l'Escriptori.\n\nLes teues partitures aniran a la carpeta Arranjaments de Documents. La carpeta des d'on has instal·lat ja no cal.\n\nPer a la biblioteca compartida: 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es). 2) Obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers» (la carpeta ha de dir-se «Biblioteca d'arranjaments»). 3) Espera uns minuts."; }
+            if (fase == Fase.Acabat) { rt = "Tot a punt."; rx = "Obri Arranjaments a l'Escriptori.\n\nLes teues partitures aniran a la carpeta Arranjaments (dins de Documents; si Documents està dins d'OneDrive, dins de la teua carpeta d'usuària). La carpeta des d'on has instal·lat ja no cal.\n\n" + (senseMuseScore ? "Encara no podràs fer PDF: no s'ha pogut instal·lar MuseScore (en alguns ordinadors cal permís d'administrador). Ho pots provar després amb l'ajudant, o consulta qui administra l'ordinador.\n\n" : "") + "Per a la biblioteca compartida (opcional): 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es). 2) Obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers» (la carpeta ha de dir-se «Biblioteca d'arranjaments»). 3) Espera uns minuts."; }
             else if (fase == Fase.Error)
             {
                 rt = "No s'ha pogut instal·lar tot.";
@@ -490,6 +493,7 @@ namespace Arranjaments
                 string[] parts = linia.Substring(2).Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 3 && parts[0] == "PAS") Marca(parts[1], parts[2]);
                 else if (parts.Length >= 2 && parts[0] == "FI") finalRebut = parts[1] == "ok";
+                else if (parts.Length >= 2 && parts[0] == "NOTA" && parts[1] == "musescore") senseMuseScore = true;
                 return;
             }
             registre.Append(linia).Append("\r\n");
@@ -526,7 +530,7 @@ namespace Arranjaments
         {
             if (fase == Fase.Installant) return;
             foreach (Pas p in passos) p.Estat = EstatPas.Pendent;
-            comprovacio = EstatPas.Pendent; finalRebut = null; missatgeError = "";
+            comprovacio = EstatPas.Pendent; finalRebut = null; missatgeError = ""; senseMuseScore = false;
             registre.Length = 0; text.Clear(); barra.Value = 0; estat.Text = "Començant...";
             fase = Fase.Installant;
             Colloca();
@@ -636,11 +640,12 @@ namespace Arranjaments
             foreach (Pas p in passos)
             {
                 n++;
-                bool falla = opcions.ProvaError && p.Id == "musescore";
+                bool falla = (opcions.ProvaError && p.Id == "opencode") || (opcions.ProvaSenseMuseScore && p.Id == "musescore");
                 linies.Add("@@PAS " + p.Id + " inici");
                 linies.Add("");
                 linies.Add("== " + n + ". " + p.Titol + " (prova) ==");
                 linies.Add(falla ? "  [falta]  No he pogut instal·lar " + p.Titol + " automàticament (prova)." : "  [fet]    " + p.Titol + " (prova, no s'ha instal·lat res)");
+                if (falla && p.Id == "musescore") linies.Add("@@NOTA musescore");
                 linies.Add("@@PAS " + p.Id + (falla ? " falla" : " ok"));
             }
             linies.Add("@@PAS final inici");

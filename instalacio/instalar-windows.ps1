@@ -4,7 +4,8 @@
 #   Windows et demana permís d'administrador (finestra blava, UAC). Si l'ordinador no et deixa, consulta qui l'administra.
 # Què deixa a l'ordinador:
 #   - les eines musicals, amagades com les de qualsevol aplicació: %LOCALAPPDATA%\Arranjaments (fora d'OneDrive)
-#   - la carpeta de treball que veu la professora: Documents\Arranjaments (amb entrada\ i eixida\)
+#   - la carpeta de treball que veu la professora: Documents\Arranjaments (amb entrada\ i eixida\); si Documents és dins
+#     d'OneDrive, a %USERPROFILE%\Arranjaments, perquè OneDrive no la sincronitze entre ordinadors
 #   - l'ordre «partitures» a la carpeta .local\bin de la usuària, que funciona des de la carpeta de treball
 #   - la icona «Arranjaments» a l'Escriptori
 # Després d'instal·lar, la carpeta des d'on s'ha executat (la del ZIP) ja no cal.
@@ -26,8 +27,23 @@ $Carpeta = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Set-Location $Carpeta
 # On va cada cosa (les variables ARRANJAMENTS_* només són per a proves)
 $Dades = if ($env:ARRANJAMENTS_DADES) { $env:ARRANJAMENTS_DADES } else { Join-Path $env:LOCALAPPDATA "Arranjaments" }
-# GetFolderPath tria la carpeta Documents bona encara que OneDrive la moga (ací només hi haurà partitures)
-$Treball = if ($env:ARRANJAMENTS_TREBALL) { $env:ARRANJAMENTS_TREBALL } else { Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments" }
+# La carpeta de treball: Documents\Arranjaments (GetFolderPath tria la carpeta Documents bona). Excepció: si Documents és dins
+# d'OneDrive, la carpeta (amb la configuració amagada .opencode) es sincronitzaria entre els ordinadors de la mateixa persona,
+# i cada ordinador la renova per compte seu. Llavors es crea a la carpeta d'usuària (%USERPROFILE%\Arranjaments), fora d'OneDrive.
+# Si ja n'hi havia una a Documents, es continua usant (mai es mou res de lloc).
+function CarpetaTreball {
+    if ($env:ARRANJAMENTS_TREBALL) { return $env:ARRANJAMENTS_TREBALL }
+    $docs = [Environment]::GetFolderPath('MyDocuments')
+    $normal = Join-Path $docs "Arranjaments"
+    if (Test-Path (Join-Path $normal "entrada")) { return $normal }
+    $arrels = @($env:OneDrive, $env:OneDriveCommercial, $env:OneDriveConsumer) | Where-Object { $_ }
+    $dinsOneDrive = [bool]($arrels | Where-Object { $docs.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) })
+    if (-not $dinsOneDrive) { $dinsOneDrive = [bool](($docs -split '\\') | Where-Object { $_ -like 'OneDrive*' }) }
+    if ($dinsOneDrive) { return (Join-Path $env:USERPROFILE "Arranjaments") }
+    return $normal
+}
+$Treball = CarpetaTreball
+$TreballForaDeDocuments = (-not $env:ARRANJAMENTS_TREBALL) -and ($Treball -ne (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments"))
 $Bin = if ($env:ARRANJAMENTS_BIN) { $env:ARRANJAMENTS_BIN } else { Join-Path $env:USERPROFILE ".local\bin" }
 $Ordre = Join-Path $Bin "partitures.cmd"
 $PythonEines = Join-Path $Dades ".venv\Scripts\python.exe"
@@ -54,6 +70,8 @@ $Arq = ArquitecturaWindows
 
 function Pas($t)   { Write-Host ""; Write-Host "== $t ==" }
 function Fet($t)   { Write-Host "  [fet]    $t" }
+# Avís: no és una falta (no impedeix «Tot a punt»), però el pas queda marcat. «@@NOTA id» li ho diu a la finestra.
+function Avis($t, $id) { $script:PasMal = $true; Write-Host "  [avís]   $t"; if ($id) { Progres "NOTA $id" } }
 function Falta($t) { $script:PasMal = $true; Write-Host "  [falta]  $t" }
 # fallada: no s'atura, però el resum final no dirà «Tot a punt»
 function Fallada($t, $manual) {
@@ -192,6 +210,55 @@ function PreparaCarpeta {
     } catch { Write-Host "  $($_.Exception.Message)"; return $false }
 }
 
+# El llançador de la icona: un guió de Windows (VBScript) amb les rutes d'esta instal·lació. Fa dues coses: 1) executa
+# l'actualitzador (pythonw, sense finestra) i l'espera com a molt 3 minuts; 2) obri OpenCode SEMPRE, passe el que passe.
+function EscriuLlancador($vbs, $pyw, $oc, $treball) {
+    try {
+        $q = { param($t) $t.Replace('"', '""') }
+        $text = @"
+' Creat per l'instal.lador d'Arranjaments. Busca novetats (amb temps maxim) i obri SEMPRE OpenCode.
+Option Explicit
+Dim sh, fso, py, oc, treball, p, t0, c, carpeta, f
+Set sh = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+py = "$(& $q $pyw)"
+oc = "$(& $q $oc)"
+treball = "$(& $q $treball)"
+On Error Resume Next
+If fso.FolderExists(treball) Then sh.CurrentDirectory = treball
+If fso.FileExists(py) Then
+  Set p = Nothing
+  Set p = sh.Exec("""" & py & """ -I -m partitures.actualitzar --silenci")
+  If Not (p Is Nothing) Then
+    t0 = Timer
+    Do While Abs(Timer - t0) < 180
+      If p.Status <> 0 Then Exit Do
+      WScript.Sleep 300
+    Loop
+  End If
+End If
+Err.Clear
+If Not fso.FileExists(oc) Then
+  carpeta = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Programs"
+  If fso.FolderExists(carpeta) Then
+    For Each c In fso.GetFolder(carpeta).SubFolders
+      If fso.FileExists(c.Path & "\OpenCode.exe") Then oc = c.Path & "\OpenCode.exe"
+    Next
+  End If
+End If
+If fso.FileExists(oc) Then
+  sh.Run """" & oc & """", 1, False
+Else
+  MsgBox "No trobe OpenCode. Torna a obrir ""Instal.lar Arranjaments"".", 48, "Arranjaments"
+End If
+"@
+        $text = $text -replace "`r?`n", "`r`n"
+        New-Item -ItemType Directory -Force (Split-Path $vbs) | Out-Null
+        [IO.File]::WriteAllText($vbs, $text, [Text.Encoding]::Unicode)   # UTF-16: la ruta pot portar accents
+        return $true
+    } catch { Write-Host "  $($_.Exception.Message)"; return $false }
+}
+
 if ($Prova) { Write-Host "Mode prova: només es comprova què hi ha instal·lat, no es canvia res." }
 Write-Host "Arquitectura de Windows: $Arq"
 if ($Arq -eq "arm64") { Write-Host "Windows per a processadors ARM64: OpenCode s'instal·la en la versió ARM64; MuseScore i Audiveris no en tenen i s'usa la versió x64, que Windows 11 emula." }
@@ -243,7 +310,10 @@ else {
     # MuseScore només publica la versió x64; en Windows 11 ARM64 funciona per emulació
     $url = UrlGithub "musescore/MuseScore" '-x86_64\.msi$'
     if ($url -and (InstalMsi $url "MuseScore") -and (TrobaMuseScore).Count -gt 0) { Fet "MuseScore instal·lat (sense MuseHub)" }
-    else { Fallada "No he pogut instal·lar MuseScore automàticament." "https://musescore.org/ca/download (opció «sense MuseHub»)" }
+    else {
+        # Sense permís d'administrador (ordinador de la feina o del centre) no es pot: no és greu, només no es faran PDF encara.
+        Avis "No he pogut instal·lar MuseScore: encara no podràs fer PDF. Pots provar-ho després o demanar-ho a qui administra l'ordinador (https://musescore.org/ca/download, opció «sense MuseHub»)." "musescore"
+    }
 }
 FiPas
 }
@@ -285,7 +355,10 @@ IniciPas "carpeta"; Pas "6. Carpeta de treball: $Treball"
 if ($Prova) {
     if ((Test-Path (Join-Path $Treball "entrada")) -and (Test-Path (Join-Path $Treball "eixida")) -and (Test-Path (Join-Path $Treball ".opencode\opencode.json"))) { Fet "la carpeta de treball ja hi és" } else { Falta "carpeta de treball" }
 }
-elseif (PreparaCarpeta) { Fet "carpeta de treball preparada (les teues partitures no s'han tocat)" }
+elseif (PreparaCarpeta) {
+    Fet "carpeta de treball preparada (les teues partitures no s'han tocat)"
+    if ($TreballForaDeDocuments) { Write-Host "           Documents està dins d'OneDrive: he posat la carpeta de treball a $Treball perquè OneDrive no la sincronitze entre ordinadors." }
+}
 else { Fallada "No he pogut preparar la carpeta de treball $Treball." }
 FiPas
 }
@@ -303,11 +376,13 @@ else {
     try {
         $sh = New-Object -ComObject WScript.Shell
         $d = $sh.CreateShortcut($lnk)
-        # La icona obri un Python sense finestra que busca novetats (sense internet o si falla, no es nota) i després obri OpenCode
+        # La icona obri un petit guió (obri-arranjaments.vbs) que busca novetats amb un Python sense finestra, amb temps màxim,
+        # i després obri SEMPRE OpenCode, encara que l'actualitzador o l'entorn de Python estiguen trencats.
         $pyw = Join-Path $Dades ".venv\Scripts\pythonw.exe"
-        if (Test-Path $pyw) {
-            $d.TargetPath = $pyw
-            $d.Arguments = "-I -m partitures.actualitzar --silenci --obri `"$oc`""
+        $vbs = Join-Path $Dades "obri-arranjaments.vbs"
+        if (EscriuLlancador $vbs $pyw $oc $Treball) {
+            $d.TargetPath = Join-Path $env:SystemRoot "System32\wscript.exe"
+            $d.Arguments = "//B //Nologo `"$vbs`""
         } else { $d.TargetPath = $oc }
         if (Test-Path $Treball) { $d.WorkingDirectory = $Treball }
         $d.IconLocation = "$oc,0"

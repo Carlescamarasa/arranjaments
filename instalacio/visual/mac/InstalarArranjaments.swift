@@ -13,12 +13,13 @@
 import AppKit
 import SwiftUI
 
+let urlOneDrive = URL(string: "https://apps.apple.com/app/onedrive/id823766827")!
 let urlAjuda = URL(string: "https://github.com/Carlescamarasa/arranjaments#manual")!
 
 // MARK: - Opcions
 
 struct Opcions {
-    var auto = false, prova = false, provaError = false
+    var auto = false, prova = false, provaError = false, provaSenseOneDrive = false
     var captura: String?
     var registre: String?
     var carpeta: String?
@@ -30,6 +31,7 @@ struct Opcions {
             case "--auto": auto = true
             case "--prova": prova = true
             case "--prova-error": prova = true; provaError = true
+            case "--prova-sense-onedrive": prova = true; provaSenseOneDrive = true
             case "--captura": i += 1; if i < args.count { captura = args[i] }
             case "--registre": i += 1; if i < args.count { registre = args[i] }
             case "--carpeta": i += 1; if i < args.count { carpeta = args[i] }
@@ -156,6 +158,7 @@ final class Model: ObservableObject {
     @Published var registre = ""
     @Published var detalls = false { didSet { canviDeMida?() } }
     @Published var missatgeError = ""
+    @Published var senseOneDrive = false     // l'instal·lador ha dit que OneDrive no hi és (@@NOTA onedrive): el panell final ofereix el botó
 
     let opcions: Opcions
     var carpeta: URL?
@@ -189,6 +192,7 @@ final class Model: ObservableObject {
             let parts = linia.dropFirst(2).split(separator: " ").map(String.init)
             if parts.count >= 3, parts[0] == "PAS" { marca(pas: parts[1], estat: parts[2]) }
             else if parts.count >= 2, parts[0] == "FI" { finalRebut = (parts[1] == "ok") }
+            else if parts.count >= 2, parts[0] == "NOTA", parts[1] == "onedrive" { senseOneDrive = true }
             return
         }
         registre += linia + "\n"
@@ -232,7 +236,7 @@ final class Model: ObservableObject {
         guard fase != .installant else { return }
         for i in passos.indices { passos[i].estat = .pendent }
         comprovacio = .pendent; finalRebut = nil; progres = 0; pendent = Data()
-        registre = ""; estat = "Començant..."; missatgeError = ""
+        registre = ""; estat = "Començant..."; missatgeError = ""; senseOneDrive = false
         fase = .installant
         canviDeMida?()
         if opcions.prova { simula(); return }
@@ -338,6 +342,7 @@ final class Model: ObservableObject {
             let falla = opcions.provaError && p.id == "musescore"
             linies += ["@@PAS \(p.id) inici", "", "== \(n + 1). \(p.titol) (prova) =="]
             linies += falla ? ["  [falta]  No he pogut instal·lar \(p.titol) automàticament (prova)."] : ["  [fet]    \(p.titol) (prova, no s'ha instal·lat res)"]
+            if p.id == "onedrive" && opcions.provaSenseOneDrive { linies += ["@@NOTA onedrive"] }
             linies += ["@@PAS \(p.id) \(falla ? "falla" : "ok")"]
         }
         linies += ["@@PAS final inici", "", "== Comprovació final (prova) ==", "@@PAS final \(opcions.provaError ? "falla" : "ok")",
@@ -490,10 +495,16 @@ struct Contingut: View {
                 Text("Les teues partitures aniran a la carpeta Arranjaments de Documents. La carpeta des d'on has instal·lat ja no cal.")
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Per a la biblioteca compartida: 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es). 2) Obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers» (la carpeta ha de dir-se «Biblioteca d'arranjaments»). 3) Espera uns minuts.")
+                Text("Per a la biblioteca compartida (opcional): 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es). 2) Obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers» (la carpeta ha de dir-se «Biblioteca d'arranjaments»). 3) Espera uns minuts. Quan el Mac pregunte si pot accedir als fitxers de OneDrive, prem «Permet».")
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
+                if model.senseOneDrive {
+                    Text("Ara mateix no tens OneDrive en este Mac. Pots instal·lar-lo des de l'App Store (no demana contrasenya) o, si prefereixes, baixar l'instal·lador de Microsoft a microsoft.com/microsoft-365/onedrive/download.")
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
             }
         case .error:
             VStack(alignment: .leading, spacing: 3) {
@@ -523,6 +534,9 @@ struct Contingut: View {
                 Button("Instal·lant...") {}.disabled(true)
             case .acabat:
                 Spacer()
+                if model.senseOneDrive {
+                    Button("Instal·la OneDrive") { NSWorkspace.shared.open(urlOneDrive) }
+                }
                 Button("Tancar") { NSApp.terminate(nil) }
                 Button("Obrir Arranjaments") { model.obriArranjaments() }.keyboardShortcut(.defaultAction)
             case .error:

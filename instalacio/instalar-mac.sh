@@ -15,7 +15,7 @@
 # L'instal·lador visual («Instal·lar Arranjaments») executa este mateix fitxer amb la variable d'entorn
 # ARRANJAMENTS_PROGRES=1. Llavors, a més del text de sempre, s'escriuen línies «@@PAS nom inici|ok|falla»
 # i una «@@FI ok|falla» final, que la finestra llig per a marcar cada pas.
-# OneDrive és un pas OPCIONAL (biblioteca compartida de l'escola): mai fa fallar la instal·lació, i no s'espera que acabe.
+# OneDrive és un pas OPCIONAL (biblioteca compartida de l'escola): només es detecta, no es baixa res; mai fa fallar la instal·lació.
 # Audiveris NO s'instal·la si no el demanes amb --nomes audiveris (només cal per a convertir PDF).
 set -u
 
@@ -290,25 +290,15 @@ fi
 # ---------------------------------------------------------------- 8. OneDrive (opcional: biblioteca compartida de l'escola)
 if vol onedrive; then
 inici_pas onedrive; pas "8. OneDrive (opcional: per a la biblioteca compartida de l'escola)"
-# Pas opcional: mai s'hi marca cap falta. L'instal·lador oficial de Microsoft (.pkg) demana la contrasenya
-# d'administrador, per això s'obri amb l'Instal·lador del sistema i no s'espera que acabe.
-URL_ONEDRIVE_MAC="https://go.microsoft.com/fwlink/?linkid=823060"   # OneDrive.pkg universal (enllaç oficial de Microsoft)
+# Pas opcional: NOMÉS es detecta. No es baixa res (l'instal·lador de Microsoft pesa uns 290 MB i demana la contrasenya):
+# si falta, la finestra final ofereix un botó que obri l'App Store, que no demana contrasenya d'administrador.
+# La línia «@@NOTA onedrive» (només amb ARRANJAMENTS_PROGRES) li diu a la finestra que ha de mostrar-lo.
 if troba_app "OneDrive.app" >/dev/null; then ok "OneDrive ja està instal·lat"
-elif [ "$PROVA" = 1 ]; then echo "  [opcional] OneDrive no està instal·lat (només cal per a la biblioteca compartida)"
-elif [ -n "${CI:-}" ] || [ -n "${ARRANJAMENTS_SENSE_ONEDRIVE:-}" ]; then echo "  [opcional] OneDrive s'omet en aquest entorn."
 else
-  PKG="$HOME/Downloads/OneDrive.pkg"
-  mkdir -p "$HOME/Downloads"
-  echo "  Baixant OneDrive.pkg de Microsoft (uns 290 MB; pot tardar uns minuts)..."
-  barra=(-sS); [ -t 2 ] && barra=(--progress-bar)
-  if curl -fL "${barra[@]}" -o "$PKG.part" "$URL_ONEDRIVE_MAC" && mv "$PKG.part" "$PKG"; then
-    open -a Installer "$PKG" 2>/dev/null
-    ok "OneDrive: he obert l'instal·lador de Microsoft. Segueix els passos de la finestra (et demanarà la contrasenya del Mac) i continua sense esperar."
-  else
-    rm -f "$PKG.part"
-    echo "  [opcional] No he pogut baixar OneDrive. Pots instal·lar-lo després: https://www.microsoft.com/microsoft-365/onedrive/download"
-    echo "             (o, sense contrasenya d'administrador, a l'App Store: https://apps.apple.com/app/onedrive/id823766827)"
-  fi
+  echo "  [opcional] OneDrive no està instal·lat (només cal per a la biblioteca compartida de l'escola)."
+  echo "             Quan vulgues: App Store, https://apps.apple.com/app/onedrive/id823766827 (no demana contrasenya),"
+  echo "             o l'instal·lador de Microsoft: https://www.microsoft.com/microsoft-365/onedrive/download"
+  progres "NOTA onedrive"
 fi
 fi_pas
 fi

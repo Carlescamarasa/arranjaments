@@ -36,6 +36,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/captures"
           # Prova de la finestra sense instal·lar res (passos simulats): un cas bo i un amb error
           "$APP/Contents/MacOS/InstalarArranjaments" --prova --auto --captura "$RUNNER_TEMP/captures/mac-prova.png"
+          # el mateix, però com si OneDrive faltara: el panell final ha de portar el botó «Instal·la OneDrive»
+          "$APP/Contents/MacOS/InstalarArranjaments" --prova-sense-onedrive --auto --captura "$RUNNER_TEMP/captures/mac-prova-sense-onedrive.png"
+          test -s "$RUNNER_TEMP/captures/mac-prova-sense-onedrive.png"
           if "$APP/Contents/MacOS/InstalarArranjaments" --prova-error --auto --captura "$RUNNER_TEMP/captures/mac-prova-error.png"; then
             echo "El mode amb error hauria d'eixir amb codi 1"; exit 1
           fi
@@ -53,6 +56,9 @@ jobs:
           # Prova de la finestra sense instal·lar res (passos simulats): un cas bo i un amb error
           $p = Start-Process $exe.FullName -ArgumentList "--prova --auto --captura `"$env:RUNNER_TEMP\captures\windows-prova.png`"" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "El mode de prova ha eixit amb codi $($p.ExitCode)" }
+          # MuseScore no s'ha pogut instal·lar (ordinador sense administrador): només un avís, s'ha de poder obrir Arranjaments (codi 0)
+          $p = Start-Process $exe.FullName -ArgumentList "--prova-sense-musescore --auto --captura `"$env:RUNNER_TEMP\captures\windows-prova-sense-musescore.png`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Amb MuseScore absent com a avís, hauria d'eixir amb codi 0, no $($p.ExitCode)" }
           $p = Start-Process $exe.FullName -ArgumentList "--prova-error --auto --captura `"$env:RUNNER_TEMP\captures\windows-prova-error.png`"" -Wait -PassThru
           if ($p.ExitCode -ne 1) { throw "El mode amb error hauria d'eixir amb codi 1, no $($p.ExitCode)" }
           if (-not (Test-Path "$env:RUNNER_TEMP\captures\windows-prova.png")) { throw "No s'ha guardat la captura" }
@@ -468,9 +474,12 @@ jobs:
           $d = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
           Write-Host "Icona: $($d.TargetPath) $($d.Arguments) (carpeta de treball: $($d.WorkingDirectory))"
           if (-not (Test-Path $d.TargetPath)) { throw "La icona apunta a un fitxer que no existeix" }
-          # la icona passa per l'actualitzador (Python sense finestra) i després obri OpenCode
-          if ($d.TargetPath -notlike "*\.venv\Scripts\pythonw.exe") { throw "La icona no apunta a l'actualitzador" }
-          if ($d.Arguments -notlike "*--obri*$($oc[0].FullName)*") { throw "La icona no obri OpenCode" }
+          # la icona és un llançador (wscript + obri-arranjaments.vbs): executa l'actualitzador (Python sense finestra) i obri SEMPRE OpenCode
+          if ($d.TargetPath -notlike "*\wscript.exe") { throw "La icona no apunta al llançador: $($d.TargetPath)" }
+          $vbs = Join-Path $env:LOCALAPPDATA "Arranjaments\obri-arranjaments.vbs"
+          if ($d.Arguments -notlike "*$vbs*") { throw "La icona no usa el llançador: $($d.Arguments)" }
+          $vtext = Get-Content $vbs -Raw
+          if ($vtext -notlike "*partitures.actualitzar*" -or $vtext -notlike "*$($oc[0].FullName)*") { throw "El llançador no executa l'actualitzador o no obri OpenCode" }
           if ($d.WorkingDirectory -ne (Join-Path ([Environment]::GetFolderPath('MyDocuments')) "Arranjaments")) { throw "La icona no treballa a la carpeta de treball" }
       - name: Obrir la icona de l'Escriptori i veure que arrenca OpenCode
         continue-on-error: true
@@ -482,6 +491,22 @@ jobs:
           for ($i = 0; $i -lt 20 -and -not $p; $i++) { Start-Sleep 2; $p = Get-Process OpenCode -ErrorAction SilentlyContinue }
           if (-not $p) { throw "OpenCode no ha arrencat" }
           Stop-Process -Name OpenCode -Force -ErrorAction SilentlyContinue
+      - name: Amb l'actualitzador trencat, la icona obri OpenCode igualment (informatiu)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $D = Join-Path $env:LOCALAPPDATA "Arranjaments"
+          $pyw = "$D\.venv\Scripts\pythonw.exe"
+          Rename-Item $pyw "$pyw.trencat"
+          try {
+            Start-Process (Join-Path $env:SystemRoot "System32\wscript.exe") -ArgumentList "//B //Nologo `"$D\obri-arranjaments.vbs`""
+            $p = $null
+            for ($i = 0; $i -lt 20 -and -not $p; $i++) { Start-Sleep 2; $p = Get-Process OpenCode -ErrorAction SilentlyContinue }
+            if (-not $p) { throw "OpenCode no ha arrencat amb l'actualitzador trencat" }
+          } finally {
+            Stop-Process -Name OpenCode -Force -ErrorAction SilentlyContinue
+            Rename-Item "$pyw.trencat" $pyw
+          }
       - name: Actualització silenciosa (simulada), fitxers de la professora intactes i tornar enrere
         shell: pwsh
         run: |
@@ -496,7 +521,8 @@ jobs:
           $V0 = Llig "$D\VERSION"
           # la icona ha d'executar l'actualitzador abans d'obrir OpenCode
           $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) "Arranjaments.lnk"))
-          if ($lnk.TargetPath -notlike "*pythonw.exe" -or $lnk.Arguments -notlike "*partitures.actualitzar*--obri*OpenCode.exe*") { throw "La icona no passa per l'actualitzador: $($lnk.TargetPath) $($lnk.Arguments)" }
+          if ($lnk.TargetPath -notlike "*wscript.exe" -or $lnk.Arguments -notlike "*obri-arranjaments.vbs*") { throw "La icona no passa pel llançador: $($lnk.TargetPath) $($lnk.Arguments)" }
+          if ((Get-Content "$D\obri-arranjaments.vbs" -Raw) -notlike "*partitures.actualitzar*") { throw "El llançador no executa l'actualitzador" }
           $F = Join-Path $env:RUNNER_TEMP "fals"; $S = Join-Path $env:RUNNER_TEMP "servidor"
           Remove-Item $F, $S, "$S-mal" -Recurse -Force -ErrorAction SilentlyContinue
           Expand-Archive (Join-Path $env:RUNNER_TEMP "actualitzacio.zip") $F

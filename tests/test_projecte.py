@@ -144,7 +144,7 @@ def test_el_guio_de_mac_escriu_els_avisos_de_progres(tmp_path):
                            env={k: v for k, v in os.environ.items() if k != "ARRANJAMENTS_PROGRES"})
     avisos = [l for l in amb.stdout.splitlines() if l.startswith("@@")]
     assert avisos[0] == "@@PAS uv inici" and avisos[-1].startswith("@@FI ")
-    assert all(re.fullmatch(r"@@(PAS \w+ (inici|ok|falla)|FI (ok|falla \d+))", l) for l in avisos), avisos
+    assert all(re.fullmatch(r"@@(PAS \w+ (inici|ok|falla)|NOTA \w+|FI (ok|falla \d+))", l) for l in avisos), avisos
     assert "@@" not in sense.stdout
     assert [l for l in amb.stdout.splitlines() if not l.startswith("@@")] == sense.stdout.splitlines()
 
@@ -449,16 +449,45 @@ def test_el_dmg_porta_el_projecte_dins_de_l_aplicacio_i_l_app_el_descomprimeix_a
 def test_pas_opcional_de_onedrive_als_installadors():
     mac = _text(ARREL / "instalacio" / "instalar-mac.sh")
     win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
-    # enllaços oficials de Microsoft, pas opcional que no es compta com a falta, i omès al CI
-    assert "linkid=823060" in mac and "open -a Installer" in mac and "OneDrive.app" in mac
-    assert "linkid=844652" in win and "/silent" in win and "Microsoft\\OneDrive\\OneDrive.exe" in win
-    for guio in (mac, win):
-        assert "ARRANJAMENTS_SENSE_ONEDRIVE" in guio and "[opcional]" in guio and "Biblioteca d'arranjaments" in guio
-    pas_mac = mac.split("8. OneDrive")[1].split("Comprovació final")[0]
+    pas_mac = mac.split("if vol onedrive; then")[1].split("# ---------------------------------------------------------------- Comprovació final")[0]
+    # Mac: NOMÉS es detecta. No es baixa res (el .pkg pesa uns 290 MB), no s'escriu a Downloads i mai és una falta.
+    for prohibit in ("curl", "Downloads", "open -a Installer", ".pkg\"", "linkid=823060"):
+        assert prohibit not in pas_mac, prohibit
+    assert "OneDrive.app" in pas_mac and "@@NOTA onedrive" in pas_mac and "apps.apple.com/app/onedrive/id823766827" in pas_mac
     assert "fallada " not in pas_mac and "falta " not in pas_mac
-    pas_win = win.split("8. OneDrive")[1].split("Comprovació final")[0]
+    # Windows: ve amb el sistema; si falta, instal·lador oficial per a l'usuari, omès al CI i mai és una falta
+    assert "linkid=844652" in win and "/silent" in win and "Microsoft\\OneDrive\\OneDrive.exe" in win
+    assert "ARRANJAMENTS_SENSE_ONEDRIVE" in win and "[opcional]" in win
+    pas_win = win.split('if (Vol "onedrive") {')[1].split("# ---------------------------------------------------------------- Comprovació final")[0]
     assert "Fallada " not in pas_win and "Falta " not in pas_win
+    for guio in (mac, win):
+        assert "Biblioteca d'arranjaments" in guio
     swift = _text(ARREL / "instalacio" / "visual" / "mac" / "InstalarArranjaments.swift")
     cs = _text(ARREL / "instalacio" / "visual" / "windows" / "InstalarArranjaments.cs")
     assert 'id: "onedrive"' in swift and "opcional: true" in swift and "Afegeix una drecera a Els meus fitxers" in swift
+    # el panell final de Mac porta el botó que obri l'App Store (sense contrasenya) quan OneDrive falta
+    assert 'Button("Instal·la OneDrive")' in swift and "apps.apple.com/app/onedrive/id823766827" in swift and "NOTA" in swift
+    assert "prova-sense-onedrive" in swift
     assert '"onedrive"' in cs and "Opcional = true" in cs and "Afegeix una drecera a Els meus fitxers" in cs
+
+
+def test_a_windows_sense_administrador_falta_musescore_es_nomes_un_avis():
+    win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
+    pas = win.split('if (Vol "musescore") {')[1].split('if (Vol "audiveris") {')[0]
+    assert "Avis " in pas and "Fallada " not in pas and '"musescore"' in pas and "encara no podràs fer PDF" in pas
+    cs = _text(ARREL / "instalacio" / "visual" / "windows" / "InstalarArranjaments.cs")
+    mus = [l for l in cs.splitlines() if 'new Pas("musescore"' in l][0]
+    assert "Opcional = true" in mus and "NOTA" in cs and "prova-sense-musescore" in cs
+
+
+def test_a_windows_la_carpeta_de_treball_no_va_a_onedrive():
+    win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
+    f = win.split("function CarpetaTreball")[1].split("$Treball = CarpetaTreball")[0]
+    assert "OneDrive" in f and "USERPROFILE" in f and 'Test-Path (Join-Path $normal "entrada")' in f   # mai es mou una carpeta que ja hi era
+
+
+def test_la_icona_de_windows_obri_opencode_encara_que_l_actualitzador_estiga_trencat():
+    win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
+    f = win.split("function EscriuLlancador")[1].split('if ($Prova) { Write-Host "Mode prova')[0]
+    assert "partitures.actualitzar" in f and "180" in f and "sh.Run" in f and "On Error Resume Next" in f
+    assert "wscript.exe" in win and "obri-arranjaments.vbs" in win
