@@ -1375,6 +1375,9 @@ class Seccio:
     funcions: dict = field(default_factory=dict)   # índex de rol -> funció en esta frase
     repeteix: int | None = None
     tutti: bool = False
+    tipus: str = "irregular"   # sentencia, periode, irregular (forma.py); intro i coda per a les afegides
+    tancada: bool = False      # la frase acaba en la tònica (frase tancada, Perricone R04)
+    marca: float = 0.0         # punts de final de frase detectats al final (0 = tallada per la llargada ideal)
 
 
 def _es_barra_forta(b) -> bool:
@@ -1403,36 +1406,21 @@ def _puntua_tall(b: int, ideal: int, compassos: list[Compas], evs: list[Ev], seg
             sc += 1.5
         elif g1 == 1 and g0 == 4:
             sc += 0.5
-    return sc
+    from . import forma
+    return sc + forma.marques_extra(b, compassos, evs, segs, k)
 
 
-def dividir_seccions(compassos: list[Compas], evs: list[Ev], segs: list[Segment], k) -> list[Seccio]:
-    """Frases de 8 compassos (4 si la peça és curta), tallades en un compàs: prefereix doble barra, nota llarga o
-    silenci de la melodia i cadència V-I als acords."""
-    n = len(compassos)
+def dividir_seccions(compassos: list[Compas], evs: list[Ev], segs: list[Segment], k, bpm: float | None = None) -> list[Seccio]:
+    """Frases tallades per cadències i repeticions de material (forma.py): la llargada ideal depèn de la mètrica i del
+    tempo (4 compassos en simple, 2 en compost) i només mana quan no es detecta cap final de frase."""
+    from . import forma
     f = 1 if compassos[0].anacrusi else 0
-    plens = n - f
-    talls: list[int] = []
-    if plens >= 8:
-        frase = 8 if plens >= 24 else 4
-        radi = 2 if frase == 8 else 1
-        ns = max(1, int(plens / frase + 0.5))
-        for m in range(1, ns):
-            ideal = f + m * frase
-            millor = None
-            for b in range(ideal - radi, ideal + radi + 1):
-                if b <= (talls[-1] if talls else f) + frase // 2 or b > n - frase // 2:
-                    continue
-                cand = (_puntua_tall(b, ideal, compassos, evs, segs, k), -abs(b - ideal), -b)
-                if millor is None or cand > millor[0]:
-                    millor = (cand, b)
-            if millor is not None:
-                talls.append(millor[1])
-    limits = [0] + talls + [n]
     res = []
-    for a, b in zip(limits, limits[1:]):
+    for a, b, tipus, marca in forma.divideix(compassos, evs, segs, k, bpm):
         n0 = compassos[a + (1 if a == 0 and f else 0)].num
-        res.append(Seccio(a, b, compassos[a].ini, compassos[b - 1].fi, n0, compassos[b - 1].num))
+        res.append(Seccio(a, b, compassos[a].ini, compassos[b - 1].fi, n0, compassos[b - 1].num, tipus=tipus,
+                          marca=marca))
+    forma.etiqueta(res, compassos, evs, k)
     # repeticions: frases amb el mateix material de melodia
     def signatura(s):
         ref = compassos[s.i0 + (1 if s.i0 == 0 and f else 0)].ini
@@ -1514,6 +1502,10 @@ def _funcions_seccio(rols: list[Rol], ld: dict, x: int, curs: str | None, tutti:
     return f
 
 
+ROTACIO_MIN_COMPASSOS = 12   # per sota d'això la melodia no es reparteix, encara que hi haja tres frases curtes
+FRAGMENT_REL = 0.6   # una frase més curta que això (respecte de la mediana) no canvia de portador [inferència]
+
+
 def planificar(rols: list[Rol], seccions: list[Seccio], evs: list[Ev], curs: str | None,
                tutti_final: bool = False) -> list[str]:
     """Tria qui porta la melodia a cada frase. Retorna notes per a l'informe."""
@@ -1529,7 +1521,7 @@ def planificar(rols: list[Rol], seccions: list[Seccio], evs: list[Ev], curs: str
     n = len(seccions)
     if sum(r.rol == "melodia" for r in rols) > 1:
         notes.append("Hi ha dos instruments amb la melodia: no la repartisc entre veus.")
-    elif n < 3:
+    elif n < 3 or sum(x.i1 - x.i0 for x in seccions) < ROTACIO_MIN_COMPASSOS:
         notes.append("La peça és massa curta per a repartir la melodia entre veus (menys de tres frases).")
     else:
         cands = [i for i in (ld.get("contracant"), ld.get("baix"), ld.get("acompanyament")) if i is not None
@@ -1545,8 +1537,12 @@ def planificar(rols: list[Rol], seccions: list[Seccio], evs: list[Ev], curs: str
             return cache[(si, i)]
 
         pos = 0
+        llarg = sorted(x.i1 - x.i0 for x in seccions)[n // 2]
         for si in range(1, n - 1):
             ant = seccions[si - 1].portador
+            if seccions[si].i1 - seccions[si].i0 < FRAGMENT_REL * llarg and seccions[si].repeteix is None:
+                seccions[si].portador = ant     # un tros de frase no canvia de veu: continua el portador anterior
+                continue
             opcions = [cands[(pos + o) % len(cands)] for o in range(len(cands))] if cands else []
             opcions = [i for i in opcions if i != ant and encaix(si, i)[0]]
             rep = seccions[si].repeteix
@@ -2047,7 +2043,8 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
 def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, curs: str | None = None,
              compassos_sel: tuple[int, int] | None = None, melodia_part: int | None = None,
              a_tonalitat: str | None = None, simplifica: bool = False, bordo: bool = False,
-             rotacio: bool = True, tutti_final: bool = False) -> tuple[stream.Score, list[str]]:
+             rotacio: bool = True, tutti_final: bool = False, intro: bool = False,
+             coda: bool = False) -> tuple[stream.Score, list[str]]:
     informe: list[str] = []
     avisos_acords: list[str] = []
     md0 = score.metadata
@@ -2136,18 +2133,28 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
     linies: dict[str, list[Ev]] = {}
     baix_ev = None
     pla: list[str] = []
+    from . import forma
+    extrems = None
     if rotacio:
-        seccions = dividir_seccions(compassos, evs, segs, k)
+        seccions = dividir_seccions(compassos, evs, segs, k, forma.bpm_de_la_partitura(score))
         notes_pla = planificar(rols, seccions, evs, curs, tutti_final)
-        pla = text_pla(rols, seccions, notes_pla)
+        if intro or coda:
+            extrems = forma.afegeix_extrems(compassos, segs, evs, k, intro, coda, seccions, rols, curs)
+            informe += extrems["notes"]
+        pla = text_pla(rols, seccions, notes_pla) + forma.text_frases(seccions)
         arranjar.pla = seccions
         construides, linies, baix_ev = _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bordo,
                                                           informe)
     else:
         arranjar.pla = []
+        if intro or coda:
+            extrems = forma.afegeix_extrems(compassos, segs, evs, k, intro, coda)
+            informe += extrems["notes"]
         construides, linies, baix_ev = _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe)
 
     construides.sort(key=lambda x: _ordre(x[0]))
+    if extrems and extrems["i_coda"] is not None:
+        forma.decora_coda(construides, extrems["i_coda"])
     res = stream.Score()
     res.metadata = metadata.Metadata()
     res.metadata.title = f"{titol} (esborrany d'arranjament)"
@@ -2217,7 +2224,8 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
     elif "contracant" in linies:
         informe.append("  Quintes o octaves paral·leles del contracant: cap.")
     buits = []
-    primer_acord = next((s.compas.num for s in segs if s.acord is not None and not s.compas.anacrusi), None)
+    primer_acord = next((s.compas.num for s in segs if s.acord is not None and not s.compas.anacrusi
+                         and s.acord.origen != "forma"), None)
     inici = sorted({c.num for c in compassos if primer_acord is not None and c.num < primer_acord})
     for r, pp, _ in construides:
         b = sorted(set.intersection(*[set(compassos_buits(p)) for p in pp]) - set(inici))
