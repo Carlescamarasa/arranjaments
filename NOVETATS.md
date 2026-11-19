@@ -9,3 +9,4 @@ Esta és una primera versió de proves: pot canviar i tindre errors. Ens ho pots
 - L'ajudant, si no coneix una paraula o una manera de fer (per exemple «làmines»), ara et pregunta de seguida què vol dir i com ho feu a classe.
 - Actualització automàtica en obrir la icona «Arranjaments».
 - Ordres noves: `partitures versio` (quina versió tens) i `partitures actualitzar` (busca novetats ara). Per a tornar a la versió anterior: `partitures actualitzar --torna-enrere`.
+- Biblioteca compartida del professorat (Teams/OneDrive, només lectura): l'ajudant hi cerca partitures per títol, compositor, nivell, estil i instrument. Ordres `partitures biblioteca on-es`, `actualitza`, `cerca` i `copia`. Mira «Biblioteca compartida» al README per a la preparació d'una sola vegada.

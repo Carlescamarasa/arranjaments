@@ -222,9 +222,34 @@ Fonts: Microsoft, [SmartScreen i els programes sense signar](https://learn.micro
 
 **Alternativa sense finestra bonica.** Si «Instal·lar Arranjaments» no s'obri de cap manera, baixa [arranjaments.zip](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/arranjaments.zip) (el projecte complet). Dins de la carpeta `instalacio` hi ha els instal·ladors de text, que fan exactament el mateix en una finestra negra: `Instalar-Mac.command` (Mac) i `Instalar-Windows.bat` (Windows). A Windows, **abans de descomprimir**, clic dret al ZIP, «Propietats», marca **«Desbloquejar»**, «Aplica» i «D'acord»; després, clic dret, «Extreure-ho tot». Doble clic a l'instal·lador i s'obri una finestra negra amb text: és normal. Al Mac, el primer avís es resol igual que en els passos de dalt.
 
+## Biblioteca compartida
+
+És una carpeta privada de Teams, «Biblioteca d'arranjaments», on el professorat de l'escola deixa les partitures que vol compartir. L'ajudant hi cerca primer quan li demanes una obra (i, si no hi és, passa al corpus de música lliure). L'ajudant només la **llig**: mai hi escriu ni hi esborra res.
+
+**Què cal fer, una sola vegada, a cada docent** (amb el compte de l'escola, des del navegador):
+
+1. Tingues instal·lada l'aplicació **OneDrive** i entra-hi amb el compte de l'escola (a Windows ja ve, a Mac es baixa de l'App Store).
+2. Obri Teams, entra al canal on és la carpeta «Biblioteca d'arranjaments» i ves a la pestanya **Fitxers**.
+3. Selecciona la carpeta (el cercle de la seua targeta) i prem **«Afegeix una drecera a Els meus fitxers»**. Si el teu Teams està en castellà diu «Agregar acceso directo a Mis archivos», i en anglés «Add shortcut to My files». En versions noves pot dir «Afegeix una drecera a OneDrive»: tria «Els meus fitxers».
+4. Espera uns minuts. La carpeta apareix dins de la teua carpeta OneDrive de l'ordinador (al Finder o a l'Explorador de fitxers). Val per a l'ordinador de casa i el de l'escola.
+5. Demana a l'ajudant «busca a la biblioteca...». Si no la troba, et dirà què falta (o escriu `partitures biblioteca on-es`).
+
+Les partitures poden estar «només al núvol» (no descarregades): quan l'ajudant n'analitza una, OneDrive la baixa. L'ajudant ho fa per tandes (unes 200 per vegada) perquè no baixe tota la biblioteca de colp.
+
+**Com afegir-hi partitures:** arrossega els fitxers a la carpeta, des de Teams (pestanya Fitxers) o des de la carpeta OneDrive. Els millors són MusicXML (`.musicxml`, `.xml`, `.mxl`): l'ajudant en llig títol, compositor, tonalitat, compàs, instruments i tessitures. Els PDF i els fitxers de MuseScore només es troben pel nom (després cal importar-los o obrir-los amb MuseScore).
+
+**Nivell i estil (opcional):** l'ajudant els treu de les carpetes (per exemple `4t elemental/jazz/`), d'etiquetes entre claudàtors al nom del fitxer (`Blues [4t elemental] [jazz].mxl`) o d'un fitxer de text amb el mateix nom (`Blues.mxl.txt`) amb línies com `nivell: 4t elemental` i `estil: jazz`.
+
+**LliureX (i altres Linux) no està suportat:** no hi ha cap aplicació de OneDrive, i per tant la carpeta no apareix. Des d'un Mac o Windows sí que funciona.
+
+**Drets d'autor:** les partitures compartides poden tindre drets d'autor. Han de quedar dins del grup de l'escola: no les publiques ni les envies fora.
+
+*Tècnic.* Les eines busquen una carpeta «Biblioteca d'arranjaments» dins de `~/Library/CloudStorage/OneDrive-*` (Mac) o de les carpetes `OneDriveCommercial`, `OneDrive` i les del perfil que comencen per «OneDrive» (Windows). Es pot forçar amb la variable `ARRANJAMENTS_BIBLIOTECA` o amb una línia amb la ruta al fitxer `biblioteca.txt` de la carpeta de dades. L'índex es guarda a `biblioteca-index.json` de la carpeta de dades, fora de la biblioteca.
+
 ## Frases que pots escriure
 
 - «Busca'm un coral de Bach en format editable.» (Cerca en el corpus de música lliure que ja ve instal·lat; si l'obra no hi és, l'ajudant et proposa on buscar-la.)
+- «Busca a la biblioteca de l'escola un arranjament de jazz per a 4t elemental.»
 - «Tinc un PDF a entrada/ i el vull convertir en partitura.»
 - «Què hi ha dins d'entrada/coral.musicxml?»
 - «Vull fer-ne un arranjament per a dues trompetes, trompa i trombó.»
