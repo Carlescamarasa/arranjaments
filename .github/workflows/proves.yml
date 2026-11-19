@@ -89,9 +89,11 @@ jobs:
           set -x
           mkdir muntatge
           git archive HEAD | tar -x -C muntatge
-          # Versió: «major.menor» del fitxer VERSION i el número d'execució de GitHub (sempre creix)
+          # Versió: «major.menor» del fitxer VERSION i el número d'execució de GitHub menys PATCH_DESPLACAMENT
+          # (així la línia 0.1 comença a 0.1.1 i sempre creix; en canviar de major.menor, apunta el nou desplaçament)
+          PATCH_DESPLACAMENT=18
           BASE="$(cut -d. -f1,2 VERSION)"
-          VERSIO="$BASE.$GITHUB_RUN_NUMBER"
+          VERSIO="$BASE.$((GITHUB_RUN_NUMBER - PATCH_DESPLACAMENT))"
           echo "$VERSIO" > muntatge/VERSION
           echo "Versió: $VERSIO"
           # El projecte (sense proves ni imatges del README) per a incrustar-lo als fitxers d'un sol clic

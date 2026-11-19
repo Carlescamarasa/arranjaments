@@ -36,7 +36,7 @@ def _arbre(arrel: Path, versio: str, marca: str, lock: str = "lock-1") -> None:
 @pytest.fixture
 def entorn(tmp_path):
     dades, treball, servidor = tmp_path / "dades", tmp_path / "Arranjaments", tmp_path / "servidor"
-    _arbre(dades, "1.0.1", "vella")
+    _arbre(dades, "0.1.1", "vella")
     for c in ("entrada", "eixida", ".opencode"):
         (treball / c).mkdir(parents=True)
     _escriu(treball / "eixida/meva.musicxml", "la meua partitura")
@@ -66,20 +66,20 @@ def _foto(carpeta: Path) -> dict:
 
 
 def test_compara_versions():
-    assert act.compara("1.0.12", "1.0.9") == 1
-    assert act.compara("1.0.9", "1.0.12") == -1
-    assert act.compara("1.0", "1.0.0") == 0
+    assert act.compara("0.1.12", "0.1.9") == 1
+    assert act.compara("0.1.9", "0.1.12") == -1
+    assert act.compara("0.1", "0.1.0") == 0
     assert act.compara("2.0.0", "1.99.99") == 1
     with pytest.raises(ValueError):
         act.parseja("1.x")
 
 
 def test_actualitza_canvia_eines_i_configuracio_i_no_toca_res_de_la_persona(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     persona_abans = _foto(entorn.treball / "eixida") | _foto(entorn.treball / "entrada")
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "actualitzada", r
-    assert act.versio_de(entorn.dades) == "1.0.2"
+    assert act.versio_de(entorn.dades) == "0.1.2"
     assert (entorn.dades / "scripts/partitures/marca.txt").read_text(encoding="utf-8") == "nova"
     assert (entorn.treball / ".opencode/AGENTS.md").read_text(encoding="utf-8") == "agents nova"
     assert (entorn.treball / ".opencode/skills/arranjar/SKILL.md").read_text(encoding="utf-8") == "skill nova"
@@ -93,7 +93,7 @@ def test_actualitza_canvia_eines_i_configuracio_i_no_toca_res_de_la_persona(ento
 
 
 def test_al_dia_no_fa_res(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.1", "igual")
+    _publica(entorn, tmp_path, "0.1.1", "igual")
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "al_dia"
     assert not (entorn.dades / "anterior").exists()
@@ -101,12 +101,12 @@ def test_al_dia_no_fa_res(entorn, tmp_path):
 
 
 def test_versio_mes_vella_o_igual_no_es_baixa(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.0", "enrere")
+    _publica(entorn, tmp_path, "0.1.0", "enrere")
     assert act.actualitza(entorn, forca=True, sync=_sense_sync).codi == "al_dia"
 
 
 def test_sha_diferent_es_rebutja(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     ruta = entorn.servidor / act.FITXER_VERSIO
     d = json.loads(ruta.read_text(encoding="utf-8"))
     d["sha256"] = hashlib.sha256(b"altra cosa").hexdigest()
@@ -115,12 +115,12 @@ def test_sha_diferent_es_rebutja(entorn, tmp_path):
     assert r.codi == "error"
     assert not (entorn.dades / "anterior").exists()
     assert (entorn.dades / "scripts/partitures/marca.txt").read_text(encoding="utf-8") == "vella"
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
     assert "sha256" in (entorn.dades / "actualitzacio.log").read_text(encoding="utf-8")
 
 
 def test_paquet_amb_ruta_fora_es_rebutja(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     ruta_zip = entorn.servidor / act.FITXER_PAQUET
     with zipfile.ZipFile(ruta_zip, "a") as z:
         z.writestr("../fora.txt", "mal")
@@ -130,7 +130,7 @@ def test_paquet_amb_ruta_fora_es_rebutja(entorn, tmp_path):
     (entorn.servidor / act.FITXER_VERSIO).write_text(json.dumps(d))
     assert act.actualitza(entorn, forca=True, sync=_sense_sync).codi == "error"
     assert not (entorn.dades.parent / "fora.txt").exists()
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
 
 
 def test_sense_xarxa_no_falla_i_ho_registra(entorn):
@@ -138,7 +138,7 @@ def test_sense_xarxa_no_falla_i_ho_registra(entorn):
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "sense_xarxa"
     assert r.be
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
     assert "Sense connexió" in (entorn.dades / "actualitzacio.log").read_text(encoding="utf-8")
 
 
@@ -148,7 +148,7 @@ def test_servidor_http_inaccessible(entorn):
 
 
 def test_http_real_amb_servidor_local(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     gestor = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(entorn.servidor))
     gestor.func.log_message = lambda *a, **k: None
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), gestor)
@@ -158,7 +158,7 @@ def test_http_real_amb_servidor_local(entorn, tmp_path):
         assert act.actualitza(entorn, forca=True, sync=_sense_sync).codi == "actualitzada"
     finally:
         srv.shutdown()
-    assert act.versio_de(entorn.dades) == "1.0.2"
+    assert act.versio_de(entorn.dades) == "0.1.2"
 
 
 def test_sense_mode_proves_nomes_s_admet_https(entorn):
@@ -169,23 +169,23 @@ def test_sense_mode_proves_nomes_s_admet_https(entorn):
 
 def test_torna_enrere_restaura_tot(entorn, tmp_path):
     antes = _foto(entorn.dades) | {"T/" + k: v for k, v in _foto(entorn.treball).items()}
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     assert act.actualitza(entorn, forca=True, sync=_sense_sync).codi == "actualitzada"
     r = act.torna_enrere(entorn, sync=_sense_sync)
     assert r.codi == "enrere", r
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
     despres = {k: v for k, v in _foto(entorn.dades).items() if not k.startswith("anterior/") and not k.endswith((".log", "estat.json"))}
     despres |= {"T/" + k: v for k, v in _foto(entorn.treball).items()}
     assert despres == antes
     # i l'actualització automàtica no torna a posar la mateixa versió que s'ha rebutjat
     assert act.actualitza(entorn, forca=False, sync=_sense_sync).codi in ("omesa", "recent")
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
 
 
 def test_torna_enrere_treu_les_peces_que_la_versio_vella_no_tenia(entorn, tmp_path):
     (entorn.dades / "NOVETATS.md").unlink()
     (entorn.treball / ".opencode/NOVETATS.md").unlink()
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert (entorn.treball / ".opencode/NOVETATS.md").exists()
     act.torna_enrere(entorn, sync=_sense_sync)
@@ -198,7 +198,7 @@ def test_torna_enrere_sense_versio_anterior(entorn):
 
 
 def test_si_falla_el_canvi_tot_queda_com_estava(entorn, tmp_path, monkeypatch):
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     abans = _foto(entorn.dades) | {"T/" + k: v for k, v in _foto(entorn.treball).items()}
     reals = act._mou
 
@@ -217,10 +217,10 @@ def test_si_falla_el_canvi_tot_queda_com_estava(entorn, tmp_path, monkeypatch):
 
 def test_uv_sync_nomes_si_canvia_el_lock(entorn, tmp_path):
     crides = []
-    _publica(entorn, tmp_path, "1.0.2", "nova", lock="lock-1")
+    _publica(entorn, tmp_path, "0.1.2", "nova", lock="lock-1")
     act.actualitza(entorn, forca=True, sync=lambda d: crides.append(d) or True)
     assert crides == []
-    _publica(entorn, tmp_path, "1.0.3", "mes-nova", lock="lock-2")
+    _publica(entorn, tmp_path, "0.1.3", "mes-nova", lock="lock-2")
     if not act.troba_uv():
         pytest.skip("uv no és al PATH")
     act.actualitza(entorn, forca=True, sync=lambda d: crides.append(d) or True)
@@ -229,31 +229,31 @@ def test_uv_sync_nomes_si_canvia_el_lock(entorn, tmp_path):
 
 def test_si_falla_uv_sync_es_torna_a_la_versio_vella(entorn, tmp_path, monkeypatch):
     monkeypatch.setattr(act, "troba_uv", lambda: "uv")
-    _publica(entorn, tmp_path, "1.0.2", "nova", lock="lock-2")
+    _publica(entorn, tmp_path, "0.1.2", "nova", lock="lock-2")
     r = act.actualitza(entorn, forca=True, sync=lambda d: False)
     assert r.codi == "error"
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
     assert (entorn.dades / "uv.lock").read_text(encoding="utf-8") == "lock-1"
     assert (entorn.treball / ".opencode/AGENTS.md").read_text(encoding="utf-8") == "agents vella"
 
 
 def test_python_diferent_demana_reinstalar(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     font = tmp_path / "font-py"
     _arbre(font, "0", "nova")
     _escriu(font / ".python-version", "3.13\n")
-    act.crea_paquet(font, "1.0.2", entorn.servidor)
+    act.crea_paquet(font, "0.1.2", entorn.servidor)
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "cal_reinstalar"
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
 
 
 def test_consulta_com_a_molt_una_vegada_per_hora(entorn, tmp_path):
-    _publica(entorn, tmp_path, "1.0.1", "igual")
+    _publica(entorn, tmp_path, "0.1.1", "igual")
     assert act.actualitza(entorn, sync=_sense_sync, ara=lambda: 10000.0).codi == "al_dia"
-    _publica(entorn, tmp_path, "1.0.2", "nova")
+    _publica(entorn, tmp_path, "0.1.2", "nova")
     assert act.actualitza(entorn, sync=_sense_sync, ara=lambda: 10100.0).codi == "recent"
-    assert act.versio_de(entorn.dades) == "1.0.1"
+    assert act.versio_de(entorn.dades) == "0.1.1"
     assert act.actualitza(entorn, sync=_sense_sync, ara=lambda: 10000.0 + 3700).codi == "actualitzada"
 
 

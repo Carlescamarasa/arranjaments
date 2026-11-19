@@ -146,7 +146,7 @@ namespace Arranjaments
             titol.UseMnemonic = false;
             Controls.Add(titol);
 
-            frase = NovaEtiqueta("Prepara este ordinador per a fer arranjaments amb l'ajudant. Només s'instal·la el que falta i pot tardar uns minuts.");
+            frase = NovaEtiqueta("Prepara este ordinador per a fer arranjaments amb l'ajudant. Només s'instal·la el que falta i pot tardar uns minuts." + VersioText());
             frase.ForeColor = SystemColors.GrayText;
 
             llista = new Llista();
@@ -251,6 +251,39 @@ namespace Arranjaments
                 }
             }
             catch { return null; }
+        }
+
+        // La versió que porta el paquet (fitxer VERSION del ZIP, o del costat de l'executable). Es llig en el moment: mai es desfasa.
+        static string VersioText()
+        {
+            string v = "";
+            try
+            {
+                long[] pos = ProjecteIntern();
+                if (pos != null)
+                {
+                    byte[] zip = new byte[pos[1]];
+                    using (FileStream f = new FileStream(Application.ExecutablePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    {
+                        f.Seek(pos[0], SeekOrigin.Begin);
+                        int llegit = 0;
+                        while (llegit < zip.Length) { int n = f.Read(zip, llegit, zip.Length - llegit); if (n <= 0) break; llegit += n; }
+                    }
+                    using (ZipArchive z = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read))
+                    {
+                        ZipArchiveEntry e = z.GetEntry("VERSION");
+                        if (e != null) using (StreamReader r = new StreamReader(e.Open(), Encoding.UTF8)) v = r.ReadToEnd();
+                    }
+                }
+                else
+                {
+                    string f2 = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "VERSION");
+                    if (File.Exists(f2)) v = File.ReadAllText(f2, Encoding.UTF8);
+                }
+            }
+            catch { }
+            v = v.Trim();
+            return v.Length == 0 ? "" : "\nVersió " + v;
         }
 
         static string CarpetaDades()

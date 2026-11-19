@@ -1,5 +1,7 @@
 # Arranjaments de cambra amb OpenCode
 
+**Versió 0.1, en proves.** És un prototip: pot tindre errors i canviar. La versió exacta que tens la veus a l'instal·lador o escrivint `partitures versio`.
+
 Un ajudant per a professors i professores de música que volen fer arranjaments de cambra (per exemple, passar un coral a quartet de metalls) sense saber programar. Li parles en valencià, com a una persona, i ell s'encarrega de les gestions: buscar la partitura, transportar, comprovar que cada instrument pot tocar el que li toca i generar els PDF.
 
 Una cosa important: la intel·ligència artificial NO escriu les notes. Tot el treball musical el fan unes eines normals, provades i previsibles. L'ajudant només tria quina eina toca i t'explica el resultat. Així, si el model gratuït que fas servir un dia és poc llest, no et fa malbé la música.
@@ -251,6 +253,8 @@ Els models gratuïts van i vénen: un dia n'hi ha un que s'acaba, va molt lent o
 - Les eines **no canvien mai l'original ni sobreescriuen res**: sempre creen un fitxer nou a `eixida/` (si el nom ja existeix, afigen -2, -3...) i no escriuen fora de la carpeta de treball. L'última línia de cada ordre diu «Fitxer actual», el fitxer amb què continuar.
 
 ## Per a qui vol saber-ne més (no cal)
+
+**Versions (tècnic).** `VERSION` guarda «major.menor» (ara 0.1); el tercer número el posa l'automatització en publicar: número d'execució de GitHub menys `PATCH_DESPLACAMENT` (a `.github/workflows/proves.yml`), de manera que només creix.
 
 **Com funciona l'actualització (tècnic).** La icona executa primer `python -I -m partitures.actualitzar --silenci` (només biblioteca estàndard, sense music21) i després obri OpenCode; a Windows, la icona és un Python sense finestra (`pythonw`) que fa el mateix i obri OpenCode al final. L'actualitzador baixa `versio.json` (versió i sha256) de la versió «ultima» de GitHub amb un límit de 5 segons i, com a molt, una consulta per hora. Si hi ha una versió més nova, baixa `actualitzacio.zip` (només eines i configuració), comprova el sha256, ho descomprimeix a una carpeta temporal de la carpeta de dades, guarda la versió actual a `anterior/` i canvia les peces una a una (si una falla, torna tot enrere). Només renova `scripts`, `instalacio`, `pyproject.toml`, `uv.lock` (i fa `uv sync` només si ha canviat), `VERSION` i la configuració amagada `.opencode` de la carpeta de treball; mai `entrada/`, `eixida/` ni cap fitxer teu. Tot queda escrit a `actualitzacio.log` de la carpeta de dades. Ordres: `partitures versio`, `partitures actualitzar` i `partitures actualitzar --torna-enrere` (l'ajudant demana permís abans d'`actualitzar`). La versió és `major.menor` de `VERSION` més el número d'execució del CI.
 

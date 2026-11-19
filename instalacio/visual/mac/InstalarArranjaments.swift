@@ -78,6 +78,30 @@ func projecteIntern() -> URL? {
     Bundle.main.url(forResource: "projecte", withExtension: "tar.gz")
 }
 
+/// La versió que porta el paquet (fitxer VERSION): de dins del tar.gz de l'aplicació o, si és al costat del projecte, de la carpeta.
+/// Es llig en el moment, així mai queda desfasada. Si no es pot saber, no es mostra res.
+func versioText() -> String? {
+    var text: String?
+    if let tgz = projecteIntern() {
+        let t = Process()
+        t.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        t.arguments = ["-xzOf", tgz.path, "VERSION"]
+        let canal = Pipe()
+        t.standardOutput = canal
+        t.standardError = FileHandle.nullDevice
+        if (try? t.run()) != nil {
+            let dades = canal.fileHandleForReading.readDataToEndOfFile()
+            t.waitUntilExit()
+            if t.terminationStatus == 0 { text = String(data: dades, encoding: .utf8) }
+        }
+    } else {
+        let c = rutaOriginal(Bundle.main.bundleURL).deletingLastPathComponent()
+        text = try? String(contentsOf: c.appendingPathComponent("VERSION"), encoding: .utf8)
+    }
+    let net = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    return net.isEmpty ? nil : "Versió " + net
+}
+
 func carpetaTemporal() -> URL {
     FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Arranjaments/staging")
 }
@@ -402,6 +426,9 @@ struct Contingut: View {
                     Text("Prepara este ordinador per a fer arranjaments amb l'ajudant. Només s'instal·la el que falta i pot tardar uns minuts.")
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let v = versioText() {
+                        Text(v).font(.caption).foregroundColor(.secondary)
+                    }
                 }
             }
 

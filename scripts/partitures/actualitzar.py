@@ -636,7 +636,7 @@ def torna_enrere(inst: Instalacio, *, sync: Callable[[Path], bool] = sync_uv) ->
 
 def text_versio(inst: Instalacio | None) -> str:
     dades = inst.dades if inst else Path(__file__).resolve().parents[2]
-    linies = [f"Arranjaments, versió {versio_de(dades)}"]
+    linies = [f"Arranjaments, versió {versio_de(dades)} (prototip, en proves)"]
     if inst:
         try:
             ant = json.loads((dades / "anterior" / "ESTAT.json").read_text(encoding="utf-8"))["versio"]
