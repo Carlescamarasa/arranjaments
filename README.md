@@ -84,7 +84,7 @@ El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
    ![Pas 5](docs/captures/mac/05-instalant.png)
 
-6. Quan diu «Tot a punt», ja està instal·lat.
+6. Quan diu «Tot a punt», ja està instal·lat. Si no tens OneDrive (opcional, només per a la biblioteca compartida), al final hi ha el botó «Instal·la OneDrive», que obri l'App Store; pots ignorar-lo.
 
    ![Pas 6](docs/captures/mac/06-tot-a-punt.png)
 
@@ -137,7 +137,7 @@ El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
    ![Pas 3](docs/captures/windows/03-smartscreen.png)
 
-4. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba. Si MuseScore demana permís (finestra blava), prem «Sí».
+4. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba. Si MuseScore demana permís (finestra blava), prem «Sí». Si l'ordinador no et deixa (és de la feina o del centre), no passa res: l'instal·lador ho marca com a avís, pots obrir Arranjaments igualment i només no podràs fer PDF encara.
 
    ![Pas 4](docs/captures/windows/04-instalant.png)
 
