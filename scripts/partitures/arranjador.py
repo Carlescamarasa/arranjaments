@@ -19,6 +19,7 @@ from music21 import (bar, chord, clef, expressions, harmony, instrument as m21i,
                      percussion, pitch, roman, stream, tempo, tie)
 from music21.common.numberTools import opFrac
 
+from . import gravat
 from . import instruments as inst
 from . import musica
 from .errors import ErrorUsuari
@@ -1137,7 +1138,7 @@ def rol_percussio(compassos: list[Compas], segs: list[Segment], instr: inst.Inst
                     v1.append(grup(dalt, ql) if dalt else note.Rest(quarterLength=ql))
                     v2.append(grup({"BD"}, ql, amunt=False) if "BD" in s else note.Rest(quarterLength=ql))
             for v in (v1, v2):
-                _ajunta_silencis(v)
+                _ajunta_silencis(v, c.ts)
             m.insert(0, v1)
             m.insert(0, v2)
         else:
@@ -1145,13 +1146,16 @@ def rol_percussio(compassos: list[Compas], segs: list[Segment], instr: inst.Inst
             for b in range(n_pols):
                 toca = (b == 0) if final else (instr.clau == "caixa" or b % 2 == 0 or n_pols <= 2)
                 m.append(grup({"SN"}, c.pols) if toca else note.Rest(quarterLength=c.pols))
-            _ajunta_silencis(m)
+            _ajunta_silencis(m, c.ts)
         part.append(m)
     return part
 
 
-def _ajunta_silencis(v) -> None:
-    """Silencis seguits en un de sol (més fàcil de llegir)."""
+def _ajunta_silencis(v, ts=None) -> None:
+    """Silencis seguits en un de sol (més fàcil de llegir). Amb el compàs (`ts`), agrupats per pulsació."""
+    if ts is not None:
+        gravat.agrupa_silencis(v, ts)
+        return
     els = list(v.notesAndRests)
     i = 0
     while i < len(els) - 1:
@@ -1190,21 +1194,23 @@ def part_des_de_evs(evs: list[Ev], compassos: list[Compas], classe=stream.Part) 
             if not e.alt or e.fi <= c.ini + _EPS or e.ini >= c.fi - _EPS:
                 continue
             a, b = max(e.ini, c.ini), min(e.fi, c.fi)
+            pad = opFrac(c.ts.barDuration.quarterLength - c.dur) if c.anacrusi else 0   # compàs de l'anacrusi
             if a > t + _EPS:
-                m.append(note.Rest(quarterLength=opFrac(a - t)))
+                for r in gravat.silencis(t - c.ini + pad, a - t, c.ts):
+                    m.append(r)
             if len(e.alt) == 1:
                 x = note.Note(copy.deepcopy(e.alt[0]))
             else:
                 x = chord.Chord([copy.deepcopy(q) for q in e.alt])
-            x.quarterLength = opFrac(b - a)
             ve = e.ini < c.ini - _EPS
             va = e.fi > c.fi + _EPS
-            if ve or va:
-                x.tie = tie.Tie("continue" if ve and va else "stop" if ve else "start")
-            m.append(x)
+            for y in gravat.talla_nota(x, a - c.ini + pad, b - a, c.ts, ve, va):
+                m.append(y)
             t = b
         if t < c.fi - _EPS:
-            m.append(note.Rest(quarterLength=opFrac(c.fi - t)))
+            pad = opFrac(c.ts.barDuration.quarterLength - c.dur) if c.anacrusi else 0
+            for r in gravat.silencis(t - c.ini + pad, c.fi - t, c.ts):
+                m.append(r)
         if not m.notesAndRests:
             m.append(note.Rest(quarterLength=c.dur))
         p.append(m)
@@ -1982,6 +1988,8 @@ def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bor
                 evs_i += _retalla(linia(i, f), a, b)
             si = sj + 1
         evs_i.sort(key=lambda e: e.ini)
+        evs_i, resp = gravat.respiracions(evs_i, [(q.ini, q.fi, q.funcions[i]) for q in seccions], r.instr,
+                                          compassos, es_elemental(curs), _permet_corxeres(r.instr, curs))
         if r.instr.clau == "piano":
             dreta = [Ev(x.ini, x.dur, [p for p in x.alt if p.midi >= 60]) for x in evs_i]
             esquerra = [Ev(x.ini, x.dur, [p for p in x.alt if p.midi < 60]) for x in evs_i]
@@ -1989,6 +1997,7 @@ def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bor
                                     part_des_de_evs(esquerra, compassos, stream.PartStaff)], evs_i))
             continue
         part = part_des_de_evs(evs_i, compassos)
+        gravat.marca_respiracions(part, resp)
         ms = list(part.getElementsByClass(stream.Measure))
         for ci in marques:
             te = expressions.TextExpression("melodia")
@@ -2003,14 +2012,20 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
     """Les parts amb cada rol sempre en el mateix instrument (el comportament de sempre, amb --sense-rotacio)."""
     construides: list = []
     linies: dict[str, list[Ev]] = {}
+    frases = dividir_seccions(compassos, evs, segs, k)    # per a les respiracions dels vents
+    elem = es_elemental(curs)
     for r in rols:
         if r.rol == "melodia":
             e, sh = rol_melodia(evs, r.instr, curs)
             linies.setdefault("melodia", e)
+            e, resp = gravat.respiracions(e, [(q.ini, q.fi, "melodia") for q in frases], r.instr, compassos, elem,
+                                          _permet_corxeres(r.instr, curs))
             if sh:
                 informe.append(f"{r.instr.nom}: melodia {abs(sh) // 12} octava{'es' if abs(sh) > 12 else ''} "
                                f"{'amunt' if sh > 0 else 'avall'} perquè caiga en la zona còmoda.")
-            construides.append((r, [part_des_de_evs(e, compassos)], e))
+            pm = part_des_de_evs(e, compassos)
+            gravat.marca_respiracions(pm, resp)
+            construides.append((r, [pm], e))
     baix_ev = None
     acomp_rol = next((r for r in rols if r.rol == "acompanyament"), None)
     for r in rols:
@@ -2035,7 +2050,11 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
         if r.rol == "contracant":
             e = rol_contracant(linies["melodia"], segs, r.instr, curs, k, baix_ev)
             linies.setdefault("contracant", e)
-            construides.append((r, [part_des_de_evs(e, compassos)], e))
+            e, resp = gravat.respiracions(e, [(q.ini, q.fi, "contracant") for q in frases], r.instr, compassos, elem,
+                                          _permet_corxeres(r.instr, curs))
+            pc = part_des_de_evs(e, compassos)
+            gravat.marca_respiracions(pc, resp)
+            construides.append((r, [pc], e))
     for r in rols:
         if r.rol == "percussio":
             construides.append((r, [rol_percussio(compassos, segs, r.instr, curs, estil)], None))
@@ -2148,6 +2167,7 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
         construides, linies, baix_ev = _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe)
 
     construides.sort(key=lambda x: _ordre(x[0]))
+    matisos = gravat.posa_matisos_i_articulacions(construides, rols, arranjar.pla, compassos, estil, es_elemental(curs))
     res = stream.Score()
     res.metadata = metadata.Metadata()
     res.metadata.title = f"{titol} (esborrany d'arranjament)"
@@ -2170,6 +2190,9 @@ def arranjar(score: stream.Score, rols: list[Rol], estil: str | None = None, cur
                     p.getElementsByClass(stream.Measure).first().insert(0, cl)
         if n == 0 and tempos:
             pp[0].getElementsByClass(stream.Measure).first().insert(0, copy.deepcopy(tempos[0]))
+        elif n == 0:
+            pp[0].getElementsByClass(stream.Measure).first().insert(0, gravat.tempo_estil(estil, compassos[0].ts))
+            informe.append(gravat.text_tempo(estil, compassos[0].ts))
         for p in pp:
             ult = p.getElementsByClass(stream.Measure).last()
             if ult.rightBarline is None:
