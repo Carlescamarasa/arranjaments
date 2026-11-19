@@ -39,4 +39,4 @@ Tot es fa amb ordres. Tu no edites cap fitxer. Les ordres NO modifiquen l'origin
 
 - No canvies notes concretes ni ritmes: l'eina no ho fa. Si la persona vol retocar notes, que òbriga el fitxer amb MuseScore (`partitures obrir "<fitxer>"`).
 - No inventes noms d'instrument: usa només els de la llista. Si falta un instrument, digues-ho.
-- No ofereixes reduccions a piano: ara mateix no es poden fer amb l'eina.
+- No oferisques reduccions a piano: ara mateix no es poden fer amb l'eina.

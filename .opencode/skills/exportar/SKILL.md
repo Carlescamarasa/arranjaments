@@ -12,7 +12,7 @@ description: Genera en PDF la partitura general i les parts soltes de cada instr
 3. Executa: `partitures exportar "eixida/nom.musicxml"`
    Això crea, dins una carpeta nova `eixida/nom/` (si ja existeix, `nom-2`...), un PDF de la partitura completa i un PDF per cada instrument, amb nom `nom - 1. Trompeta en Si bemoll.pdf`, etc. (Per a la partitura sola: afegir `--sense-parts`.)
 4. Escriu la ruta completa de cada PDF que s'ha creat.
-5. Si diu que no troba MuseScore, llig el missatge tal com és, explica que cal MuseScore (gratuït, https://musescore.org/ca/download) i ofereix instal·lar-lo amb `--nomes musescore` (vegeu `preparar-ordinador`, amb `timeout` 900000).
+5. Si diu que no troba MuseScore, llig el missatge tal com és, explica que cal MuseScore (gratuït, https://musescore.org/ca/download) i ofereix instal·lar-lo amb `partitures instalar musescore` (vegeu `preparar-ordinador`, amb `timeout` 900000).
 
 ## Notes
 

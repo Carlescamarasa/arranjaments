@@ -9,16 +9,23 @@ description: Cerca partitures a la biblioteca compartida del professorat (carpet
 
 ## Procediment (una pregunta cada vegada)
 
-1. Quan et demanen una obra, cerca PRIMER ací i després al corpus lliure (skill `buscar-partitura`).
-2. Executa `partitures biblioteca on-es`.
-   - Si diu que no la troba, l'ordre ja diu QUIN pas falta: instal·lar OneDrive, entrar-hi amb el compte de l'escola (@edu.gva.es) o afegir la drecera. Explica només eixe pas, en paraules senzilles. Si OneDrive no hi és (cosa normal si la instal·lació és anterior a esta funció, perquè el pas de OneDrive només ve en tornar a obrir «Instal·lar Arranjaments»), guia-la a instal·lar-lo a mà amb l'enllaç oficial: Mac, https://go.microsoft.com/fwlink/?linkid=823060 (instal·lador de Microsoft, demana la contrasenya del Mac) o, sense contrasenya d'administrador, l'App Store, https://apps.apple.com/app/onedrive/id823766827; Windows, ve amb el sistema (si falta, https://go.microsoft.com/fwlink/?linkid=844652). Pàgina general: https://www.microsoft.com/microsoft-365/onedrive/download. Tu no baixes ni instal·les res: ho fa ella. Després, el pas que ja explicava així:
-   - L'enllaç de la biblioteca el passen les companyes en privat: no te'l inventes ni el busques. La carpeta compartida s'ha de dir EXACTAMENT «Biblioteca d'arranjaments» (qui la crea). Si té un altre nom o és en un altre lloc, es pot guardar la ruta a mà (`partitures biblioteca on-es --ruta "<carpeta>"`).
-   - Per al pas de la drecera, explica en paraules senzilles el pas que s'ha de fer UNA vegada (el text de l'ordre ja el porta): a Teams, al canal, pestanya Fitxers, seleccionar la carpeta i «Afegeix una drecera a Els meus fitxers» (castellà: «Agregar acceso directo a Mis archivos»), i tindre OneDrive instal·lat amb el compte de l'escola. Després, tornar a provar `on-es`. En LliureX no funciona (no hi ha OneDrive): digues-ho i passa al corpus lliure.
-   - Si la persona té la carpeta en un altre lloc, pregunta-li la ruta i desa-la amb `partitures biblioteca on-es --ruta "<carpeta>"`.
-3. Executa `partitures biblioteca actualitza`. Si diu que en queden per analitzar, torna-la a executar (fins a 2 vegades) i, si encara en queden, deixa que cerque igualment pels noms.
-4. Cerca: `partitures biblioteca cerca <paraules>`, amb `--nivell`, `--estil` o `--instrument` si els coneixes (pregunta només el que falta). Mostra els resultats tal com surten (títol, tonalitat, compàs, parts i tessitures).
-5. Per a usar-ne una: `partitures biblioteca copia <número>`; el fitxer queda a `entrada/` i continues amb la skill `arranjar`. Si és un PDF, skill `importar-pdf` (i revisar amb MuseScore). Si és de MuseScore, `partitures obrir` i exportar a MusicXML.
-6. Si no hi ha res a la biblioteca, ho dius i continues amb el corpus lliure.
+1. Quan et demanen una obra, cerca PRIMER ací: `partitures biblioteca cerca <paraules>`, amb `--nivell`, `--estil` o `--instrument` si els coneixes (pregunta només el que falta). Mostra els resultats tal com ixen (títol, tonalitat, compàs, parts i tessitures).
+2. Si l'ordre diu «No hi ha biblioteca compartida en este ordinador», passa a la skill `buscar-partitura` (corpus lliure) SENSE explicar res de OneDrive ni de Teams. Només si la persona pregunta per la biblioteca, ves al pas «Si pregunta per la biblioteca».
+3. Si diu que l'índex està buit, executa `partitures biblioteca actualitza`. Si diu que en queden per analitzar, torna-la a executar (fins a 2 vegades) i, si encara en queden, deixa que cerque igualment pels noms. Si diu que alguns fitxers no s'han pogut llegir (sense connexió o encara no baixats), no passa res: es troben pel nom.
+4. Per a usar-ne una: `partitures biblioteca copia <número>`; el fitxer queda a `entrada/` i continues amb la skill `arranjar`. Si és un PDF, skill `importar-pdf` (i revisar amb MuseScore). Si és de MuseScore, `partitures obrir` i exportar a MusicXML.
+5. Si no hi ha res a la biblioteca, ho dius i continues amb el corpus lliure.
+
+## Si pregunta per la biblioteca, o no la troba i vol arreglar-ho
+
+Executa `partitures biblioteca on-es`. Si diu que no la troba, l'ordre ja diu QUIN pas falta: explica només eixe pas, en paraules senzilles.
+
+- Si falta OneDrive (cosa normal si l'instal·lació és anterior a esta funció), guia-la a instal·lar-lo a mà. Mac: l'App Store, https://apps.apple.com/app/onedrive/id823766827 (no demana contrasenya) o l'instal·lador de Microsoft, https://go.microsoft.com/fwlink/?linkid=823060 (demana la contrasenya del Mac). Windows: ve amb el sistema (si falta, https://go.microsoft.com/fwlink/?linkid=844652). Pàgina general: https://www.microsoft.com/microsoft-365/onedrive/download. Tu no baixes ni instal·les res: ho fa ella.
+- Si OneDrive hi és però cal entrar-hi, que entre amb el compte de l'escola (@edu.gva.es).
+- Si falta la drecera: a Teams, al canal, pestanya Fitxers, seleccionar la carpeta i «Afegeix una drecera a Els meus fitxers» (castellà: «Agregar acceso directo a Mis archivos»); el text de l'ordre ja ho explica. Després, tornar a provar `on-es`.
+- L'enllaç de la biblioteca el passen les companyes en privat: no te'l inventes ni el busques. La carpeta compartida s'ha de dir EXACTAMENT «Biblioteca d'arranjaments».
+- Si diu que el Mac no ha deixat mirar dins de OneDrive, cal donar permís al Mac: quan pregunte si pot accedir als fitxers de OneDrive, «Permet» (o a Configuració del Sistema, Privacitat i seguretat, Fitxers i carpetes).
+- Si la persona té la carpeta en un altre lloc, pregunta-li la ruta i desa-la amb `partitures biblioteca on-es --ruta "<carpeta>"`.
+- En LliureX no funciona (no hi ha OneDrive): digues-ho i usa el corpus lliure.
 
 ## Drets d'autor (digues-ho UNA vegada per conversa)
 
