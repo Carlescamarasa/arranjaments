@@ -176,6 +176,71 @@ def cmd_corpus(a):
         _actual(musica.desar(s, desti))
 
 
+EXT_PARTITURA = (".musicxml", ".xml", ".mxl", ".mscz", ".mscx")
+
+
+def cmd_peces(a):
+    """Llista numerada, sempre igual: les partitures d'entrada/ o les carpetes de peça d'eixida/."""
+    if a.eixida:
+        base = rutes.carpeta("eixida")
+        peces = sorted((d for d in base.iterdir() if d.is_dir() and not d.name.startswith(".")),
+                       key=lambda d: d.name.lower()) if base.is_dir() else []
+        if not peces:
+            print("Encara no hi ha cap peça a eixida/.")
+            return
+        for k, d in enumerate(peces, 1):
+            guio = any(d.glob("*Guió*.pdf"))
+            parts = d / "Particel·les"
+            n = len(list(parts.glob("*.pdf"))) if parts.is_dir() else 0
+            estat = f"amb guió i {n} particel·les en PDF" if guio and n else ("amb guió en PDF" if guio else "sense PDF encara")
+            print(f"{k}. {d.name}   [{estat}]")
+        return
+    base = rutes.carpeta("entrada")
+    fitxers = sorted((f for f in base.iterdir() if f.is_file() and f.suffix.lower() in EXT_PARTITURA + (".pdf",)),
+                     key=lambda f: f.name.lower()) if base.is_dir() else []
+    if not fitxers:
+        print("Ara mateix no hi ha cap partitura a entrada/.")
+        return
+    for k, f in enumerate(fitxers, 1):
+        nota = "   [PDF: cal passar-lo a partitura editable]" if f.suffix.lower() == ".pdf" else ""
+        print(f"{k}. {f.name}{nota}")
+
+
+def cmd_carpeta(a):
+    """Obri una carpeta de la carpeta de treball (normalment eixida/<peça>/) amb el navegador de fitxers."""
+    import subprocess
+    text = " ".join(a.ruta).strip()
+    if not text:
+        raise ErrorUsuari("Digues quina carpeta, per exemple: partitures carpeta berlinAlexandersRagtime")
+    arrel = rutes.arrel()
+    candidats = [Path(text).expanduser(), arrel / text, arrel / "eixida" / text]
+    trobada = None
+    for c in candidats:
+        c = c if c.is_absolute() else arrel / c
+        if c.exists():
+            trobada = c.resolve()
+            break
+    if trobada is None:
+        raise ErrorUsuari(f"No trobe cap carpeta «{text}». Mira les peces amb: partitures peces --eixida")
+    if trobada.is_file():
+        trobada = trobada.parent
+    try:
+        trobada.relative_to(arrel)
+    except ValueError:
+        raise ErrorUsuari("Només obric carpetes de la carpeta de treball (entrada/ i eixida/).") from None
+    if sys.platform == "darwin":
+        ordre = ["open", str(trobada)]
+    elif sys.platform.startswith("win"):
+        ordre = ["explorer", str(trobada)]
+    else:
+        ordre = ["xdg-open", str(trobada)]
+    try:
+        subprocess.Popen(ordre, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+    except OSError:
+        raise ErrorUsuari(f"No he pogut obrir la carpeta. Està ací: {rutes.relativa(trobada)}") from None
+    print(f"He obert la carpeta «{rutes.relativa(trobada)}».")
+
+
 def cmd_comprovar(a):
     from . import eines
     falten = 0
@@ -391,6 +456,14 @@ def crear_parser() -> argparse.ArgumentParser:
     x = b.add_parser("copia", help="Copia un resultat de l'última cerca a entrada/")
     x.add_argument("numero", type=int)
     s.set_defaults(f=cmd_biblioteca)
+
+    s = sub.add_parser("peces", help="Llista numerada de les partitures d'entrada/ (o, amb --eixida, les peces ja fetes)")
+    s.add_argument("--eixida", action="store_true", help="Llista les carpetes de peça d'eixida/")
+    s.set_defaults(f=cmd_peces)
+
+    s = sub.add_parser("carpeta", help="Obri la carpeta d'una peça (eixida/peça/) al Finder o a l'Explorador")
+    s.add_argument("ruta", nargs="*", help="Nom de la peça o ruta dins de la carpeta de treball")
+    s.set_defaults(f=cmd_carpeta)
 
     s = sub.add_parser("corpus", help="Busca en el corpus de música lliure que ve amb music21")
     s.add_argument("text", nargs="*", help="Què busques (compositor, títol o nom de fitxer)")

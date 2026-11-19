@@ -7,11 +7,11 @@ description: Ajuda a trobar una partitura en format MusicXML (editable) abans de
 
 Objectiu: aconseguir un fitxer MusicXML (`.musicxml`, `.xml` o `.mxl`) de l'obra. Si n'hi ha, és molt millor que un PDF: no té errors de reconeixement.
 
-## Procediment (una pregunta cada vegada)
+## Procediment (curt: és la pregunta 1 del camí «arranjament nou» d'AGENTS.md)
 
-1. Pregunta quina obra vol (compositor i títol) i per a quina plantilla (instruments).
-2. Pregunta si ja té algun fitxer. Si el té, demana-li que el deixe a la carpeta `entrada/` i ves a la skill `arranjar`.
-3. Cerca primer al corpus que ja ve instal·lat (no necessita internet): `partitures corpus <paraules>` (per exemple `corpus bach`, `corpus beethoven quartet` o `corpus bwv66.6`). Cerca per compositor, títol o nom de fitxer, sense mirar accents ni majúscules, i mostra títol i compositor. Per copiar un resultat a `entrada/`: `partitures corpus <paraules> --copia <número>`. El corpus és limitat (sobretot coral de Bach, quartets clàssics, música antiga i cançons populars): si l'obra no hi és, no passa res, vés al pas següent.
+1. Pregunta només quina obra vol (compositor i títol). Els instruments es preguntaran després, a la pregunta 2 de l'arranjament: no els preguntes ara. Si ja té el fitxer, que el deixe a `entrada/` (`partitures peces` el mostra) i ves a la skill `arranjar`.
+2. Cerca PRIMER a la biblioteca (skill `biblioteca`) i, si no hi és o no hi ha biblioteca, al corpus. Mostra els resultats numerats (com a molt 5) i pregunta el número; si només n'hi ha un, no preguntes: usa'l i digues-ho. Copia el triat a `entrada/` i continua SENSE parar amb la pregunta 2 de l'arranjament.
+3. El corpus que ja ve instal·lat (no necessita internet): `partitures corpus <paraules>` (per exemple `corpus bach`, `corpus beethoven quartet` o `corpus bwv66.6`). Cerca per compositor, títol o nom de fitxer, sense mirar accents ni majúscules, i mostra títol i compositor. Per copiar un resultat a `entrada/`: `partitures corpus <paraules> --copia <número>`. El corpus és limitat (sobretot coral de Bach, quartets clàssics, música antiga i cançons populars): si l'obra no hi és, no passa res, vés al pas següent.
 4. Si no hi ha res, proposa-li (d'una en una) estes fonts, perquè ho cerque ell o ella al navegador. Tu NO inventes enllaços ni diràs que una obra hi és si no ho has comprovat:
    - OpenScore (https://musescore.com/openscore): transcripcions fetes per voluntaris, publicades sota CC0 (sense restriccions). Es poden baixar en MusicXML amb compte gratuït a MuseScore.com. Moltes són de cançons, cambra i piano.
    - CPDL, Choral Public Domain Library (https://www.cpdl.org): sobretot música coral i antiga. Molts arxius tenen versió MusicXML, però no tots: cal mirar cada edició.

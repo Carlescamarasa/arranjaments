@@ -43,5 +43,11 @@
     { "action": "webfetch", "resource": "*", "effect": "ask" },
     { "action": "external_directory", "resource": "*", "effect": "ask" },
     { "action": "skill", "resource": "*", "effect": "allow" }
-  ]
+  ],
+  "commands": {
+    "arranjament": {
+      "description": "Fer un arranjament, pas a pas, fins a tindre el guió i les particel·les",
+      "template": "Comença el guió de la conversa d'AGENTS.md des del principi: saluda en una línia i mostra el menú de dues opcions (a, b). $ARGUMENTS"
+    }
+  }
 }

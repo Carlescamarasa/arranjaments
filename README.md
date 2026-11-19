@@ -275,21 +275,20 @@ Per a revisar un coral o resoldre un dubte d'harmonia, l'ajudant porta unes **fi
 - `partitures harmonia comprova "entrada/coral.musicxml" [--veus SATB] [--tonalitat "la menor"]` revisa un coral amb una part per veu i diu, compàs a compàs, on hi ha quintes o octaves paral·leles o directes, sensible o 7a que no resolen, sisenes augmentades mal obertes, creuaments, separació i tessitura, citant la fitxa que ho explica. Són regles d'escola: té excepcions i les notes de pas poden donar avisos falsos, així que és una ajuda i no un veredicte.
 - Les fitxes viuen a `referencies/harmonia/` i s'instal·len i s'actualitzen amb la resta d'eines (a la carpeta de dades, no a la teua carpeta de treball).
 
-## Frases que pots escriure
+## Com és una conversa
 
-- «Busca'm un coral de Bach en format editable.» (Cerca en el corpus de música lliure que ja ve instal·lat; si l'obra no hi és, l'ajudant et proposa on buscar-la.)
+L'ajudant et guia des del primer missatge. Escriu «hola» (o `/arranjament`) i et mostra un menú curt: a) fer un arranjament nou d'una peça, b) canviar-ne un que ja tens. Tria una lletra i ell et diu quantes preguntes et farà («Necessite saber 4 coses»), te les fa d'una en una, numerades i amb 3 opcions com a molt (la primera és la seua recomanació; si escrius «sí» o «el que vulgues», tria eixa). Amb l'última resposta genera tot sense tornar a demanar permís i, al final, et diu on està: una carpeta `eixida/peça/` amb el guió en PDF, les particel·les i el fitxer de MuseScore. És un esborrany: revisa'l abans de repartir-lo. Després et pregunta una sola cosa: obrir la carpeta, canviar alguna cosa o ja està.
+
+També pots escriure directament què vols:
+
+- «Vull un arranjament del ragtime de Berlin per a trompeta, flauta, xilòfon i bateria, per a 4t d'elemental.»
+- «Canvia'l a swing.» (Torna a generar la peça i reemplaça l'anterior.)
+- «Tinc un PDF a entrada/ i el vull convertir en partitura.» (L'ajudant t'avisarà que passar un PDF sol tindre errors i et proposarà buscar-la primer en format editable.)
 - «Busca a la biblioteca de l'escola un arranjament de jazz per a 4t elemental.»
-- «Tinc un PDF a entrada/ i el vull convertir en partitura.»
-- «Què hi ha dins d'entrada/coral.musicxml?»
-- «Vull fer-ne un arranjament per a dues trompetes, trompa i trombó.»
-- «Arranja'm esta melodia per a trompeta, flauta, xilòfon i bateria, en estil ragtime, per a 4t d'elemental.» (L'ajudant crea les parts noves amb `partitures arranja`: un esborrany per a revisar amb MuseScore.)
+- «Busca'm un coral de Bach en format editable.»
 - «Comprova si les notes els van bé a cada instrument.»
-- «Passa la trompa una octava més amunt.»
-- «Transporta-ho un to més avall.»
-- «Obri-me la partitura amb MuseScore.»
-- «Genera els PDF de la partitura i de les parts.»
 
-L'ajudant et farà preguntes d'una en una. Contesta amb frases normals.
+Contesta amb frases normals.
 
 ## Quan un model gratuït deixa de funcionar
 

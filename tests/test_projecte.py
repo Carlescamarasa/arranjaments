@@ -491,3 +491,13 @@ def test_la_icona_de_windows_obri_opencode_encara_que_l_actualitzador_estiga_tre
     f = win.split("function EscriuLlancador")[1].split('if ($Prova) { Write-Host "Mode prova')[0]
     assert "partitures.actualitzar" in f and "180" in f and "sh.Run" in f and "On Error Resume Next" in f
     assert "wscript.exe" in win and "obri-arranjaments.vbs" in win
+
+
+def test_el_guio_de_la_conversa_i_l_ordre_arranjament():
+    t = _text(ARREL / "AGENTS.md")
+    assert t.index("# El guió de la conversa") < t.index("# Com treballes")
+    for clau in ("partitures peces", "partitures peces --eixida", "partitures carpeta", "Pregunta 1 de 4", "a) obrir la carpeta"):
+        assert clau in t, clau
+    assert "c) Passar un PDF" not in t, "el PDF no s'ofereix als menús"
+    cfg = json.loads(_text(ARREL / "opencode.json"))
+    assert "AGENTS.md" in cfg["commands"]["arranjament"]["template"]

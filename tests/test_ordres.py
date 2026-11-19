@@ -245,3 +245,57 @@ def test_comprovar_tot_be(monkeypatch, capsys):
     monkeypatch.setattr(eines, "comprovar", lambda: [("MuseScore 4", True, "ok")])
     assert executar("comprovar") == 0
     assert "Tot a punt." in capsys.readouterr().out
+
+
+# ---- peces i carpeta (ordres deterministes del guió de la conversa)
+
+def test_peces_llista_numerada_de_l_entrada(projecte, capsys):
+    assert executar("peces") == 0
+    assert "no hi ha cap partitura" in capsys.readouterr().out
+    (projecte / "entrada" / "Zeta.musicxml").write_text("<x/>", encoding="utf-8")
+    (projecte / "entrada" / "alfa.mxl").write_text("x", encoding="utf-8")
+    (projecte / "entrada" / "nota.txt").write_text("x", encoding="utf-8")
+    (projecte / "entrada" / "escanejat.pdf").write_text("x", encoding="utf-8")
+    assert executar("peces") == 0
+    linies = capsys.readouterr().out.strip().splitlines()
+    assert linies[0] == "1. alfa.mxl" and linies[1].startswith("2. escanejat.pdf") and "PDF" in linies[1]
+    assert linies[2] == "3. Zeta.musicxml" and len(linies) == 3
+
+
+def test_peces_eixida_diu_si_cada_peca_te_pdf(projecte, capsys):
+    assert executar("peces", "--eixida") == 0
+    assert "Encara no hi ha cap peça" in capsys.readouterr().out
+    fet = projecte / "eixida" / "ragtime"
+    (fet / "Particel·les").mkdir(parents=True)
+    (fet / "ragtime - Guió.pdf").write_text("x", encoding="utf-8")
+    (fet / "Particel·les" / "ragtime - 1. Flauta.pdf").write_text("x", encoding="utf-8")
+    (projecte / "eixida" / "blues").mkdir()
+    (projecte / "eixida" / "solt.musicxml").write_text("<x/>", encoding="utf-8")   # fitxer solt: no és una peça
+    assert executar("peces", "--eixida") == 0
+    linies = capsys.readouterr().out.strip().splitlines()
+    assert linies == ["1. blues   [sense PDF encara]", "2. ragtime   [amb guió i 1 particel·les en PDF]"]
+
+
+def test_carpeta_obri_la_carpeta_de_la_peca_sense_bloquejar(projecte, monkeypatch, capsys):
+    import subprocess
+    cridades = []
+    monkeypatch.setattr(subprocess, "Popen", lambda ordre, **kw: cridades.append(ordre))
+    (projecte / "eixida" / "ragtime").mkdir()
+    assert executar("carpeta", "ragtime") == 0
+    assert cridades[0][0] in ("open", "explorer", "xdg-open")
+    assert cridades[0][1] == str((projecte / "eixida" / "ragtime").resolve())
+    assert "ragtime" in capsys.readouterr().out
+    # també per ruta, i un fitxer obri la carpeta que el conté
+    (projecte / "eixida" / "ragtime" / "x.pdf").write_text("x", encoding="utf-8")
+    assert executar("carpeta", "eixida/ragtime/x.pdf") == 0 and cridades[1][1] == cridades[0][1]
+
+
+def test_carpeta_nomes_dins_de_la_carpeta_de_treball(projecte, tmp_path, monkeypatch, capsys):
+    import subprocess
+    cridades = []
+    monkeypatch.setattr(subprocess, "Popen", lambda ordre, **kw: cridades.append(ordre))
+    assert executar("carpeta", str(tmp_path)) == 1
+    assert "Només obric carpetes" in capsys.readouterr().err
+    assert executar("carpeta", "no-existeix") == 1
+    assert executar("carpeta", "..") == 1
+    assert cridades == []

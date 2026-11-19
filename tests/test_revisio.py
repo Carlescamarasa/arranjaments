@@ -493,7 +493,7 @@ def test_valencia_sense_castellanismes_ni_formes_del_central():
 def test_l_arranjament_segueix_un_guio_curt_i_genera_sense_tornar_a_preguntar():
     sk = (ARREL / ".opencode" / "skills" / "arranjar" / "SKILL.md").read_text(encoding="utf-8")
     agents = (ARREL / "AGENTS.md").read_text(encoding="utf-8")
-    assert "Pregunta 1 de 3" in sk and "Necessite saber 3 coses" in agents
+    assert "Pregunta 1 de 3" in sk and "Necessite saber 4 coses" in agents
     assert "sense demanar permís" in sk and "ja són el sí" in sk and "ja són el sí" in agents
     assert "`partitures exportar" in sk.split("**Pas 3.")[1].split("**Pas 4.")[0]
     assert "NO pares la conversa" in sk
