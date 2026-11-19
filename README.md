@@ -246,6 +246,7 @@ Els models gratuïts van i vénen: un dia n'hi ha un que s'acaba, va molt lent o
 
 ## Importants
 
+- **Obri sempre l'ajudant amb la icona «Arranjaments».** Si escrius `opencode` a la Terminal i ix un error que parla de «V2 permissions», tens una versió antiga d'OpenCode a la Terminal: fes servir la icona.
 - **Revisa sempre** el que ve d'un PDF: el reconeixement automàtic s'equivoca (alteracions, ritmes, lligadures). Obri el resultat amb MuseScore i comprova-ho compàs a compàs.
 - Les **tessitures** (fins on pot tocar cada instrument) són orientatives, de manual. Tu coneixes els teus alumnes i el teu instrument: tu decideixes.
 - Els **noms de les notes** són en solfeig i segueixen la convenció espanyola: el Do central és Do3 (en altres llocs, Do4 o C4).
