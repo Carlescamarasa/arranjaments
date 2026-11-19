@@ -576,13 +576,13 @@ jobs:
 
   # Linux (LliureX és Ubuntu 22.04 a la versió 23 i Ubuntu 24.04 a la 25): baixar Arranjaments-LliureX.run, posar-lo en una
   # carpeta amb accents i espais, donar-li permís d'execució (com fa la professora) i executar-lo. Sense sudo per a instal·lar.
-  # Es prova també en Linux ARM64 (ubuntu-*-arm).
+  # Es prova també en Linux ARM64 (ubuntu-24.04-arm). A 22.04 ARM64 no: l'AppImage aarch64 de MuseScore necessita glibc 2.38 o més nova.
   instalacio-linux:
     needs: paquet
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-22.04-arm, ubuntu-24.04-arm]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     env:
@@ -795,7 +795,7 @@ jobs:
 
           Les instruccions són al [README](https://github.com/$GH_REPO#readme). **arranjaments.zip** és el projecte complet (la manera antiga d'instal·lar); actualitzacio.zip i versio.json els usa l'actualització automàtica.
 
-          Fet automàticament a partir de la versió $GITHUB_SHA, després de provar la instal·lació en un Mac Apple Silicon, un Mac Intel, un Windows x64, un Windows 11 ARM64 i quatre Linux nets (Ubuntu 22.04 i 24.04, x64 i ARM64).
+          Fet automàticament a partir de la versió $GITHUB_SHA, després de provar la instal·lació en un Mac Apple Silicon, un Mac Intel, un Windows x64, un Windows 11 ARM64 i tres Linux nets (Ubuntu 22.04 x64, 24.04 x64 i 24.04 ARM64).
           NOTES
           FITXERS="arranjaments.zip actualitzacio.zip Arranjaments-Windows.exe Arranjaments-Mac.dmg Arranjaments-LliureX.run"
           if gh release view ultima >/dev/null 2>&1; then

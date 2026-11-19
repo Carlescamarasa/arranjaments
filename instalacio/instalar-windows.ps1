@@ -39,14 +39,15 @@ function Progres($t) { if ($Visual) { Write-Host "@@$t" } }
 function IniciPas($id) { $script:PasId = $id; $script:PasMal = $false; Progres "PAS $id inici" }
 function FiPas { if ($script:PasMal) { Progres "PAS $($script:PasId) falla" } else { Progres "PAS $($script:PasId) ok" }; $script:PasId = "" }
 
-# Arquitectura del Windows (no la del procés): un PowerShell x64 dins d'un Windows 11 ARM diu «AMD64» a PROCESSOR_ARCHITECTURE.
-# Primer es pregunta al sistema; si no es pot, PROCESSOR_ARCHITEW6432 (que diu l'arquitectura real des d'un procés emulat).
-# Torna «arm64» o «x64».
+# Arquitectura del Windows (no la del procés). Un PowerShell x64 emulat dins d'un Windows 11 ARM diu «AMD64» a
+# PROCESSOR_ARCHITECTURE i, en .NET Framework, també RuntimeInformation.OSArchitecture pot dir «X64» (es va veure a GitHub Actions).
+# Per això es mira tot: PROCESSOR_ARCHITEW6432 (l'arquitectura real des d'un procés emulat), la variable de l'entorn del
+# sistema que guarda el registre (no depén del procés) i OSArchitecture. Si algun diu ARM64, és un ARM. Torna «arm64» o «x64».
 function ArquitecturaWindows {
-    $a = ""
-    try { $a = [string][System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture } catch { }
-    if (-not $a) { $a = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE } }
-    if ($a -match "ARM64") { return "arm64" } else { return "x64" }
+    $dades = @($env:PROCESSOR_ARCHITEW6432, $env:PROCESSOR_ARCHITECTURE)
+    try { $dades += (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" -ErrorAction Stop).PROCESSOR_ARCHITECTURE } catch { }
+    try { $dades += [string][System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture } catch { }
+    if (($dades -join " ") -match "ARM64") { return "arm64" } else { return "x64" }
 }
 $Arq = ArquitecturaWindows
 
@@ -191,6 +192,7 @@ function PreparaCarpeta {
 }
 
 if ($Prova) { Write-Host "Mode prova: només es comprova què hi ha instal·lat, no es canvia res." }
+Write-Host "Arquitectura de Windows: $Arq"
 if ($Arq -eq "arm64") { Write-Host "Windows per a processadors ARM64: OpenCode s'instal·la en la versió ARM64; MuseScore i Audiveris no en tenen i s'usa la versió x64, que Windows 11 emula." }
 ActualitzaPath
 
