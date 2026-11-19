@@ -141,7 +141,7 @@ def test_clau_per_instrument(coral, clau, esperada, capsys):
 
 def test_el_cataleg_no_te_camp_mort_de_clau():
     assert not hasattr(inst.CATALEG[0], "clau_clef")
-    assert {i.clef for i in inst.CATALEG} <= {"treble", "bass", "alto", "auto"}
+    assert {i.clef for i in inst.CATALEG} <= {"treble", "bass", "alto", "auto", "percussion"}
 
 
 # ---- 6. Piano (dos pentagrames) = UNA sola part

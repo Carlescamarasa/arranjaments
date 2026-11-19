@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .errors import ErrorUsuari
 
-SUFIXOS_ORDRES = ("instruments", "transportat", "reduccio")
+SUFIXOS_ORDRES = ("instruments", "transportat", "reduccio", "arranjament")
 
 
 def arrel() -> Path:

@@ -343,6 +343,9 @@ def assignar(score: stream.Score, assignacions: str) -> tuple[stream.Score, list
     for num0, clau in mapa.items():
         unitat = _unitat(res, num0)
         i = inst.obtenir(clau)
+        if i.percussio:
+            raise ErrorUsuari(f"{i.nom} és percussió sense altura: no es pot posar en lloc d'una part amb notes. "
+                              "Per a crear una part de percussió nova, usa l'ordre «arranja» amb el rol percussio.")
         for k in unitat:
             part = res.parts[k]
             # 1) portar la part a altura real (concert)
@@ -373,6 +376,8 @@ def _clau_de(i: inst.Instrument, part: stream.Part) -> clef.Clef:
         return clef.AltoClef()
     if i.clef == "treble":
         return clef.TrebleClef()
+    if i.clef == "percussion":
+        return clef.PercussionClef()
     flux = part.flatten()
     return clef.bestClef(flux, recurse=True) if len(flux.notes) else clef.TrebleClef()
 
@@ -400,6 +405,10 @@ def tessitura(score: stream.Score, assignacions: str | None = None, curs: str | 
         else:
             instr = inst.detectar(f"{nom} {getattr(ins_m21, 'instrumentName', '') or ''}",
                                   _semitons_transposicio(p) if escrit else None)
+        if instr is not None and instr.percussio:
+            resultats.append({"numero": num + 1, "nom": _curt(nom), "instrument": None, "problemes": [],
+                              "avis": "és percussió sense altura: no té tessitura."})
+            continue
         if instr is None:
             resultats.append({"numero": num + 1, "nom": _curt(nom), "instrument": None, "problemes": [],
                               "avis": "No sé quin instrument és. Indica-ho amb --instruments \"%d=trompeta-sib\" "

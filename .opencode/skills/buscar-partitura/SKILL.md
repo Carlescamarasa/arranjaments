@@ -17,7 +17,8 @@ Objectiu: aconseguir un fitxer MusicXML (`.musicxml`, `.xml` o `.mxl`) de l'obra
    - CPDL, Choral Public Domain Library (https://www.cpdl.org): sobretot música coral i antiga. Molts arxius tenen versió MusicXML, però no tots: cal mirar cada edició.
    - Mutopia Project (https://www.mutopiaproject.org): música de domini públic o amb llicència Creative Commons. Ofereix sobretot PDF, LilyPond i MIDI; el MusicXML no és habitual.
    - IMSLP (https://imslp.org): biblioteca enorme, però quasi tot són PDF d'escanejats. Serveix per a la via PDF (skill `importar-pdf`).
-5. Si baixa un fitxer, que el deixe a la carpeta `entrada/`. Si és un PDF, passa a la skill `importar-pdf`; si és MusicXML, a `arranjar`.
+5. Tu no intentes baixar res saltant proteccions (comprovacions de robot, captcha, inicis de sessió). Si una pàgina bloqueja la baixada, digues-ho i que la persona la baixe des del seu navegador.
+6. Si baixa un fitxer, que el deixe a la carpeta `entrada/`. Si és un PDF, passa a la skill `importar-pdf`; si és MusicXML, a `arranjar`.
 
 ## Drets d'autor (digues-ho sempre, amb paraules senzilles)
 
