@@ -552,6 +552,12 @@ def _figures_permeses(instr: inst.Instrument, curs: str | None) -> set[str] | No
     return None
 
 
+def _corxeres_respiracio(instr, curs) -> bool:
+    """Per al silenci de respiració: si no hi ha perfil desat, mana la taula de figures del nivell (paquet 11)."""
+    f = _figures_permeses(instr, curs) or simplificar.figures_del_nivell(curs)
+    return f is None or "corxera" in f or "semicorxera" in f
+
+
 def _permet_corxeres(instr, curs) -> bool:
     f = _figures_permeses(instr, curs)
     return f is None or "corxera" in f or "semicorxera" in f
@@ -1850,7 +1856,7 @@ def _construir_rotacio(rols, seccions, segs, compassos, evs, curs, estil, k, bor
             si = sj + 1
         evs_i.sort(key=lambda e: e.ini)
         evs_i, resp = gravat.respiracions(evs_i, [(q.ini, q.fi, q.funcions[i]) for q in seccions], r.instr,
-                                          compassos, es_elemental(curs), _permet_corxeres(r.instr, curs))
+                                          compassos, es_elemental(curs), _corxeres_respiracio(r.instr, curs))
         if r.instr.clau == "piano":
             dreta = [Ev(x.ini, x.dur, [p for p in x.alt if p.midi >= 60]) for x in evs_i]
             esquerra = [Ev(x.ini, x.dur, [p for p in x.alt if p.midi < 60]) for x in evs_i]
@@ -1880,7 +1886,7 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
             e, sh = rol_melodia(evs, r.instr, curs, compassos)
             linies.setdefault("melodia", e)
             e, resp = gravat.respiracions(e, [(q.ini, q.fi, "melodia") for q in frases], r.instr, compassos, elem,
-                                          _permet_corxeres(r.instr, curs))
+                                          _corxeres_respiracio(r.instr, curs))
             if sh:
                 informe.append(f"{r.instr.nom}: melodia {abs(sh) // 12} octava{'es' if abs(sh) > 12 else ''} "
                                f"{'amunt' if sh > 0 else 'avall'} perquè caiga en la zona còmoda.")
@@ -1914,7 +1920,7 @@ def _construir_fix(rols, segs, compassos, evs, curs, estil, k, bordo, informe):
             e = contracant.linia(linies["melodia"], segs, r.instr, curs, k, baix_ev)
             linies.setdefault("contracant", e)
             e, resp = gravat.respiracions(e, [(q.ini, q.fi, "contracant") for q in frases], r.instr, compassos, elem,
-                                          _permet_corxeres(r.instr, curs))
+                                          _corxeres_respiracio(r.instr, curs))
             pc = part_des_de_evs(e, compassos)
             gravat.marca_respiracions(pc, resp)
             construides.append((r, [pc], e))

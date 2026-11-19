@@ -6,6 +6,15 @@ Cada vegada que s'obri la icona, Arranjaments busca sol si hi ha una versió nov
 
 Esta és una primera versió de proves: pot canviar i tindre errors. Ens ho pots dir.
 
+- Arranjaments amb ofici, a partir de deu llibres d'harmonia, arranjament i edició de partitures (Gould, Herrera, Levine, Perricone, Schoenberg i Zamacois), convertits en regles de l'eina:
+  - Les particel·les porten matisos (la melodia un punt per damunt de la resta), staccato i accents segons l'estil, respiracions als vents al final de frase i el ritme escrit segons el compàs.
+  - Lletres d'assaig a cada frase, silencis de diversos compassos agrupats, números de compàs, pauta més gran per a elemental, guió en l'ordre d'orquestra amb claudàtors i notes petites d'orientació abans d'entrar després d'un silenci llarg. Amb `--cues-absents`, si falta algú, el baix i el contracant també van en notes petites en un altre instrument.
+  - Baix amb inversions, graus conjunts i notes d'aproximació, i baix caminant en swing.
+  - Acompanyament propi de cada estil (stride en ragtime, Alberti en clàssic, um-pa en marxa i vals) i acords col·locats a la manera clàssica o de jazz.
+  - Contracant segons el nivell: en elemental, terceres i sextes amb la melodia; més amunt, una línia que es mou en contra de la melodia i entra als seus forats.
+  - Les frases es troben per les cadències i no cada 8 compassos. Opcions noves `--intro` i `--coda`.
+  - Una melodia sola s'harmonitza segons el nivell, i `--harmonia modal` serveix per a peces modals i làmines Orff. `harmonia comprova --perfil arranjament` ja no compta com a error les notes de pas ni les dominants secundàries.
+
 - Les preguntes ixen com a selector (pestanyes que cliques) en lloc de lletres escrites, i la peça ja no és només el que hi ha a `entrada/`: l'ajudant proposa peces reals que encaixen amb el que demanes (per exemple, un trio de canyes del classicisme), i pots dir-ne una pel nom o deixar el teu fitxer. Ordres noves: `partitures suggereix` i `partitures descarrega` (baixa MusicXML lliure de CPDL, Mutopia i OpenScore a `entrada/`).
 - La conversa és un guió des del primer missatge: escriu «hola» o `/arranjament` i l'ajudant et mostra un menú de dues opcions (arranjament nou, canviar-ne un), t'anuncia quantes preguntes et farà, te les fa numerades i amb poques opcions, genera sense demanar permís i et deixa la carpeta `eixida/peça/` amb el guió, les particel·les i el fitxer de MuseScore. Ordres noves: `partitures peces` (llista les partitures d'entrada, o les peces fetes amb `--eixida`) i `partitures carpeta "peça"` (obri la carpeta).
 - Una carpeta per peça: tot el que crees d'una peça (MusicXML, fitxer de MuseScore, guió en PDF i carpeta Particel·les) viu a `eixida/peça/` i cada resultat nou reemplaça l'anterior, així `eixida` no s'omple de còpies. Per conservar l'anterior, `--nova-versio`. Si has retocat el fitxer de MuseScore, es guarda com «(retocat a MuseScore)».
