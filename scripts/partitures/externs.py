@@ -9,7 +9,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from . import eines, musica, rutes
+from music21 import instrument as m21i
+from music21 import stream
+
+from . import cues, eines, girs, musica, parts, rutes
 from .errors import ErrorUsuari
 
 # Totes les crides porten encoding UTF-8 amb errors="replace": a Windows la consola pot ser cp1252/cp850.
@@ -81,6 +84,21 @@ def _mscore_a_pdf(mscore: str, origen: Path, desti: Path, temps_maxim: int = 300
         raise ErrorUsuari(f"MuseScore no ha pogut crear «{desti.name}».\n{_cua(r)}".strip())
 
 
+def _mscore_pdf_amb_posicions(mscore: str, origen: Path, pdf: Path, mpos: Path, temps_maxim: int = 300) -> None:
+    """Un sol arranc de MuseScore: el PDF i el fitxer de posicions (en quina pàgina cau cada compàs)."""
+    pdf.parent.mkdir(parents=True, exist_ok=True)
+    feina = mpos.with_suffix(".job.json")
+    feina.write_text(json.dumps([{"in": str(origen), "out": [str(pdf), str(mpos)]}]), encoding="utf-8")
+    try:
+        r = subprocess.run([mscore, "-j", str(feina)], timeout=temps_maxim, env=_entorn_silenciós(), **_TEXT)
+    except subprocess.TimeoutExpired as e:
+        raise ErrorUsuari("MuseScore ha tardat massa a generar el PDF i l'he aturat.") from e
+    except OSError as e:
+        raise ErrorUsuari(f"No he pogut executar MuseScore ({type(e).__name__}). Comprova la instal·lació.") from e
+    if not pdf.exists() or pdf.stat().st_size == 0:
+        raise ErrorUsuari(f"MuseScore no ha pogut crear «{pdf.name}».\n{_cua(r)}".strip())
+
+
 def _registre() -> Path:
     from .actualitzar import dades_per_defecte
     return dades_per_defecte() / "registre-mscz.json"
@@ -142,25 +160,102 @@ def exportar(ruta: str | Path, amb_parts: bool = True) -> dict:
         with tempfile.TemporaryDirectory(dir=carpeta, prefix=".tmp-") as tmp:
             nou = Path(tmp) / mscz.name
             _mscore_a_pdf(mscore, ruta, nou)
+            parts.aplica_estil_mscz(nou, parts.estil_guio())   # guió: sense silencis multicompàs i amb pauta petita
             os.replace(nou, mscz)
         _anota_mscz(mscz)
     guio = carpeta / f"{base} - Guió.pdf"
-    _mscore_a_pdf(mscore, ruta, guio)
+    _mscore_a_pdf(mscore, mscz if mscz.exists() else ruta, guio)
     parts_pdf: list[Path] = []
+    informe: list[str] = []
     separades = musica.parts_separades(score)
     if amb_parts and len(separades) > 1:
         dest = carpeta / "Particel·les"
         dest.mkdir(exist_ok=True)
         for vell in dest.glob("*.pdf"):    # instruments de versions anteriors
             vell.unlink()
+        from . import arranjador
+        elemental = arranjador.es_elemental(parts.nivell_de(score))
+        bpm, per_defecte = girs.bpm_de(score)
+        if per_defecte:
+            informe.append(f"Girs de pàgina: la partitura no porta tempo; he suposat negra = {bpm:g}.")
         with tempfile.TemporaryDirectory(dir=carpeta, prefix=".tmp-") as tmp:
             for i, (nom_part, s) in enumerate(separades):
-                x = Path(tmp) / f"part{i + 1}.musicxml"
-                s.write("musicxml", fp=str(x))
                 pdf = dest / f"{base} - {i + 1}. {netejar_nom(nom_part)}.pdf"
-                _mscore_a_pdf(mscore, x, pdf)
+                informe += _particella(mscore, s, nom_part, pdf, Path(tmp), i + 1, elemental, bpm)
                 parts_pdf.append(pdf)
-    return {"guio": guio, "parts": parts_pdf, "mscz": mscz if mscz.exists() else None, "avis": avis}
+    return {"guio": guio, "parts": parts_pdf, "mscz": mscz if mscz.exists() else None, "avis": avis,
+            "informe": informe}
+
+
+def _particella(mscore: str, s, nom_part: str, pdf: Path, tmp: Path, numero: int, elemental: bool,
+                bpm: float) -> list[str]:
+    """Una particel·la en PDF: estil de part (multicompàs, números de compàs, mida de pauta), sistemes de 4
+    compassos en elemental, i girs de pàgina en silenci (paquet 12). Retorna línies per a l'informe."""
+    part0 = s.parts[0]
+    prof = parts.perfil("elemental" if elemental else "normal")
+    passos = [prof["spatium"], *prof["reduccions"]]
+    if elemental:
+        parts.posar_salts_sistema(part0, sorted(parts.lletres_de(s)))
+    clau = _clau_de(part0)
+
+    def renderitza(spatium: float) -> list[int]:
+        x = tmp / f"part{numero}.musicxml"
+        s.write("musicxml", fp=str(x))
+        cues.silencia_cues_xml(x)
+        mscz = tmp / f"part{numero}.mscz"
+        _mscore_a_pdf(mscore, x, mscz)
+        parts.aplica_estil_mscz(mscz, parts.estil_part(spatium, nom_part))
+        mpos = tmp / f"part{numero}.mpos"
+        _mscore_pdf_amb_posicions(mscore, mscz, pdf, mpos)
+        return girs.pagines_de_mpos(mpos.read_text(encoding="utf-8")) if mpos.exists() else []
+
+    pagines = renderitza(passos[0])
+    if len(s.parts) > 1 or not pagines:
+        return []          # piano o làmines de dues pautes: sense càlcul de girs
+    k = 0
+    while girs.nombre_pagines(pagines) > 1 and k + 1 < len(passos):   # PRT-06: una sola pàgina si cap
+        k += 1
+        pagines = renderitza(passos[k])
+    if girs.nombre_pagines(pagines) == 1:
+        return []
+    return _planifica_girs(s, part0, nom_part, clau, pagines, renderitza, passos[k], bpm)
+
+
+def _clau_de(part0) -> str:
+    """«contrabaix» si la part és de contrabaix (els girs necessiten 5 s en lloc de 4); si no, res."""
+    try:
+        return "contrabaix" if isinstance(part0.getInstrument(), m21i.Contrabass) else ""
+    except Exception:
+        return ""
+
+
+def _planifica_girs(s, part0, nom_part, clau, pagines, renderitza, spatium, bpm) -> list[str]:
+    minim = girs.segons_minims(clau)
+    for _ in range(girs.MAX_ITERACIONS):
+        pc = girs.pagines_per_compas(part0, pagines)
+        if pc is None:
+            return [f"{nom_part}: no he pogut comprovar els girs de pàgina (MuseScore i jo no comptem igual els compassos)."]
+        dolents = [g for g in girs.avalua_girs(part0, pc, bpm, minim) if not g.be]
+        if not dolents:
+            break
+        salt = girs.proposa_salt(part0, dolents[0], pc, bpm, minim)
+        if salt is None:
+            break
+        girs.posa_salt_pagina(part0, salt)
+        pagines = renderitza(spatium)
+    pc = girs.pagines_per_compas(part0, pagines)
+    if pc is None:
+        return [f"{nom_part}: no he pogut comprovar els girs de pàgina."]
+    ms = list(part0.getElementsByClass(stream.Measure))
+    res = []
+    for g in girs.avalua_girs(part0, pc, bpm, minim):
+        num = ms[g.compas_nou].number
+        if g.be:
+            res.append(f"{nom_part}: gir cap a la pàgina {g.pagina_nova} (compàs {num}) en un silenci de {g.segons:.0f} s.")
+        else:
+            res.append(f"{nom_part}: ATENCIÓ, el gir cap a la pàgina {g.pagina_nova} (compàs {num}) no cau en un silenci "
+                       f"de {minim:g} s; la part té {girs.nombre_pagines(pagines)} pàgines. Revisa-ho.")
+    return res
 
 
 def obrir(fitxer: str | Path) -> Path:
