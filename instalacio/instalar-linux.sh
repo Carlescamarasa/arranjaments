@@ -298,6 +298,9 @@ elif [ "$FALLS" = 0 ]; then
   echo " (o del menú d'aplicacions)."
   echo " La teua carpeta de treball: $TREBALL"
   echo "=============================================="
+  echo
+  echo "Nota: la biblioteca compartida de l'escola (Teams/OneDrive) no funciona a Linux/LliureX, perquè no hi ha cap aplicació de OneDrive."
+  echo "Pots usar-la des d'un Mac o Windows."
 else
   echo "Hi ha $FALLS cosa(es) que no s'han pogut fer (mira els avisos [falta] de dalt)."
   echo "Pots tornar a executar este instal·lador: només fa el que falta."

@@ -127,8 +127,8 @@ def test_els_installadors_avisen_del_progres_nomes_si_es_demana():
         assert "ARRANJAMENTS_PROGRES" in t and "@@" in t
         for pas in ("uv", "opencode", "musescore", "eines", "carpeta", "icona", "final"):
             assert re.search(rf'(?i)inici_?pas "?{pas}"?', t), pas
-    assert len(re.findall(r"(?m)^inici_pas \w+;", mac)) == mac.count("\nfi_pas\n") == 8
-    assert win.count("IniciPas \"") == win.count("\nFiPas\n") == 8
+    assert len(re.findall(r"(?m)^inici_pas \w+;", mac)) == mac.count("\nfi_pas\n") == 9
+    assert win.count("IniciPas \"") == win.count("\nFiPas\n") == 9
 
 
 def test_el_guio_de_mac_escriu_els_avisos_de_progres(tmp_path):
@@ -444,3 +444,21 @@ def test_el_dmg_porta_el_projecte_dins_de_l_aplicacio_i_l_app_el_descomprimeix_a
     swift = _text(ARREL / "instalacio" / "visual" / "mac" / "InstalarArranjaments.swift")
     assert 'forResource: "projecte", withExtension: "tar.gz"' in swift and "/usr/bin/tar" in swift
     assert "Application Support/Arranjaments/staging" in swift
+
+
+def test_pas_opcional_de_onedrive_als_installadors():
+    mac = _text(ARREL / "instalacio" / "instalar-mac.sh")
+    win = _text(ARREL / "instalacio" / "instalar-windows.ps1")
+    # enllaços oficials de Microsoft, pas opcional que no es compta com a falta, i omès al CI
+    assert "linkid=823060" in mac and "open -a Installer" in mac and "OneDrive.app" in mac
+    assert "linkid=844652" in win and "/silent" in win and "Microsoft\\OneDrive\\OneDrive.exe" in win
+    for guio in (mac, win):
+        assert "ARRANJAMENTS_SENSE_ONEDRIVE" in guio and "[opcional]" in guio and "Biblioteca d'arranjaments" in guio
+    pas_mac = mac.split("8. OneDrive")[1].split("Comprovació final")[0]
+    assert "fallada " not in pas_mac and "falta " not in pas_mac
+    pas_win = win.split("8. OneDrive")[1].split("Comprovació final")[0]
+    assert "Fallada " not in pas_win and "Falta " not in pas_win
+    swift = _text(ARREL / "instalacio" / "visual" / "mac" / "InstalarArranjaments.swift")
+    cs = _text(ARREL / "instalacio" / "visual" / "windows" / "InstalarArranjaments.cs")
+    assert 'id: "onedrive"' in swift and "opcional: true" in swift and "Afegeix una drecera a Els meus fitxers" in swift
+    assert '"onedrive"' in cs and "Opcional = true" in cs and "Afegeix una drecera a Els meus fitxers" in cs

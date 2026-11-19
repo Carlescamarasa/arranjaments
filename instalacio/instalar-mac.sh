@@ -9,12 +9,13 @@
 #   - la icona «Arranjaments» a l'Escriptori
 # Després d'instal·lar, la carpeta des d'on s'ha executat (la del ZIP) ja no cal.
 # Ús: bash "instalacio/instalar-mac.sh"                 (tot el que falta, i la icona «Arranjaments» a l'Escriptori)
-#     bash "instalacio/instalar-mac.sh" --nomes uv      (només una cosa: uv, opencode, musescore, audiveris, eines, carpeta, icona)
+#     bash "instalacio/instalar-mac.sh" --nomes uv      (només una cosa: uv, opencode, musescore, audiveris, eines, carpeta, icona, onedrive)
 #     bash "instalacio/instalar-mac.sh" --prova         (només comprova, no canvia res)
 #     bash "instalacio/instalar-mac.sh" --sense-preguntes   (no s'atura mai a esperar una tecla; per a proves)
 # L'instal·lador visual («Instal·lar Arranjaments») executa este mateix fitxer amb la variable d'entorn
 # ARRANJAMENTS_PROGRES=1. Llavors, a més del text de sempre, s'escriuen línies «@@PAS nom inici|ok|falla»
 # i una «@@FI ok|falla» final, que la finestra llig per a marcar cada pas.
+# OneDrive és un pas OPCIONAL (biblioteca compartida de l'escola): mai fa fallar la instal·lació, i no s'espera que acabe.
 # Audiveris NO s'instal·la si no el demanes amb --nomes audiveris (només cal per a convertir PDF).
 set -u
 
@@ -37,7 +38,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-case "$NOMES" in ""|uv|opencode|musescore|audiveris|eines|carpeta|icona) ;; *) echo "Opció --nomes desconeguda: $NOMES (usa uv, opencode, musescore, audiveris, eines, carpeta o icona)"; exit 1 ;; esac
+case "$NOMES" in ""|uv|opencode|musescore|audiveris|eines|carpeta|icona|onedrive) ;; *) echo "Opció --nomes desconeguda: $NOMES (usa uv, opencode, musescore, audiveris, eines, carpeta, icona o onedrive)"; exit 1 ;; esac
 # vol X: diu si cal fer el pas X (sense --nomes, tots menys Audiveris)
 vol() { if [ -z "$NOMES" ]; then [ "$1" != audiveris ]; else [ "$NOMES" = "$1" ]; fi; }
 
@@ -286,6 +287,32 @@ fi
 fi_pas
 fi
 
+# ---------------------------------------------------------------- 8. OneDrive (opcional: biblioteca compartida de l'escola)
+if vol onedrive; then
+inici_pas onedrive; pas "8. OneDrive (opcional: per a la biblioteca compartida de l'escola)"
+# Pas opcional: mai s'hi marca cap falta. L'instal·lador oficial de Microsoft (.pkg) demana la contrasenya
+# d'administrador, per això s'obri amb l'Instal·lador del sistema i no s'espera que acabe.
+URL_ONEDRIVE_MAC="https://go.microsoft.com/fwlink/?linkid=823060"   # OneDrive.pkg universal (enllaç oficial de Microsoft)
+if troba_app "OneDrive.app" >/dev/null; then ok "OneDrive ja està instal·lat"
+elif [ "$PROVA" = 1 ]; then echo "  [opcional] OneDrive no està instal·lat (només cal per a la biblioteca compartida)"
+elif [ -n "${CI:-}" ] || [ -n "${ARRANJAMENTS_SENSE_ONEDRIVE:-}" ]; then echo "  [opcional] OneDrive s'omet en aquest entorn."
+else
+  PKG="$HOME/Downloads/OneDrive.pkg"
+  mkdir -p "$HOME/Downloads"
+  echo "  Baixant OneDrive.pkg de Microsoft (uns 290 MB; pot tardar uns minuts)..."
+  barra=(-sS); [ -t 2 ] && barra=(--progress-bar)
+  if curl -fL "${barra[@]}" -o "$PKG.part" "$URL_ONEDRIVE_MAC" && mv "$PKG.part" "$PKG"; then
+    open -a Installer "$PKG" 2>/dev/null
+    ok "OneDrive: he obert l'instal·lador de Microsoft. Segueix els passos de la finestra (et demanarà la contrasenya del Mac) i continua sense esperar."
+  else
+    rm -f "$PKG.part"
+    echo "  [opcional] No he pogut baixar OneDrive. Pots instal·lar-lo després: https://www.microsoft.com/microsoft-365/onedrive/download"
+    echo "             (o, sense contrasenya d'administrador, a l'App Store: https://apps.apple.com/app/onedrive/id823766827)"
+  fi
+fi
+fi_pas
+fi
+
 # ---------------------------------------------------------------- Comprovació final
 inici_pas final; pas "Comprovació final"
 # Amb --nomes només s'informa (la resta potser encara no toca); sense --nomes compta per al resum.
@@ -306,6 +333,10 @@ elif [ "$FALLS" = 0 ]; then
   echo " Obri la icona «Arranjaments» de l'Escriptori."
   echo " La teua carpeta de treball: $TREBALL"
   echo "=============================================="
+  echo
+  echo "Per a la biblioteca compartida (opcional): 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es);"
+  echo "2) obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers»"
+  echo "(la carpeta ha de dir-se exactament «Biblioteca d'arranjaments»); 3) espera uns minuts."
 else
   echo "Hi ha $FALLS cosa(es) que no s'han pogut fer (mira els avisos [falta] de dalt)."
   echo "Pots tornar a executar este instal·lador: només fa el que falta."

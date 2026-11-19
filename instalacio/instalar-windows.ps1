@@ -9,14 +9,15 @@
 #   - la icona «Arranjaments» a l'Escriptori
 # Després d'instal·lar, la carpeta des d'on s'ha executat (la del ZIP) ja no cal.
 # Ús: powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1"             (tot el que falta, i la icona «Arranjaments» a l'Escriptori)
-#     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv    (només una cosa: uv, opencode, musescore, audiveris, eines, carpeta, icona)
+#     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv    (només una cosa: uv, opencode, musescore, audiveris, eines, carpeta, icona, onedrive)
 #     powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Prova      (només comprova)
 #     ... -SensePreguntes   (no s'atura mai a esperar una tecla; per a proves)
+# OneDrive és un pas OPCIONAL (biblioteca compartida de l'escola): ve amb Windows 10 i 11; mai fa fallar la instal·lació.
 # Audiveris NO s'instal·la si no el demanes amb -Nomes audiveris (només cal per a convertir PDF).
 # L'instal·lador visual («Instal·lar Arranjaments») executa este mateix fitxer amb la variable d'entorn
 # ARRANJAMENTS_PROGRES=1. Llavors, a més del text de sempre, s'escriuen línies «@@PAS nom inici|ok|falla»
 # i una «@@FI ok|falla» final, que la finestra llig per a marcar cada pas.
-param([switch]$Prova, [switch]$SensePreguntes, [ValidateSet("", "uv", "opencode", "musescore", "audiveris", "eines", "carpeta", "icona")][string]$Nomes = "")
+param([switch]$Prova, [switch]$SensePreguntes, [ValidateSet("", "uv", "opencode", "musescore", "audiveris", "eines", "carpeta", "icona", "onedrive")][string]$Nomes = "")
 
 $ErrorActionPreference = "Continue"
 $ProgressPreference = "SilentlyContinue"
@@ -318,6 +319,31 @@ else {
 FiPas
 }
 
+# ---------------------------------------------------------------- 8. OneDrive (opcional: biblioteca compartida de l'escola)
+if (Vol "onedrive") {
+IniciPas "onedrive"; Pas "8. OneDrive (opcional: per a la biblioteca compartida de l'escola)"
+# OneDrive ve amb Windows 10 i 11. Només es detecta; si falta, s'instal·la per a l'usuari (sense administrador) amb
+# l'instal·lador oficial de Microsoft (OneDriveSetup.exe /silent). Mai marca cap falta.
+$exesOneDrive = @((Join-Path $env:LOCALAPPDATA "Microsoft\OneDrive\OneDrive.exe"),
+                  (Join-Path $env:ProgramFiles "Microsoft OneDrive\OneDrive.exe"),
+                  (Join-Path ${env:ProgramFiles(x86)} "Microsoft OneDrive\OneDrive.exe"))
+$onedrive = $exesOneDrive | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+if ($onedrive) { Fet "OneDrive ja està instal·lat" }
+elseif ($Prova) { Write-Host "  [opcional] OneDrive no està instal·lat (només cal per a la biblioteca compartida)" }
+elseif ($env:CI -or $env:ARRANJAMENTS_SENSE_ONEDRIVE) { Write-Host "  [opcional] OneDrive s'omet en aquest entorn." }
+elseif ($Arq -eq "arm64") { Write-Host "  [opcional] OneDrive hauria de venir amb Windows. Si no el trobes, baixa'l de https://www.microsoft.com/microsoft-365/onedrive/download" }
+else {
+    $setup = Join-Path $env:TEMP "OneDriveSetup.exe"
+    if (Baixa "https://go.microsoft.com/fwlink/?linkid=844652" $setup) {
+        try {
+            $p = Start-Process $setup -ArgumentList "/silent" -PassThru
+            Fet "OneDrive: instal·lació iniciada (per a tu, sense administrador). Se t'obrirà la finestra per a entrar amb el compte de l'escola."
+        } catch { Write-Host "  [opcional] No he pogut iniciar OneDrive ($($_.Exception.Message)). Baixa'l de https://www.microsoft.com/microsoft-365/onedrive/download" }
+    } else { Write-Host "  [opcional] No he pogut baixar OneDrive. Baixa'l de https://www.microsoft.com/microsoft-365/onedrive/download" }
+}
+FiPas
+}
+
 # ---------------------------------------------------------------- Comprovació final
 IniciPas "final"; Pas "Comprovació final"
 # Amb -Nomes només s'informa (la resta potser encara no toca); sense -Nomes compta per al resum.
@@ -340,6 +366,10 @@ elseif ($script:Falls -eq 0) {
     Write-Host " Obri la icona «Arranjaments» de l'Escriptori."
     Write-Host " La teua carpeta de treball: $Treball"
     Write-Host "=============================================="
+    Write-Host ""
+    Write-Host "Per a la biblioteca compartida (opcional): 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es);"
+    Write-Host "2) obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers»"
+    Write-Host "(la carpeta ha de dir-se exactament «Biblioteca d'arranjaments»); 3) espera uns minuts."
 } else {
     Write-Host "Hi ha $($script:Falls) cosa(es) que no s'han pogut fer (mira els avisos [falta] de dalt)."
     Write-Host "Pots tornar a executar este instal·lador: només fa el que falta."

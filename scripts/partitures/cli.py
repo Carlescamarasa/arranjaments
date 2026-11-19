@@ -186,6 +186,8 @@ def cmd_versio(a):
 def cmd_biblioteca(a):
     from . import biblioteca as bib
     if a.accio == "on-es":
+        if a.ruta:
+            print(f"Ruta desada: {bib.guarda_ruta(a.ruta)}")
         print(bib.text_on_es())
     elif a.accio == "actualitza":
         print(bib.text_actualitza(bib.actualitza(maxim_noves=a.noves, segons=a.segons)))
@@ -284,7 +286,8 @@ def crear_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("biblioteca", help="Biblioteca compartida del professorat (Teams/OneDrive): només lectura")
     b = s.add_subparsers(dest="accio", required=True, parser_class=_Parser)
-    b.add_parser("on-es", help="Diu on és la biblioteca (o com fer que hi aparega)")
+    x = b.add_parser("on-es", help="Diu on és la biblioteca (o com fer que hi aparega)")
+    x.add_argument("--ruta", help="Desa la carpeta de la biblioteca si té un altre nom o és en un altre lloc")
     x = b.add_parser("actualitza", help="Posa al dia l'índex (analitza les partitures noves, per tandes)")
     x.add_argument("--noves", type=int, default=200, help="Màxim de partitures noves per vegada")
     x.add_argument("--segons", type=int, default=120, help="Temps màxim per vegada")

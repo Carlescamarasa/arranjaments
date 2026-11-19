@@ -134,6 +134,7 @@ struct Pas: Identifiable {
     let id: String
     let titol: String
     let detall: String
+    var opcional = false     // un pas opcional mai fa fallar la instal·lació
     var estat: EstatPas = .pendent
 }
 
@@ -147,6 +148,7 @@ final class Model: ObservableObject {
         Pas(id: "eines", titol: "Eines musicals", detall: "Queden guardades dins de l'ordinador, com les de qualsevol aplicació"),
         Pas(id: "carpeta", titol: "Carpeta de treball", detall: "Documents, Arranjaments: amb «entrada» i «eixida» per a les partitures"),
         Pas(id: "icona", titol: "Icona a l'Escriptori", detall: "Per a obrir Arranjaments amb doble clic"),
+        Pas(id: "onedrive", titol: "OneDrive (opcional)", detall: "Per a la biblioteca compartida de l'escola", opcional: true),
     ]
     @Published var fase: Fase = .inici
     @Published var progres: Double = 0
@@ -299,14 +301,14 @@ final class Model: ObservableObject {
         }
         if !pendent.isEmpty { rep(dades: Data([0x0A])) }
         proces = nil
-        let be = codi == 0 && finalRebut == true && !passos.contains { $0.estat != .fet }
+        let be = codi == 0 && finalRebut == true && !passos.contains { $0.estat != .fet && !$0.opcional }
         for i in passos.indices where passos[i].estat == .enMarxa { passos[i].estat = .falla }
         if be {
             progres = 1
             estat = ""
             fase = .acabat
         } else {
-            let fallats = passos.filter { $0.estat == .falla }.map(\.titol)
+            let fallats = passos.filter { $0.estat == .falla && !$0.opcional }.map(\.titol)
             if !fallats.isEmpty {
                 missatgeError = "Ha faltat: " + fallats.joined(separator: ", ") + "."
             } else if finalRebut == nil {
@@ -488,6 +490,10 @@ struct Contingut: View {
                 Text("Les teues partitures aniran a la carpeta Arranjaments de Documents. La carpeta des d'on has instal·lat ja no cal.")
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                Text("Per a la biblioteca compartida: 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es). 2) Obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers» (la carpeta ha de dir-se «Biblioteca d'arranjaments»). 3) Espera uns minuts.")
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
             }
         case .error:
             VStack(alignment: .leading, spacing: 3) {

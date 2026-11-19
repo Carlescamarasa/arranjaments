@@ -38,9 +38,15 @@ MAX_NOVES = 200
 MAX_SEGONS = 120
 VERSIO_INDEX = 1
 
+URL_ONEDRIVE = "https://www.microsoft.com/microsoft-365/onedrive/download"
+URL_ONEDRIVE_MAC_PKG = "https://go.microsoft.com/fwlink/?linkid=823060"       # OneDrive.pkg (enllaç oficial de Microsoft)
+URL_ONEDRIVE_WIN_EXE = "https://go.microsoft.com/fwlink/?linkid=844652"       # OneDriveSetup.exe (enllaç oficial de Microsoft)
+URL_ONEDRIVE_APPSTORE = "https://apps.apple.com/app/onedrive/id823766827"
+
 PASSOS_TEAMS = (
     "Només cal fer-ho una vegada, des del navegador, amb el teu compte de l'escola:\n"
-    "  1. Obri Teams, entra al canal on hi ha la carpeta «Biblioteca d'arranjaments» i ves a la pestanya «Fitxers».\n"
+    "  0. Qui crea la biblioteca ha de posar a la carpeta compartida EXACTAMENT el nom «Biblioteca d'arranjaments».\n"
+    "  1. Obri l'enllaç de la biblioteca que t'ha passat una companya (o Teams: el canal i la pestanya «Fitxers»).\n"
     "  2. Selecciona la carpeta (el cercle de la seua targeta) i prem «Afegeix una drecera a Els meus fitxers».\n"
     "     (En castellà: «Agregar acceso directo a Mis archivos»; en anglés: «Add shortcut to My files».\n"
     "     En versions noves pot dir «Afegeix una drecera a OneDrive»: tria «Els meus fitxers».)\n"
@@ -165,6 +171,17 @@ def fitxer_config() -> Path:
     return _dades() / "biblioteca.txt"
 
 
+def guarda_ruta(ruta: str) -> Path:
+    """Guarda la carpeta de la biblioteca (si té un altre nom o és en un altre lloc) a biblioteca.txt, a la carpeta de dades."""
+    p = Path(ruta).expanduser()
+    if not p.is_dir():
+        raise ErrorUsuari(f"«{ruta}» no és una carpeta que existisca. Comprova la ruta (la carpeta ha d'estar ja al Finder o a l'Explorador).")
+    f = fitxer_config()
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(str(p.resolve()) + "\n", encoding="utf-8")
+    return p
+
+
 def localitzar(home: Path | None = None, entorn: dict | None = None, plataforma: str | None = None) -> dict:
     """Retorna {"ruta": Path|None, "origen": str, "altres": [Path], "mirat": [Path], "avis": str|None}."""
     entorn = os.environ if entorn is None else entorn
@@ -208,6 +225,41 @@ def biblioteca() -> Path:
     return r["ruta"]
 
 
+def onedrive_instalat(home: Path | None = None, entorn: dict | None = None, plataforma: str | None = None) -> bool:
+    """Hi ha l'aplicació OneDrive a l'ordinador? (No diu si s'ha entrat amb un compte.)"""
+    home = Path(home) if home else Path.home()
+    entorn = os.environ if entorn is None else entorn
+    plataforma = plataforma or _plataforma()
+    if plataforma == "mac":
+        return any((b / "OneDrive.app").exists() for b in (Path("/Applications"), home / "Applications"))
+    if plataforma == "windows":
+        bases = [entorn.get("LOCALAPPDATA") and Path(entorn["LOCALAPPDATA"]) / "Microsoft" / "OneDrive",
+                 entorn.get("ProgramFiles") and Path(entorn["ProgramFiles"]) / "Microsoft OneDrive",
+                 entorn.get("ProgramFiles(x86)") and Path(entorn["ProgramFiles(x86)"]) / "Microsoft OneDrive"]
+        return any(b and (b / "OneDrive.exe").exists() for b in bases)
+    return False
+
+
+def _guia_onedrive(plataforma: str, instalat: bool, arrels: list) -> list[str]:
+    """Quin pas falta: instal·lar OneDrive, entrar-hi amb el compte, o afegir la drecera."""
+    if not instalat and not arrels:
+        if plataforma == "mac":
+            return ["Pas que falta: instal·lar OneDrive (no el trobe a este Mac).",
+                    f"  Baixa l'instal·lador oficial de Microsoft (OneDrive.pkg, demana la contrasenya del Mac): {URL_ONEDRIVE_MAC_PKG}",
+                    f"  O, sense contrasenya d'administrador, des de l'App Store: {URL_ONEDRIVE_APPSTORE}",
+                    f"  Més informació: {URL_ONEDRIVE}"]
+        if plataforma == "windows":
+            return ["Pas que falta: OneDrive hauria de venir amb Windows, però no el trobe.",
+                    f"  Baixa l'instal·lador oficial de Microsoft (OneDriveSetup.exe): {URL_ONEDRIVE_WIN_EXE}",
+                    f"  Més informació: {URL_ONEDRIVE}"]
+        return []
+    if not arrels:
+        return ["Pas que falta: obrir OneDrive i entrar amb el compte de l'escola (@edu.gva.es). "
+                "Encara no hi ha cap carpeta de OneDrive en este ordinador."]
+    return ["OneDrive ja està en marxa, però la carpeta de la biblioteca no hi apareix. Pas que falta: obrir l'enllaç de la "
+            "biblioteca i prémer «Afegeix una drecera a Els meus fitxers» (o esperar uns minuts si ja ho has fet)."]
+
+
 def text_on_es() -> str:
     r = localitzar()
     ll = []
@@ -227,16 +279,15 @@ def text_on_es() -> str:
         ll.append("Este ordinador no té OneDrive (per exemple LliureX o Linux): la biblioteca compartida no hi funciona, "
                   "perquè no hi ha cap programa de OneDrive que la baixe. Pots usar-la des d'un Mac o Windows.")
         ll.append("Si algú t'ha passat una còpia de la carpeta, indica'm on és amb la variable ARRANJAMENTS_BIBLIOTECA "
-                  f"o escrivint la ruta en una línia del fitxer {fitxer_config()}.")
+                  f"o desant-la amb: partitures biblioteca on-es --ruta \"/ruta/de/la/carpeta\".")
         return "\n".join(ll)
     ll.append("No trobe la carpeta «Biblioteca d'arranjaments» a l'ordinador.")
     if r["mirat"]:
         ll.append("He mirat dins de: " + "; ".join(str(m) for m in r["mirat"]))
-    else:
-        ll.append("No he trobat cap carpeta de OneDrive: potser l'aplicació OneDrive no està instal·lada o no té el compte de l'escola.")
+    ll += _guia_onedrive(_plataforma(), onedrive_instalat(), r["mirat"])
     ll.append(PASSOS_TEAMS)
-    ll.append(f"Si la carpeta té un altre nom o és en un altre lloc, escriu-ne la ruta en una línia del fitxer {fitxer_config()} "
-              "(o defineix la variable ARRANJAMENTS_BIBLIOTECA).")
+    ll.append("Si la carpeta té un altre nom o és en un altre lloc, desa'n la ruta amb: "
+              "partitures biblioteca on-es --ruta \"/ruta/de/la/carpeta\"")
     return "\n".join(ll)
 
 

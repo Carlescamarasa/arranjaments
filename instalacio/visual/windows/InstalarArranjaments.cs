@@ -38,6 +38,7 @@ namespace Arranjaments
     class Pas
     {
         public string Id, Titol, Detall;
+        public bool Opcional;   // un pas opcional mai fa fallar la instal·lació
         public EstatPas Estat = EstatPas.Pendent;
         public Pas(string id, string titol, string detall) { Id = id; Titol = titol; Detall = detall; }
     }
@@ -107,6 +108,7 @@ namespace Arranjaments
             passos.Add(new Pas("eines", "Eines musicals", "Queden guardades dins de l'ordinador, com les de qualsevol aplicació"));
             passos.Add(new Pas("carpeta", "Carpeta de treball", "Documents, Arranjaments: amb «entrada» i «eixida» per a les partitures"));
             passos.Add(new Pas("icona", "Icona a l'Escriptori", "Per a obrir Arranjaments amb doble clic"));
+            passos.Add(new Pas("onedrive", "OneDrive (opcional)", "Per a la biblioteca compartida de l'escola") { Opcional = true });
 
             carpeta = o.Carpeta != null ? o.Carpeta : Path.GetDirectoryName(Application.ExecutablePath);
             if (!TeInstalador(carpeta))
@@ -365,7 +367,7 @@ namespace Arranjaments
             if (estat.Visible) { estat.SetBounds(marge, y, dins, S(18)); y = estat.Bottom + S(8); }
 
             string rt = "", rx = "";
-            if (fase == Fase.Acabat) { rt = "Tot a punt."; rx = "Obri Arranjaments a l'Escriptori.\n\nLes teues partitures aniran a la carpeta Arranjaments de Documents. La carpeta des d'on has instal·lat ja no cal."; }
+            if (fase == Fase.Acabat) { rt = "Tot a punt."; rx = "Obri Arranjaments a l'Escriptori.\n\nLes teues partitures aniran a la carpeta Arranjaments de Documents. La carpeta des d'on has instal·lat ja no cal.\n\nPer a la biblioteca compartida: 1) obri OneDrive i entra amb el compte de l'escola (@edu.gva.es). 2) Obri l'enllaç de la biblioteca que t'ha passat una companya i prem «Afegeix una drecera a Els meus fitxers» (la carpeta ha de dir-se «Biblioteca d'arranjaments»). 3) Espera uns minuts."; }
             else if (fase == Fase.Error)
             {
                 rt = "No s'ha pogut instal·lar tot.";
@@ -605,8 +607,8 @@ namespace Arranjaments
             foreach (Pas p in passos)
             {
                 if (p.Estat == EstatPas.EnMarxa) p.Estat = EstatPas.Falla;
-                if (p.Estat != EstatPas.Fet) be = false;
-                if (p.Estat == EstatPas.Falla) fallats.Add(p.Titol);
+                if (p.Estat != EstatPas.Fet && !p.Opcional) be = false;
+                if (p.Estat == EstatPas.Falla && !p.Opcional) fallats.Add(p.Titol);
             }
             if (be) { barra.Value = 1000; fase = Fase.Acabat; }
             else

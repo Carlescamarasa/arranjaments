@@ -299,3 +299,49 @@ def test_canvi_de_biblioteca_descarta_l_index(lib, tmp_path, monkeypatch):
     altra = tmp_path / "altra"
     _fer(altra, "x.pdf")
     assert bib.llig_index(altra)["fitxers"] == {}
+
+
+# ----------------------------------------------------------------------- guia de OneDrive i ruta a mà
+
+def test_on_es_diu_quin_pas_falta(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path / "buit"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "buit"))
+    monkeypatch.setattr(bib, "_plataforma", lambda: "mac")
+    monkeypatch.setattr(bib, "onedrive_instalat", lambda *a, **k: False)
+    assert executar("biblioteca", "on-es") == 0
+    out = capsys.readouterr().out
+    assert "instal·lar OneDrive" in out and "linkid=823060" in out and "apps.apple.com" in out
+    assert "EXACTAMENT el nom «Biblioteca d'arranjaments»" in out
+    monkeypatch.setattr(bib, "_plataforma", lambda: "windows")
+    assert executar("biblioteca", "on-es") == 0
+    assert "linkid=844652" in capsys.readouterr().out
+    # OneDrive instal·lat però sense compte (cap carpeta de OneDrive)
+    monkeypatch.setattr(bib, "onedrive_instalat", lambda *a, **k: True)
+    assert executar("biblioteca", "on-es") == 0
+    assert "entrar amb el compte de l'escola" in capsys.readouterr().out
+    # carpeta de OneDrive però sense la biblioteca: falta la drecera
+    monkeypatch.setattr(bib, "arrels_onedrive", lambda *a, **k: [tmp_path])
+    assert executar("biblioteca", "on-es") == 0
+    assert "Afegeix una drecera a Els meus fitxers" in capsys.readouterr().out
+
+
+def test_onedrive_instalat_detecta_aplicacio(tmp_path):
+    home = tmp_path / "casa"
+    assert not bib.onedrive_instalat(home, {}, "mac")
+    (home / "Applications" / "OneDrive.app").mkdir(parents=True)
+    assert bib.onedrive_instalat(home, {}, "mac")
+    loc = tmp_path / "local"
+    assert not bib.onedrive_instalat(home, {"LOCALAPPDATA": str(loc)}, "windows")
+    _fer(loc, "Microsoft", "OneDrive", "OneDrive.exe")
+    assert bib.onedrive_instalat(home, {"LOCALAPPDATA": str(loc)}, "windows")
+    assert not bib.onedrive_instalat(home, {}, "altre")
+
+
+def test_ruta_a_ma_es_desa_i_es_troba(tmp_path, capsys, dades):
+    altra = tmp_path / "Partitures de l'escola"
+    altra.mkdir()
+    assert executar("biblioteca", "on-es", "--ruta", altra) == 0
+    out = capsys.readouterr().out
+    assert "Ruta desada" in out and "He trobat la biblioteca" in out
+    assert (dades / "biblioteca.txt").read_text(encoding="utf-8").strip() == str(altra.resolve())
+    assert executar("biblioteca", "on-es", "--ruta", tmp_path / "no-hi-es") == 1

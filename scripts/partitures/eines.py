@@ -113,7 +113,7 @@ def trobar_audiveris() -> str:
     return ruta
 
 
-COSES_INSTALABLES = ("musescore", "audiveris", "opencode", "icona", "eines", "carpeta", "uv")
+COSES_INSTALABLES = ("musescore", "audiveris", "opencode", "icona", "eines", "carpeta", "uv", "onedrive")
 
 
 def instalar(cosa: str | None, prova: bool = False) -> int:

@@ -28,13 +28,14 @@ Requisits del Mac: macOS 13 (Ventura) o posterior, Apple Silicon o Intel.
 - Mac: fes doble clic a `Arranjaments-Mac.dmg`. S'obri una finestra amb una sola cosa, l'aplicació `Instal·lar Arranjaments`. Fes-hi doble clic allà mateix, sense arrossegar-la enlloc. Quan acabes, pots expulsar el disc (la fletxa al costat d'«Arranjaments» a la barra lateral del Finder) i esborrar el DMG.
 - La primera vegada, el sistema avisa perquè el programa ve d'internet i no està signat per cap empresa. Mira més avall [què cal prémer](#avisos). Si el fitxer t'ha arribat en un llapis USB i no baixat d'internet, potser no apareix cap avís.
 
-S'obri una finestra amb la llista del que s'instal·larà. Prem **«Instal·lar»**. Cada pas es marca quan acaba: les eines musicals, l'aplicació OpenCode, MuseScore, la teua carpeta de treball i la icona de l'Escriptori. Pot tardar uns minuts la primera vegada. Quan acaba diu **«Tot a punt»**. A «Veure detalls» pots llegir tot el que ha fet.
+S'obri una finestra amb la llista del que s'instal·larà. Prem **«Instal·lar»**. Cada pas es marca quan acaba: les eines musicals, l'aplicació OpenCode, MuseScore, la teua carpeta de treball, la icona de l'Escriptori i, si no el tens, OneDrive (opcional, per a la biblioteca compartida de l'escola; mai fa fallar la instal·lació). Pot tardar uns minuts la primera vegada. Quan acaba diu **«Tot a punt»**. A «Veure detalls» pots llegir tot el que ha fet.
 
 Què t'ha deixat a l'ordinador:
 
 - Una carpeta **`Arranjaments` dins de Documents**, amb dues carpetes: `entrada` (on poses els teus PDF o MusicXML) i `eixida` (on apareixen les partitures que crees). És l'única cosa que has de tocar.
 - Una icona **«Arranjaments»** a l'Escriptori, per a obrir l'ajudant.
 - Les eines musicals, guardades dins de l'ordinador com les de qualsevol aplicació. No cal que les busques.
+- **OneDrive** (només si no el tens, i és opcional): serveix per a la [biblioteca compartida](#biblioteca-compartida) de l'escola. Mac: baixa l'instal·lador oficial de Microsoft i l'obri amb l'Instal·lador del Mac, que et demana la contrasenya (l'instal·lador no l'espera: continua). Windows: ve amb el sistema; si falta, s'instal·la per a tu, sense administrador. Linux/LliureX: no n'hi ha.
 
 **Actualitzacions.** Cada vegada que obris la icona «Arranjaments», el programa busca sol si n'hi ha una versió nova i, si n'hi ha, l'instal·la en silenci, sense preguntar res i sense que es note (si no hi ha internet, obri OpenCode com sempre). Les teues partitures no es toquen. Si una novetat va malament, a l'ajudant li pots dir «torna a la versió anterior» (o, al Terminal, `partitures actualitzar --torna-enrere`). Per a saber què hi ha de nou, pregunta-li a l'ajudant «què hi ha de nou?». **Si vas instal·lar abans del 19 de novembre de 2026, torna a fer l'instal·lació una vegada** (baixa el fitxer del teu ordinador i obri'l): la icona antiga no sap actualitzar-se.
 
@@ -226,13 +227,20 @@ Fonts: Microsoft, [SmartScreen i els programes sense signar](https://learn.micro
 
 És una carpeta privada de Teams, «Biblioteca d'arranjaments», on el professorat de l'escola deixa les partitures que vol compartir. L'ajudant hi cerca primer quan li demanes una obra (i, si no hi és, passa al corpus de música lliure). L'ajudant només la **llig**: mai hi escriu ni hi esborra res.
 
-**Què cal fer, una sola vegada, a cada docent** (amb el compte de l'escola, des del navegador):
+**Què cal fer, una sola vegada, a cada docent** (amb el compte de l'escola):
 
-1. Tingues instal·lada l'aplicació **OneDrive** i entra-hi amb el compte de l'escola (a Windows ja ve, a Mac es baixa de l'App Store).
-2. Obri Teams, entra al canal on és la carpeta «Biblioteca d'arranjaments» i ves a la pestanya **Fitxers**.
+*Per a qui crea la biblioteca:* la carpeta compartida ha de dir-se exactament **«Biblioteca d'arranjaments»** (així l'ajudant la troba sola). Si té un altre nom o és en un altre lloc, l'ajudant la pot trobar igualment: `partitures biblioteca on-es --ruta "carpeta"`. L'enllaç de la carpeta es passa en privat entre el professorat; no el posem enlloc públic.
+
+1. **Instal·la OneDrive i entra-hi.** L'instal·lador d'Arranjaments ja el posa si falta (pas opcional); al final de la instal·lació t'ho recorda. Si vas instal·lar abans, o prefereixes fer-ho a mà: a Windows ve amb el sistema; a Mac, baixa [OneDrive.pkg](https://go.microsoft.com/fwlink/?linkid=823060) (instal·lador oficial de Microsoft; demana la contrasenya del Mac) o, sense contrasenya d'administrador, [OneDrive a l'App Store](https://apps.apple.com/app/onedrive/id823766827); la pàgina general és [microsoft.com/microsoft-365/onedrive/download](https://www.microsoft.com/microsoft-365/onedrive/download). Obri OneDrive i entra amb el compte de l'escola (`@edu.gva.es`).
+2. **Obri l'enllaç de la biblioteca** que t'ha passat una companya (o, a Teams, el canal i la pestanya **Fitxers**).
 3. Selecciona la carpeta (el cercle de la seua targeta) i prem **«Afegeix una drecera a Els meus fitxers»**. Si el teu Teams està en castellà diu «Agregar acceso directo a Mis archivos», i en anglés «Add shortcut to My files». En versions noves pot dir «Afegeix una drecera a OneDrive»: tria «Els meus fitxers».
-4. Espera uns minuts. La carpeta apareix dins de la teua carpeta OneDrive de l'ordinador (al Finder o a l'Explorador de fitxers). Val per a l'ordinador de casa i el de l'escola.
-5. Demana a l'ajudant «busca a la biblioteca...». Si no la troba, et dirà què falta (o escriu `partitures biblioteca on-es`).
+4. **Espera uns minuts.** La carpeta apareix dins de la teua carpeta OneDrive de l'ordinador (al Finder o a l'Explorador de fitxers). Val per a l'ordinador de casa i el de l'escola.
+5. Demana a l'ajudant «busca a la biblioteca...». Si no la troba, et dirà quin pas falta (instal·lar OneDrive, entrar-hi o afegir la drecera); també ho pots veure amb `partitures biblioteca on-es`.
+
+Amb imatges (recreacions; els noms són genèrics):
+
+- **Mac.** Entra a OneDrive: ![OneDrive, inici de sessió (Mac)](docs/captures/mac/15-onedrive-entra.png) Afegeix la drecera: ![Afegeix una drecera a Els meus fitxers (Mac)](docs/captures/mac/16-afegeix-drecera.png) La carpeta apareix al Finder: ![La carpeta al Finder](docs/captures/mac/17-carpeta-onedrive.png)
+- **Windows.** Entra a OneDrive: ![OneDrive, inici de sessió (Windows)](docs/captures/windows/14-onedrive-entra.png) Afegeix la drecera: ![Afegeix una drecera a Els meus fitxers (Windows)](docs/captures/windows/15-afegeix-drecera.png) La carpeta apareix a l'Explorador: ![La carpeta a l'Explorador de fitxers](docs/captures/windows/16-carpeta-onedrive.png)
 
 Les partitures poden estar «només al núvol» (no descarregades): quan l'ajudant n'analitza una, OneDrive la baixa. L'ajudant ho fa per tandes (unes 200 per vegada) perquè no baixe tota la biblioteca de colp.
 
