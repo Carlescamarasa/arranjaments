@@ -4,20 +4,27 @@ Un ajudant per a professors i professores de música que volen fer arranjaments 
 
 Una cosa important: la intel·ligència artificial NO escriu les notes. Tot el treball musical el fan unes eines normals, provades i previsibles. L'ajudant només tria quina eina toca i t'explica el resultat. Així, si el model gratuït que fas servir un dia és poc llest, no et fa malbé la música.
 
-## Instal·lació: 3 passos, sense Terminal
+## Instal·lació: baixa un fitxer i fes-hi doble clic
 
-**Pas 1. Baixa el projecte i descomprimeix-lo.** Baixa este fitxer: **[arranjaments.zip](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/arranjaments.zip)** (no el botó verd «Code» d'esta pàgina: aquell ZIP no porta l'instal·lador).
+És **un sol fitxer per ordinador**: no cal descomprimir ni desbloquejar res. Tria el teu:
 
-- Mac: fes doble clic al ZIP (potser el Mac ja l'ha descomprimit sol). Es crea la carpeta `arranjaments`.
-- Windows: **abans de descomprimir**, fes clic dret al ZIP, «Propietats», marca la casella **«Desbloquejar»** (Unblock) a baix de tot, «Aplica» i «D'acord». Així Windows no et farà avisos. Després, clic dret, «Extreure-ho tot».
-- A dins de la carpeta pot haver-hi una altra `arranjaments`: és normal. **La carpeta bona és aquella on veus el fitxer `README.md` i «Instal·lar Arranjaments».**
-- Esta carpeta només fa falta per a instal·lar. Quan acabes, la pots esborrar (i el ZIP també).
+| Ordinador | Baixa | Què fer després |
+| --- | --- | --- |
+| **Windows** (10 i 11; Intel, AMD o ARM) | **[Arranjaments-Windows.exe](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/Arranjaments-Windows.exe)** | Doble clic al fitxer. |
+| **Mac** (Apple Silicon o Intel) | **[Arranjaments-Mac.dmg](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/Arranjaments-Mac.dmg)** | Doble clic al DMG i, a la finestra que s'obri, doble clic a «Instal·lar Arranjaments». |
+| **LliureX** i altres Linux (Intel, AMD o ARM) | **[Arranjaments-LliureX.run](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/Arranjaments-LliureX.run)** | Dona-li permís d'execució i doble clic. Els detalls, [més avall](#linux). |
 
-**Pas 2. Fes doble clic a «Instal·lar Arranjaments»** (la icona d'un pentagrama amb dues notes).
+Requisits del Mac: macOS 13 (Ventura) o posterior, Apple Silicon o Intel.
 
-- Mac: és l'aplicació `Instal·lar Arranjaments`. El fitxer del mateix nom acabat en `.exe` és el de Windows, no el toques.
-- Windows: és el programa `Instal·lar Arranjaments` (acabat en `.exe`, si veus les extensions). La carpeta del mateix nom acabada en `.app` és la de Mac, no la toques.
-- La primera vegada, el sistema avisa perquè el programa ve d'internet i no està signat per cap empresa. Mira més avall [què cal prémer](#avisos). Si la carpeta t'ha arribat en un llapis USB i no baixada d'internet, potser no apareix cap avís.
+(No uses el botó verd «Code» d'esta pàgina: aquell ZIP no porta l'instal·lador.)
+
+**Pas 1. Baixa el fitxer del teu ordinador** (taula de dalt). L'ordinador tria sol la versió que li va bé (per exemple, ARM o Intel).
+
+**Pas 2. Obri'l.**
+
+- Windows: fes doble clic a `Arranjaments-Windows.exe` (és el programa «Instal·lar Arranjaments», amb la icona d'un pentagrama).
+- Mac: fes doble clic a `Arranjaments-Mac.dmg`. S'obri una finestra amb una sola cosa, l'aplicació `Instal·lar Arranjaments`. Fes-hi doble clic allà mateix, sense arrossegar-la enlloc. Quan acabes, pots expulsar el disc (la fletxa al costat d'«Arranjaments» a la barra lateral del Finder) i esborrar el DMG.
+- La primera vegada, el sistema avisa perquè el programa ve d'internet i no està signat per cap empresa. Mira més avall [què cal prémer](#avisos). Si el fitxer t'ha arribat en un llapis USB i no baixat d'internet, potser no apareix cap avís.
 
 S'obri una finestra amb la llista del que s'instal·larà. Prem **«Instal·lar»**. Cada pas es marca quan acaba: les eines musicals, l'aplicació OpenCode, MuseScore, la teua carpeta de treball i la icona de l'Escriptori. Pot tardar uns minuts la primera vegada. Quan acaba diu **«Tot a punt»**. A «Veure detalls» pots llegir tot el que ha fet.
 
@@ -27,12 +34,12 @@ Què t'ha deixat a l'ordinador:
 - Una icona **«Arranjaments»** a l'Escriptori, per a obrir l'ajudant.
 - Les eines musicals, guardades dins de l'ordinador com les de qualsevol aplicació. No cal que les busques.
 
-**Actualitzacions.** Cada vegada que obris la icona «Arranjaments», el programa busca sol si n'hi ha una versió nova i, si n'hi ha, l'instal·la en silenci, sense preguntar res i sense que es note (si no hi ha internet, obri OpenCode com sempre). Les teues partitures no es toquen. Si una novetat va malament, a l'ajudant li pots dir «torna a la versió anterior» (o, al Terminal, `partitures actualitzar --torna-enrere`). Per a saber què hi ha de nou, pregunta-li a l'ajudant «què hi ha de nou?». **Si vas instal·lar abans del 19 de novembre de 2026, torna a fer l'instal·lació una vegada** (baixa el ZIP nou i obri «Instal·lar Arranjaments»): la icona antiga no sap actualitzar-se.
+**Actualitzacions.** Cada vegada que obris la icona «Arranjaments», el programa busca sol si n'hi ha una versió nova i, si n'hi ha, l'instal·la en silenci, sense preguntar res i sense que es note (si no hi ha internet, obri OpenCode com sempre). Les teues partitures no es toquen. Si una novetat va malament, a l'ajudant li pots dir «torna a la versió anterior» (o, al Terminal, `partitures actualitzar --torna-enrere`). Per a saber què hi ha de nou, pregunta-li a l'ajudant «què hi ha de nou?». **Si vas instal·lar abans del 19 de novembre de 2026, torna a fer l'instal·lació una vegada** (baixa el fitxer del teu ordinador i obri'l): la icona antiga no sap actualitzar-se.
 
-Si tornes a obrir «Instal·lar Arranjaments» (per exemple, amb un ZIP més nou), actualitza les eines i fa el que falte. **Les partitures d'`entrada` i `eixida` no les toca mai.**
+Si tornes a obrir «Instal·lar Arranjaments» (per exemple, amb un fitxer més nou), actualitza les eines i fa el que falte. **Les partitures d'`entrada` i `eixida` no les toca mai.**
 
-- Mac: no demana contrasenya. Les aplicacions van a la carpeta Aplicacions de la teua usuària (`~/Applications`). Si el Mac pregunta si «Instal·lar Arranjaments» pot accedir a l'Escriptori, a Documents o a Descàrregues, prem «Permet»: és per a deixar la icona a l'Escriptori i crear la carpeta de treball a Documents.
-- Windows: OpenCode s'instal·la sense permisos especials, però **MuseScore demana permís d'administrador** (finestra blava, prem «Sí»), perquè s'instal·la per a tots els usuaris de l'ordinador. Si la finestra blava no apareix, mira si parpelleja una icona a la barra de tasques i prem-la. Si l'ordinador és de la feina o del centre i no et deixa, consulta-ho amb qui l'administra.
+- Mac: no demana contrasenya. Les aplicacions van a la carpeta Aplicacions de la teua usuària (`~/Applications`). Si el Mac pregunta si «Instal·lar Arranjaments» pot accedir a l'Escriptori o a Documents, prem «Permet»: és per a deixar la icona a l'Escriptori i crear la carpeta de treball a Documents.
+- Windows: OpenCode s'instal·la sense permisos especials, però **MuseScore demana permís d'administrador** (finestra blava, prem «Sí»), perquè s'instal·la per a tots els usuaris de l'ordinador. En un Windows ARM, OpenCode s'instal·la en la versió ARM i MuseScore en la x64, que Windows 11 fa funcionar sol. Si la finestra blava no apareix, mira si parpelleja una icona a la barra de tasques i prem-la. Si l'ordinador és de la feina o del centre i no et deixa, consulta-ho amb qui l'administra.
 - Si alguna cosa no es pot instal·lar sola, la finestra t'ho diu i té un botó amb els passos per a fer-ho a mà.
 
 **Pas 3. Fes doble clic a la icona «Arranjaments» de l'Escriptori.** S'obri OpenCode. **La primera vegada**, obri la teua carpeta de treball: botó «Afegeix projecte» (en castellà, «Añadir proyecto»; en anglés, «Add project») i selecciona la carpeta **`Arranjaments` de Documents**. Les vegades següents ja apareix a la llista de projectes recents. Després escriu el que vols, per exemple: «Busca'm un coral de Bach». Ja està.
@@ -49,135 +56,123 @@ Els models gratuïts ja venen preparats: no cal compte ni clau. Les partitures q
 
 ## Instal·lació pas a pas
 
-El mateix d'abans, amb imatges. Les pantalles del sistema (navegador, carpetes, avisos) són recreacions i poden canviar un poc segons la versió i l'idioma de l'ordinador. Les de l'instal·lador i les d'OpenCode són captures reals; les de Windows mostren una conversa feta en un Mac, amb les rutes adaptades.
+El mateix de dalt, amb imatges. Les pantalles del sistema (navegador, carpetes, avisos) són recreacions i poden canviar un poc segons la versió i l'idioma de l'ordinador. Les de l'instal·lador i les d'OpenCode són captures reals; les de Windows mostren una conversa feta en un Mac, amb les rutes adaptades.
 
 <details>
 <summary><strong>Mac</strong></summary>
 
-1. Baixa `arranjaments.zip` des de l'enllaç de dalt.
+1. Baixa `Arranjaments-Mac.dmg` des de l'enllaç de dalt.
 
-   ![Pas 1](docs/captures/mac/01-baixa-zip.png)
+   ![Pas 1](docs/captures/mac/01-baixa-dmg.png)
 
-2. Obri la carpeta Descàrregues. Si el Mac no ha descomprimit el ZIP, fes-hi doble clic. Entra a la carpeta `arranjaments`.
+2. Fes doble clic al DMG (a la carpeta Descàrregues). S'obri una finestra amb «Instal·lar Arranjaments» (la icona del pentagrama): fes-hi doble clic, sense arrossegar-la enlloc.
 
-   ![Pas 2](docs/captures/mac/02-descarregues.png)
+   ![Pas 2](docs/captures/mac/02-finestra-dmg.png)
 
-3. Fes doble clic a «Instal·lar Arranjaments» (la icona del pentagrama).
+3. La primera vegada, el Mac avisa que no ha pogut verificar l'aplicació. Prem «Fet». No la mogues a la paperera.
 
-   ![Pas 3](docs/captures/mac/03-carpeta-instalador.png)
+   ![Pas 3](docs/captures/mac/03-avis-no-verificat.png)
 
-4. La primera vegada, el Mac avisa que no ha pogut verificar l'aplicació. Prem «Fet». No la mogues a la paperera.
+4. Obri «Configuració del Sistema», «Privacitat i seguretat», baixa fins a «Seguretat» i prem «Obre de tota manera». Et demanarà la contrasenya de l'ordinador.
 
-   ![Pas 4](docs/captures/mac/04-avis-no-verificat.png)
+   ![Pas 4](docs/captures/mac/04-obre-de-tota-manera.png)
 
-5. Obri «Configuració del Sistema», «Privacitat i seguretat», baixa fins a «Seguretat» i prem «Obre de tota manera». Et demanarà la contrasenya de l'ordinador.
+5. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba.
 
-   ![Pas 5](docs/captures/mac/05-obre-de-tota-manera.png)
+   ![Pas 5](docs/captures/mac/05-instalant.png)
 
-6. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba.
+6. Quan diu «Tot a punt», ja està instal·lat.
 
-   ![Pas 6](docs/captures/mac/06-instalant.png)
+   ![Pas 6](docs/captures/mac/06-tot-a-punt.png)
 
-7. Quan diu «Tot a punt», ja està instal·lat.
+7. Fes doble clic a la icona «Arranjaments» de l'Escriptori.
 
-   ![Pas 7](docs/captures/mac/07-tot-a-punt.png)
+   ![Pas 7](docs/captures/mac/07-icona-escriptori.png)
 
-8. Fes doble clic a la icona «Arranjaments» de l'Escriptori.
+8. S'obri OpenCode. La primera vegada, prem «Afegeix projecte».
 
-   ![Pas 8](docs/captures/mac/08-icona-escriptori.png)
+   ![Pas 8](docs/captures/mac/08-afegeix-projecte.png)
 
-9. S'obri OpenCode. La primera vegada, prem «Afegeix projecte».
+9. Tria la carpeta `Arranjaments` de Documents i prem «Obre».
 
-   ![Pas 9](docs/captures/mac/09-afegeix-projecte.png)
+   ![Pas 9](docs/captures/mac/09-tria-carpeta.png)
 
-10. Tria la carpeta `Arranjaments` de Documents i prem «Obre».
+10. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
 
-   ![Pas 10](docs/captures/mac/10-tria-carpeta.png)
+   ![Pas 10](docs/captures/mac/10-escriu-peticio.png)
 
-11. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
+11. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
 
-   ![Pas 11](docs/captures/mac/11-escriu-peticio.png)
+   ![Pas 11](docs/captures/mac/11-pregunta.png)
 
-12. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
+12. Quan acaba, et diu què ha fet i on són els fitxers.
 
-   ![Pas 12](docs/captures/mac/12-pregunta.png)
+   ![Pas 12](docs/captures/mac/12-resultat.png)
 
-13. Quan acaba, et diu què ha fet i on són els fitxers.
+13. Els PDF són a Documents, `Arranjaments`, `eixida`.
 
-   ![Pas 13](docs/captures/mac/13-resultat.png)
+   ![Pas 13](docs/captures/mac/13-carpeta-eixida.png)
 
-14. Els PDF són a Documents, `Arranjaments`, `eixida`.
+14. Si un model deixa de contestar, prem el nom del model (o escriu `/models`) i tria'n un altre de gratuït.
 
-   ![Pas 14](docs/captures/mac/14-carpeta-eixida.png)
-
-15. Si un model deixa de contestar, prem el nom del model (o escriu `/models`) i tria'n un altre de gratuït.
-
-   ![Pas 15](docs/captures/mac/15-models.png)
+   ![Pas 14](docs/captures/mac/14-models.png)
 
 </details>
 
 <details>
 <summary><strong>Windows</strong></summary>
 
-1. Baixa `arranjaments.zip` des de l'enllaç de dalt.
+1. Baixa `Arranjaments-Windows.exe` des de l'enllaç de dalt.
 
-   ![Pas 1](docs/captures/windows/01-baixa-zip.png)
+   ![Pas 1](docs/captures/windows/01-baixa-exe.png)
 
-2. A la carpeta Baixades, fes clic dret al ZIP, «Propietats», marca «Desbloquejar», «Aplica» i «D'acord».
+2. A la carpeta Baixades, fes doble clic a `Arranjaments-Windows.exe` (no cal descomprimir res).
 
-   ![Pas 2](docs/captures/windows/02-desbloqueja.png)
+   ![Pas 2](docs/captures/windows/02-baixades.png)
 
-3. Torna a fer clic dret al ZIP i tria «Extreure-ho tot».
+3. Si apareix la finestra blava «Windows ha protegit el teu PC», prem «Més informació» i després «Executa igualment».
 
-   ![Pas 3](docs/captures/windows/03-extreu.png)
+   ![Pas 3](docs/captures/windows/03-smartscreen.png)
 
-4. Entra a la carpeta `arranjaments` i fes doble clic a «Instal·lar Arranjaments» (la icona del pentagrama).
+4. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba. Si MuseScore demana permís (finestra blava), prem «Sí».
 
-   ![Pas 4](docs/captures/windows/04-carpeta-instalador.png)
+   ![Pas 4](docs/captures/windows/04-instalant.png)
 
-5. Si apareix la finestra blava «Windows ha protegit el teu PC», prem «Més informació» i després «Executa igualment».
+5. Quan diu «Tot a punt», ja està instal·lat.
 
-   ![Pas 5](docs/captures/windows/05-smartscreen.png)
+   ![Pas 5](docs/captures/windows/05-tot-a-punt.png)
 
-6. S'obri l'instal·lador. Prem «Instal·lar» i espera: cada pas es marca quan acaba. Si MuseScore demana permís (finestra blava), prem «Sí».
+6. Fes doble clic a la icona «Arranjaments» de l'Escriptori.
 
-   ![Pas 6](docs/captures/windows/06-instalant.png)
+   ![Pas 6](docs/captures/windows/06-icona-escriptori.png)
 
-7. Quan diu «Tot a punt», ja està instal·lat.
+7. S'obri OpenCode. La primera vegada, prem «Afegeix projecte».
 
-   ![Pas 7](docs/captures/windows/07-tot-a-punt.png)
+   ![Pas 7](docs/captures/windows/07-afegeix-projecte.png)
 
-8. Fes doble clic a la icona «Arranjaments» de l'Escriptori.
+8. Tria la carpeta `Arranjaments` de Documents i prem «Selecciona una carpeta».
 
-   ![Pas 8](docs/captures/windows/08-icona-escriptori.png)
+   ![Pas 8](docs/captures/windows/08-tria-carpeta.png)
 
-9. S'obri OpenCode. La primera vegada, prem «Afegeix projecte».
+9. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
 
-   ![Pas 9](docs/captures/windows/09-afegeix-projecte.png)
+   ![Pas 9](docs/captures/windows/09-escriu-peticio.png)
 
-10. Tria la carpeta `Arranjaments` de Documents i prem «Selecciona una carpeta».
+10. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
 
-   ![Pas 10](docs/captures/windows/10-tria-carpeta.png)
+   ![Pas 10](docs/captures/windows/10-pregunta.png)
 
-11. Crea una sessió nova, escriu el que vols amb paraules normals i envia-ho.
+11. Quan acaba, et diu què ha fet i on són els fitxers.
 
-   ![Pas 11](docs/captures/windows/11-escriu-peticio.png)
+   ![Pas 11](docs/captures/windows/11-resultat.png)
 
-12. L'ajudant treballa i et fa preguntes d'una en una. Tria una resposta i prem «Envia».
+12. Els PDF són a Documents, `Arranjaments`, `eixida`.
 
-   ![Pas 12](docs/captures/windows/12-pregunta.png)
+   ![Pas 12](docs/captures/windows/12-carpeta-eixida.png)
 
-13. Quan acaba, et diu què ha fet i on són els fitxers.
+13. Si un model deixa de contestar, prem el nom del model (o escriu `/models`) i tria'n un altre de gratuït.
 
-   ![Pas 13](docs/captures/windows/13-resultat.png)
-
-14. Els PDF són a Documents, `Arranjaments`, `eixida`.
-
-   ![Pas 14](docs/captures/windows/14-carpeta-eixida.png)
-
-15. Si un model deixa de contestar, prem el nom del model (o escriu `/models`) i tria'n un altre de gratuït.
-
-   ![Pas 15](docs/captures/windows/15-models.png)
+   ![Pas 13](docs/captures/windows/13-models.png)
 
 </details>
 
@@ -185,13 +180,14 @@ El mateix d'abans, amb imatges. Les pantalles del sistema (navegador, carpetes, 
 
 ## LliureX i altres Linux (Ubuntu)
 
-Sense finestra bonica, però amb la mateixa instal·lació i **sense contrasenya d'administradora**. Està pensat per a LliureX 23 (Ubuntu 22.04) i LliureX 25 (Ubuntu 24.04), tots dos amb l'escriptori KDE Plasma, i es prova automàticament en Ubuntu 22.04 i 24.04 nets, no en un LliureX de veritat. Només per a ordinadors de 64 bits (Intel/AMD o ARM).
+Sense finestra bonica, però amb la mateixa instal·lació i **sense contrasenya d'administradora**. Està pensat per a LliureX 23 (Ubuntu 22.04) i LliureX 25 (Ubuntu 24.04), tots dos amb l'escriptori KDE Plasma, i es prova automàticament en Ubuntu 22.04 i 24.04 nets (Intel/AMD i ARM), no en un LliureX de veritat. Només per a ordinadors de 64 bits.
 
-1. Baixa i descomprimeix [arranjaments.zip](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/arranjaments.zip) (clic dret, «Extraure ací»). La carpeta bona és on veus `README.md` i `instalacio`.
-2. Fes doble clic a **`Instal·lar Arranjaments (Linux).desktop`**. S'obri una finestra de Terminal amb el progrés (és normal) i, quan acaba, diu «Tot a punt». Si el sistema pregunta si el vols executar o confiar-hi, accepta. Tarda uns minuts (baixa OpenCode i MuseScore).
-3. Obri la icona **«Arranjaments»** de l'Escriptori (o del menú d'aplicacions), i després com al pas 3 de dalt: «Afegeix projecte» i tria la carpeta `Arranjaments` de Documents.
+1. Baixa **[Arranjaments-LliureX.run](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/Arranjaments-LliureX.run)**. És un sol fitxer: porta el projecte a dins.
+2. **Dona-li permís d'execució.** Els navegadors baixen els fitxers sense este permís, i sense ell el doble clic només l'obri com a text. Al gestor de fitxers (Dolphin): clic dret al fitxer, «Propietats», pestanya «Permisos», marca **«És executable»** (en castellà, «Es ejecutable») i «D'acord».
+3. Fes-hi doble clic. Dolphin et pregunta si vols executar-lo: tria **«Executar»**. S'obri sola una finestra de Terminal amb el progrés (és normal) i, quan acaba, diu «Tot a punt». Tarda uns minuts (baixa OpenCode i MuseScore).
+4. Obri la icona **«Arranjaments»** de l'Escriptori (o del menú d'aplicacions), i després com al pas 3 de dalt: «Afegeix projecte» i tria la carpeta `Arranjaments` de Documents.
 
-Si el doble clic no fa res: obri la carpeta amb el gestor de fitxers, prem **F4** (s'obri un terminal a baix, ja dins de la carpeta) i escriu `bash instalacio/instalar-linux.sh`. Fa el mateix. Al gestor de fitxers de KDE (Dolphin), fer doble clic en un fitxer `.sh` no obri cap terminal (només pregunta si s'executa o s'obri), per això l'entrada d'ací és un fitxer `.desktop`, que sí que ho fa.
+**Si no vols tocar permisos, o el doble clic no fa res:** obri la carpeta amb el gestor de fitxers, prem **F4** (s'obri un terminal a baix, ja dins de la carpeta) i escriu `sh Arranjaments-LliureX.run`. Fa exactament el mateix i no necessita cap permís. Si el fitxer s'obri en un editor de text, és que falta el permís del pas 2.
 
 - No cal `libfuse2` ni res d'administradora: les aplicacions (AppImage) es descomprimeixen una vegada dins de `~/.local/share/Arranjaments`.
 - Documents i Escriptori són els del sistema (poden dir-se «Documentos» o «Escritorio»).
@@ -214,16 +210,15 @@ Si el doble clic no fa res: obri la carpeta amb el gestor de fitxers, prem **F4*
 
 Només cal fer-ho la primera vegada. Font: Apple, [Obrir una app que Apple no ha verificat](https://support.apple.com/ca-es/guide/mac-help/mh40617/mac).
 
-**Windows** (10 i 11):
+**Windows** (10 i 11, també ARM):
 
-- Si has desbloquejat el ZIP abans de descomprimir (pas 1), normalment no apareix cap avís.
-- Si apareix una finestra blava «Windows ha protegit el teu PC» (SmartScreen), prem **«Més informació»** i després **«Executa igualment»** (en castellà, «Más información» i «Ejecutar de todas formas»).
-- Si ja has descomprimit sense desbloquejar, també pots desbloquejar només el programa: clic dret a `Instal·lar Arranjaments`, «Propietats», «Desbloquejar».
+- Si el navegador avisa que el fitxer no es baixa habitualment, tria «Conserva».
+- Si apareix una finestra blava «Windows ha protegit el teu PC» (SmartScreen), prem **«Més informació»** i després **«Executa igualment»** (en castellà, «Más información» i «Ejecutar de todas formes»).
 - Si Windows 11 diu que el **Control intel·ligent d'aplicacions** (Smart App Control) ha bloquejat el programa i no hi ha cap botó per a continuar, o si l'ordinador és d'un centre i no deixa: usa l'alternativa de més avall.
 
 Fonts: Microsoft, [SmartScreen i els programes sense signar](https://learn.microsoft.com/windows/apps/package-and-deploy/smartscreen-reputation) i [com treure la marca d'internet (Mark of the Web) d'un fitxer](https://learn.microsoft.com/en-us/microsoft-365-apps/security/internet-macros-blocked#remove-mark-of-the-web-from-a-file).
 
-**Alternativa sense finestra bonica.** Si «Instal·lar Arranjaments» no s'obri de cap manera, dins de la carpeta `instalacio` hi ha els instal·ladors d'abans, que fan exactament el mateix en una finestra de text: `Instalar-Mac.command` (Mac) i `Instalar-Windows.bat` (Windows). Doble clic, i s'obri una finestra negra amb text: és normal. Al Mac, el primer avís es resol igual que en els passos de dalt.
+**Alternativa sense finestra bonica.** Si «Instal·lar Arranjaments» no s'obri de cap manera, baixa [arranjaments.zip](https://github.com/Carlescamarasa/arranjaments/releases/latest/download/arranjaments.zip) (el projecte complet). Dins de la carpeta `instalacio` hi ha els instal·ladors de text, que fan exactament el mateix en una finestra negra: `Instalar-Mac.command` (Mac) i `Instalar-Windows.bat` (Windows). A Windows, **abans de descomprimir**, clic dret al ZIP, «Propietats», marca **«Desbloquejar»**, «Aplica» i «D'acord»; després, clic dret, «Extreure-ho tot». Doble clic a l'instal·lador i s'obri una finestra negra amb text: és normal. Al Mac, el primer avís es resol igual que en els passos de dalt.
 
 ## Frases que pots escriure
 
@@ -282,7 +277,8 @@ En este repositori (per a qui vol canviar el programa):
 
 - `AGENTS.md`, `opencode.json` i `.opencode/skills/`: el que l'instal·lador copia dins de `.opencode` a la carpeta de treball.
 - `scripts/partitures/`: les eines musicals (Python + music21). Dins del repositori s'executen amb `uv run partitures ...`.
-- `instalacio/`: els instal·ladors de veritat (`instalar-mac.sh`, `instalar-windows.ps1` i `instalar-linux.sh`). «Instal·lar Arranjaments» és només una finestra que executa estos mateixos fitxers i en mostra el progrés; el seu codi és a `instalacio/visual/` (Swift per a Mac, C# per a Windows) i es construeix sol a GitHub cada vegada que canvia el projecte, juntament amb el ZIP de «Releases». Es poden usar a mà, per separat si vols: `bash "instalacio/instalar-mac.sh" --nomes uv` (o `opencode`, `musescore`, `eines`, `carpeta`, `icona`; `audiveris` només si cal convertir PDF); Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv`. Amb `--prova` (Windows `-Prova`) només comprova. No cal Homebrew. Audiveris porta Java inclòs.
+- `instalacio/`: els instal·ladors de veritat (`instalar-mac.sh`, `instalar-windows.ps1` i `instalar-linux.sh`). «Instal·lar Arranjaments» és només una finestra que executa estos mateixos fitxers i en mostra el progrés; el seu codi és a `instalacio/visual/` (Swift per a Mac, C# per a Windows) i es construeix sol a GitHub cada vegada que canvia el projecte. Els fitxers que baixa la professora es fan també allà (`instalacio/visual/paquets.py`, `mac/fes-dmg.sh` i `linux/capcalera.sh`): cadascun és l'instal·lador amb el projecte a dins (`Arranjaments-Windows.exe`: el programa amb un ZIP enganxat al final; `Arranjaments-Mac.dmg`: l'aplicació amb `Contents/Resources/projecte.tar.gz`; `Arranjaments-LliureX.run`: un guió amb un tar.gz enganxat). En obrir-se, el programa descomprimeix el projecte a una carpeta temporal (`staging`, dins de la carpeta de dades), executa el guió d'instal·lació i l'esborra en acabar. Es publiquen a «Releases» amb noms fixos, juntament amb `arranjaments.zip`, només quan la instal·lació ha anat bé en un Mac Apple Silicon, un Mac Intel, un Windows x64, un Windows ARM64 i quatre Linux (22.04 i 24.04, x64 i ARM64). Es poden usar a mà, per separat si vols: `bash "instalacio/instalar-mac.sh" --nomes uv` (o `opencode`, `musescore`, `eines`, `carpeta`, `icona`; `audiveris` només si cal convertir PDF); Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes uv`. Amb `--prova` (Windows `-Prova`) només comprova. No cal Homebrew. Audiveris porta Java inclòs.
+- **Arquitectures.** Mac: l'aplicació és universal (Apple Silicon i Intel) i els guions trien sols la versió d'OpenCode (`arm64` o `x64`) i d'Audiveris. Windows: el programa és AnyCPU, així que a Windows ARM corre de forma nativa; el guió pregunta l'arquitectura al sistema (no al procés, que en emulació pot mentir) i instal·la OpenCode ARM64 si és un ARM. MuseScore i Audiveris només tenen versió x64 per a Windows: en un Windows 11 ARM funcionen per emulació. `uv` i Python s'instal·len nadius (ARM64) i la icona «Arranjaments» usa el Python de l'entorn de les eines, que és el seu. Linux: OpenCode i MuseScore tenen AppImage `arm64`/`aarch64`, i s'escull per `uname -m`. Audiveris a Linux no s'instal·la sol.
 - Proves: `uv run pytest` (a GitHub també s'executen a Mac i a Windows, amb una instal·lació de veritat en ordinadors nets, i la instal·lació de Linux es prova en Ubuntu 22.04 i 24.04).
 - Alternativa amb línia d'ordres (Terminal): `curl -fsSL https://opencode.ai/v2/install | bash`, i després `opencode` dins de la carpeta de treball. El format de `opencode.json` és el d'OpenCode 2; amb OpenCode 1 caldria el format antic (`permission`).
 
@@ -290,7 +286,7 @@ En este repositori (per a qui vol canviar el programa):
 
 ## Instal·lació manual (si l'instal·lador automàtic no funciona)
 
-1. **OpenCode.** Mac: [per a Mac amb xip Apple (M1, M2, M3...)](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-arm64.dmg) o [per a Mac amb Intel](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-x64.dmg); obri el fitxer i arrossega OpenCode a Aplicacions (si no saps quin Mac tens: menú Apple, «Sobre este Mac»). Windows: [descarrega per a Windows](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-x64.exe) i fes-hi doble clic. Totes les opcions: https://opencode.ai/download
+1. **OpenCode.** Mac: [per a Mac amb xip Apple (M1, M2, M3...)](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-arm64.dmg) o [per a Mac amb Intel](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-mac-x64.dmg); obri el fitxer i arrossega OpenCode a Aplicacions (si no saps quin Mac tens: menú Apple, «Sobre este Mac»). Windows: [descarrega per a Windows](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-x64.exe) (o, si l'ordinador és ARM, la [versió ARM64](https://opencode.ai/update/api/latest/desktop/opencode/opencode-desktop-win-arm64.exe)) i fes-hi doble clic. Totes les opcions: https://opencode.ai/download
 2. **MuseScore** (gratuït; potser ja el tens): https://musescore.org/ca/download. Tria l'opció «sense MuseHub» (MuseScore Studio «without MuseHub»), que és l'aplicació sola.
 3. **Linux:** OpenCode, «Linux (AppImage)» a https://opencode.ai/download, i MuseScore, l'AppImage de https://musescore.org/ca/download. Per a les eines i la carpeta: `bash "instalacio/instalar-linux.sh" --nomes eines` i `--nomes carpeta` (cal [uv](https://docs.astral.sh/uv/getting-started/installation/)).
 4. **Les eines musicals i la carpeta de treball (Mac i Windows):** instal·la [uv](https://docs.astral.sh/uv/getting-started/installation/) i després executa l'instal·lador només per a estes dues coses. Mac: `bash "instalacio/instalar-mac.sh" --nomes eines` i `bash "instalacio/instalar-mac.sh" --nomes carpeta`. Windows: `powershell -ExecutionPolicy Bypass -File "instalacio\instalar-windows.ps1" -Nomes eines` i el mateix amb `-Nomes carpeta`.
