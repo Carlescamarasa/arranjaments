@@ -222,7 +222,11 @@ def parts_separades(score: stream.Score) -> list[tuple[str, stream.Score]]:
         s = stream.Score()
         s.metadata = copy.deepcopy(score.metadata)
         copies = [copy.deepcopy(score.parts[k]) for k in u]
+        marca = next(iter(score.recurse().getElementsByClass(tempo.MetronomeMark)), None)
         for c in copies:
+            primer = c.getElementsByClass(stream.Measure).first()
+            if marca is not None and primer is not None and not list(c.recurse().getElementsByClass(tempo.MetronomeMark)):
+                primer.insert(0, copy.deepcopy(marca))    # cada particel·la porta el tempo (el guió el porta una vegada)
             s.insert(0, c)
         if len(copies) > 1:
             s.insert(0, layout.StaffGroup(copies, symbol="brace"))
