@@ -246,7 +246,7 @@ def test_la_carpeta_de_treball_nomes_te_entrada_i_eixida_i_no_es_toquen_les_part
         pytest.skip("només a Mac i Windows")
     assert r.returncode == 0, r.stdout.decode("utf-8", "replace") + r.stderr.decode("utf-8", "replace")
     assert sorted(f.name for f in treball.iterdir()) == [".opencode", "eixida", "entrada"]
-    assert sorted(f.name for f in (treball / ".opencode").iterdir()) == ["AGENTS.md", "opencode.json", "skills"]
+    assert sorted(f.name for f in (treball / ".opencode").iterdir()) == ["AGENTS.md", "NOVETATS.md", "opencode.json", "skills"]
     assert (treball / ".opencode" / "skills" / "arranjar" / "SKILL.md").exists()
     assert json.loads(_text(treball / ".opencode" / "opencode.json"))["instructions"] == [".opencode/AGENTS.md"]
     assert not (tmp_path / "dades").exists() and not (tmp_path / "bin").exists(), "«carpeta» no ha de tocar res més"

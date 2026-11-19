@@ -130,6 +130,8 @@ function CopiaEines {
         }
         Copy-Item (Join-Path $Carpeta "instalacio\instalar-windows.ps1") (Join-Path $Dades "instalacio\instalar-windows.ps1") -Force -ErrorAction Stop
         Copy-Item (Join-Path $Carpeta ".opencode\skills") (Join-Path $Dades ".opencode\skills") -Recurse -Force -ErrorAction Stop
+        # L'actualitzador sap així on és la carpeta de treball (UTF-8 sense BOM: el camí pot portar accents)
+        [IO.File]::WriteAllText((Join-Path $Dades "treball.txt"), $Treball + "`n", (New-Object Text.UTF8Encoding $false))
         Get-ChildItem (Join-Path $Dades "scripts") -Recurse -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         # Els fitxers venen d'un ZIP baixat d'internet: es trau la marca perquè Windows no avise més endavant
         Get-ChildItem (Join-Path $Dades "scripts"), (Join-Path $Dades "instalacio"), (Join-Path $Dades ".opencode") -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
@@ -168,9 +170,6 @@ function PreparaCarpeta {
         Copy-Item (Join-Path $Carpeta ".opencode\skills") $skills -Recurse -Force -ErrorAction Stop
         Copy-Item (Join-Path $Carpeta "AGENTS.md") (Join-Path $cfg "AGENTS.md") -Force -ErrorAction Stop
         Copy-Item (Join-Path $Carpeta "NOVETATS.md") (Join-Path $cfg "NOVETATS.md") -Force -ErrorAction Stop
-        # L'actualitzador sap així on és la carpeta de treball (UTF-8 sense BOM: el camí pot portar accents)
-        New-Item -ItemType Directory -Force $Dades | Out-Null
-        [IO.File]::WriteAllText((Join-Path $Dades "treball.txt"), $Treball + "`n", (New-Object Text.UTF8Encoding $false))
         Copy-Item (Join-Path $Carpeta "opencode.json") (Join-Path $cfg "opencode.json") -Force -ErrorAction Stop
         Get-ChildItem $cfg -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
         # Amagada, perquè a la carpeta només es vegen entrada i eixida

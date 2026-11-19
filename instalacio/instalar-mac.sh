@@ -112,6 +112,8 @@ copia_eines() {
     && cp -X "$CARPETA/instalacio/instalar-mac.sh" "$DADES/instalacio/" \
     && cp -RX "$CARPETA/.opencode/skills" "$DADES/.opencode/skills" || return 1
   find "$DADES/scripts" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null
+  # L'actualitzador sap així on és la carpeta de treball
+  printf '%s\n' "$TREBALL" > "$DADES/treball.txt"
   return 0
 }
 
@@ -213,8 +215,6 @@ else
      && cp -X "$CARPETA/AGENTS.md" "$TREBALL/.opencode/AGENTS.md" \
      && cp -X "$CARPETA/NOVETATS.md" "$TREBALL/.opencode/NOVETATS.md" \
      && cp -X "$CARPETA/opencode.json" "$TREBALL/.opencode/opencode.json"; then
-    # L'actualitzador sap així on és la carpeta de treball
-    mkdir -p "$DADES" && printf '%s\n' "$TREBALL" > "$DADES/treball.txt"
     ok "carpeta de treball preparada (les teues partitures no s'han tocat)"
   else fallada "No he pogut preparar la carpeta de treball $TREBALL."; fi
 fi

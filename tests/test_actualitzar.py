@@ -80,10 +80,10 @@ def test_actualitza_canvia_eines_i_configuracio_i_no_toca_res_de_la_persona(ento
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "actualitzada", r
     assert act.versio_de(entorn.dades) == "1.0.2"
-    assert (entorn.dades / "scripts/partitures/marca.txt").read_text() == "nova"
-    assert (entorn.treball / ".opencode/AGENTS.md").read_text() == "agents nova"
-    assert (entorn.treball / ".opencode/skills/arranjar/SKILL.md").read_text() == "skill nova"
-    assert (entorn.dades / ".opencode/skills/arranjar/SKILL.md").read_text() == "skill nova"
+    assert (entorn.dades / "scripts/partitures/marca.txt").read_text(encoding="utf-8") == "nova"
+    assert (entorn.treball / ".opencode/AGENTS.md").read_text(encoding="utf-8") == "agents nova"
+    assert (entorn.treball / ".opencode/skills/arranjar/SKILL.md").read_text(encoding="utf-8") == "skill nova"
+    assert (entorn.dades / ".opencode/skills/arranjar/SKILL.md").read_text(encoding="utf-8") == "skill nova"
     assert (_foto(entorn.treball / "eixida") | _foto(entorn.treball / "entrada")) == persona_abans
     assert sorted(p.name for p in entorn.treball.iterdir()) == [".opencode", "eixida", "entrada"]
     assert sorted(p.name for p in (entorn.treball / ".opencode").iterdir()) == ["AGENTS.md", "NOVETATS.md", "opencode.json", "skills"]
@@ -97,7 +97,7 @@ def test_al_dia_no_fa_res(entorn, tmp_path):
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "al_dia"
     assert not (entorn.dades / "anterior").exists()
-    assert (entorn.dades / "scripts/partitures/marca.txt").read_text() == "vella"
+    assert (entorn.dades / "scripts/partitures/marca.txt").read_text(encoding="utf-8") == "vella"
 
 
 def test_versio_mes_vella_o_igual_no_es_baixa(entorn, tmp_path):
@@ -108,15 +108,15 @@ def test_versio_mes_vella_o_igual_no_es_baixa(entorn, tmp_path):
 def test_sha_diferent_es_rebutja(entorn, tmp_path):
     _publica(entorn, tmp_path, "1.0.2", "nova")
     ruta = entorn.servidor / act.FITXER_VERSIO
-    d = json.loads(ruta.read_text())
+    d = json.loads(ruta.read_text(encoding="utf-8"))
     d["sha256"] = hashlib.sha256(b"altra cosa").hexdigest()
     ruta.write_text(json.dumps(d))
     r = act.actualitza(entorn, forca=True, sync=_sense_sync)
     assert r.codi == "error"
     assert not (entorn.dades / "anterior").exists()
-    assert (entorn.dades / "scripts/partitures/marca.txt").read_text() == "vella"
+    assert (entorn.dades / "scripts/partitures/marca.txt").read_text(encoding="utf-8") == "vella"
     assert act.versio_de(entorn.dades) == "1.0.1"
-    assert "sha256" in (entorn.dades / "actualitzacio.log").read_text()
+    assert "sha256" in (entorn.dades / "actualitzacio.log").read_text(encoding="utf-8")
 
 
 def test_paquet_amb_ruta_fora_es_rebutja(entorn, tmp_path):
@@ -124,7 +124,7 @@ def test_paquet_amb_ruta_fora_es_rebutja(entorn, tmp_path):
     ruta_zip = entorn.servidor / act.FITXER_PAQUET
     with zipfile.ZipFile(ruta_zip, "a") as z:
         z.writestr("../fora.txt", "mal")
-    d = json.loads((entorn.servidor / act.FITXER_VERSIO).read_text())
+    d = json.loads((entorn.servidor / act.FITXER_VERSIO).read_text(encoding="utf-8"))
     d["sha256"] = hashlib.sha256(ruta_zip.read_bytes()).hexdigest()
     d["mida"] = ruta_zip.stat().st_size
     (entorn.servidor / act.FITXER_VERSIO).write_text(json.dumps(d))
@@ -139,7 +139,7 @@ def test_sense_xarxa_no_falla_i_ho_registra(entorn):
     assert r.codi == "sense_xarxa"
     assert r.be
     assert act.versio_de(entorn.dades) == "1.0.1"
-    assert "Sense connexió" in (entorn.dades / "actualitzacio.log").read_text()
+    assert "Sense connexió" in (entorn.dades / "actualitzacio.log").read_text(encoding="utf-8")
 
 
 def test_servidor_http_inaccessible(entorn):
@@ -233,8 +233,8 @@ def test_si_falla_uv_sync_es_torna_a_la_versio_vella(entorn, tmp_path, monkeypat
     r = act.actualitza(entorn, forca=True, sync=lambda d: False)
     assert r.codi == "error"
     assert act.versio_de(entorn.dades) == "1.0.1"
-    assert (entorn.dades / "uv.lock").read_text() == "lock-1"
-    assert (entorn.treball / ".opencode/AGENTS.md").read_text() == "agents vella"
+    assert (entorn.dades / "uv.lock").read_text(encoding="utf-8") == "lock-1"
+    assert (entorn.treball / ".opencode/AGENTS.md").read_text(encoding="utf-8") == "agents vella"
 
 
 def test_python_diferent_demana_reinstalar(entorn, tmp_path):
@@ -274,7 +274,7 @@ def test_el_llancador_obri_sempre_el_programa(entorn, monkeypatch):
     monkeypatch.setattr(act, "actualitza", explota)
     assert act.main(["--silenci", "--obri", str(fals)]) == 0
     assert obert == [str(fals), str(fals)]
-    assert "bum" in (entorn.dades / "actualitzacio.log").read_text()
+    assert "bum" in (entorn.dades / "actualitzacio.log").read_text(encoding="utf-8")
 
 
 def test_des_del_repositori_no_es_toca_res(monkeypatch):
@@ -293,5 +293,5 @@ def test_crea_paquet_no_porta_res_de_la_persona(tmp_path):
         noms = z.namelist()
     assert "VERSION" in noms
     assert not [n for n in noms if n.startswith(("entrada", "eixida")) or "__pycache__" in n]
-    d = json.loads((tmp_path / "o" / act.FITXER_VERSIO).read_text())
+    d = json.loads((tmp_path / "o" / act.FITXER_VERSIO).read_text(encoding="utf-8"))
     assert d["versio"] == "3.1.4" and len(d["sha256"]) == 64
