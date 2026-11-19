@@ -33,6 +33,8 @@ Opcions:
 - `--to "Sol major"`: transporta abans a una tonalitat més fàcil.
 - `--simplifica`: simplifica el ritme de la melodia a les figures del nivell (només si el perfil té les figures).
 - `--bordo`: acompanyament amb bordó Orff (tònica i quinta).
+- `--sense-rotacio`: la melodia, el contracant i el baix es queden sempre en el mateix instrument. Per defecte la melodia va canviant de veu cada frase (8 compassos, 4 si la peça és curta): comença i acaba l'instrument de la melodia, el baix la porta una vegada si hi cap, i quan un altre la porta, qui feia la melodia passa al contracant. Els instruments de percussió sense altura mai la porten. L'informe diu «Qui porta la melodia: c. 1-8 trompeta; c. 9-16 flauta...» i a cada particel·la ix la paraula «melodia» on l'instrument la comença. El baix també toca patrons de l'estil, amb respostes curtes en les notes llargues de la melodia.
+- `--tutti-final`: en l'última frase, el contracant també porta la melodia.
 - `--melodia-part 2`: si la melodia no és a la part més aguda.
 
 L'ordre mostra l'informe: la tonalitat, els **acords** (els que porta la partitura i, amb `*`, els que ha posat l'eina), la tessitura de cada part, el que passa del nivell i les comprovacions (quintes i octaves paral·leles, compassos buits). Mostra els avisos importants tal com apareixen (Pas 4). Digues SEMPRE que és un esborrany i que cal revisar-lo amb MuseScore (`partitures obrir "<fitxer>"`).
@@ -45,9 +47,10 @@ Esta skill continua el camí «arranjament nou» d'AGENTS.md. La persona no est�
 
 **Pas 1. UNA sola crida a `question`, amb una pregunta per pestanya.** Només les que falten, en este ordre (header curt de com a molt 30 caràcters):
 1. «Repartiment»: el proposes tu (vegeu més avall). Opcions: «Així (recomanat)», amb la descripció que diu qui fa cada rol, i «Vull canviar-ho». Si diu «làmines», ofereix xilòfon, metal·lòfon i carilló.
-2. «Estil»: ragtime, swing, pop... Primer el que proposes (per l'època de la peça o el compàs) amb «(recomanat)», i dos més. Una frase de descripció cadascun.
-3. «Curs»: «1r d'elemental», «4t d'elemental»... (recomanat el que ja sap del perfil; si no, 4t d'elemental). L'opció de resposta pròpia serveix per a un altre curs.
-4. «Compassos» (només si la peça passa de 32 compassos): «Tota la peça (recomanat)» i «Un tros» (la persona dirà quin amb la resposta pròpia).
+2. «Repartiment de la melodia»: «Que vaja canviant (recomanat)» (cada frase la porta un instrument diferent, perquè cap part s'avorresca) i «Sempre el mateix instrument» (`--sense-rotacio`). Si només hi ha un instrument de vent o de corda, o la peça és molt curta, no la preguntes.
+3. «Estil»: ragtime, swing, pop... Primer el que proposes (per l'època de la peça o el compàs) amb «(recomanat)», i dos més. Una frase de descripció cadascun.
+4. «Curs»: «1r d'elemental», «4t d'elemental»... (recomanat el que ja sap del perfil; si no, 4t d'elemental). L'opció de resposta pròpia serveix per a un altre curs.
+5. «Compassos» (només si la peça passa de 32 compassos): «Tota la peça (recomanat)» i «Un tros» (la persona dirà quin amb la resposta pròpia).
 
 Abans de la crida, digues en una línia què faràs: «Necessite saber unes coses sobre l'arranjament.» No numeres res. Si la persona no diu quins instruments té, proposa trompeta, flauta, xilòfon i bateria. Si respon «sí», «el que vulgues» o «tu mateix», tria la primera de cada pestanya. Si una resposta no s'entén, UNA pregunta de text per aclarir-ho.
 

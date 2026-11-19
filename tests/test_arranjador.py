@@ -362,3 +362,161 @@ def test_arranjament_s_exporta_a_pdf(ragtime, capsys, projecte):
     assert executar("exportar", ruta) == 0
     pdfs = list((projecte / "eixida").glob("*/*.pdf")) + list((projecte / "eixida").glob("*/*/*.pdf"))
     assert len(pdfs) == 1 + 4      # guió i 4 particel·les
+
+
+# --------------------------------------------------------------------------- repartiment de la melodia (rotació)
+
+ROLS_BAIX = "melodia=trompeta-sib,contracant=flauta,acompanyament=xilofon,baix=trombo,percussio=bateria"
+# resum (notes, durades, altures) de la sortida de sempre: --sense-rotacio no l'ha de canviar
+RESUM_RAG_FIX = "20571e1d18df7d80"
+RESUM_BRESSOL_FIX = "c82a837541747b99"
+
+
+def _resum(s):
+    import hashlib
+    h = hashlib.sha256()
+    for p in s.parts:
+        h.update(str(p.partName).encode())
+        for n in p.recurse().notes:
+            h.update(f"{n.offset}|{n.quarterLength}|{[x.nameWithOctave for x in getattr(n, 'pitches', [])]}".encode())
+    return h.hexdigest()[:16]
+
+
+def _pla(ragtime, rols=ROLS_BAIX, **kw):
+    r, informe = arr.arranjar(musica.carregar(ragtime), arr.parse_rols(rols), estil="ragtime", **kw)
+    return r, informe, arr.arranjar.pla, arr.parse_rols(rols)
+
+
+def test_rotacio_pla_per_frases(ragtime):
+    r, informe, pla, rols = _pla(ragtime, curs="4t elemental")
+    assert len(pla) == 4
+    # frases consecutives, alineades amb els compassos
+    assert all(a.i1 == b.i0 for a, b in zip(pla, pla[1:]))
+    nom = lambda s: rols[s.portador].instr.clau
+    assert nom(pla[0]) == "trompeta-sib" and nom(pla[-1]) == "trompeta-sib"   # la melodia comença i acaba igual
+    assert any(nom(s) == "trombo" for s in pla)                             # el baix hi té un torn
+    assert len({nom(s) for s in pla}) >= 3
+    assert all(not rols[s.portador].instr.percussio for s in pla)           # mai la bateria
+    assert all(nom(a) != nom(b) for a, b in zip(pla, pla[1:]))
+    text = "\n".join(informe)
+    assert "Qui porta la melodia: c. 1-8 trompeta; c. 9-16 flauta;" in text
+    assert "trombó (la trompeta fa el baix)" in text
+    assert "—" not in text and " · " not in text
+
+
+def test_rotacio_el_baix_no_perd_el_fonament(ragtime):
+    r, _, pla, rols = _pla(ragtime, curs="4t elemental")
+    s = next(x for x in pla if rols[x.portador].instr.clau == "trombo")
+    f = {rols[i].instr.clau: v for i, v in s.funcions.items()}
+    assert f["trombo"] == "melodia" and f["trompeta-sib"] == "suport"
+    assert f["flauta"] == "contracant" and f["xilofon"] == "acompanyament" and f["bateria"] == "percussio"
+    # el suport toca a tots els compassos de la frase, i la melodia de la frase la fa el trombó
+    parts = _parts(r)
+    for nom in ("Trompeta en Si bemoll", "Trombó"):
+        ms = [m for m in parts[nom].getElementsByClass(stream.Measure) if s.num0 <= m.number <= s.num1]
+        assert all(any(not n.isRest for n in m.recurse().notes) for m in ms)
+    # i la trompeta fa de baix: notes greus, una per mig compàs com a molt
+    tpt = [m for m in parts["Trompeta en Si bemoll"].getElementsByClass(stream.Measure) if s.num0 <= m.number <= s.num1]
+    assert max(len([n for n in m.recurse().notes if not isinstance(n, harmony.Harmony)]) for m in tpt) <= 2
+
+
+def test_rotacio_marca_melodia_al_text(ragtime):
+    r, _, pla, rols = _pla(ragtime, curs="4t elemental")
+    for s in pla[1:]:
+        if s.portador == pla[0].portador:
+            continue
+        p = _parts(r)[rols[s.portador].instr.nom]
+        m = next(x for x in p.getElementsByClass(stream.Measure) if x.number == s.num0)
+        assert any(t.content == "melodia" for t in m.getElementsByClass("TextExpression"))
+
+
+def test_rotacio_respecta_el_perfil_del_nivell(ragtime, capsys):
+    for ins, tes in (("trompeta-sib", "Do3-Sol4"), ("flauta", "Do3-Sol4"), ("trombo", "Fa1-Fa3"),
+                     ("xilofon", "Do3-Sol4")):
+        executar("nivell", "desa", "--instrument", ins, "--curs", "4t elemental", "--tessitura", tes)
+    capsys.readouterr()
+    from partitures import nivells
+    r, informe, pla, rols = _pla(ragtime, curs="4t elemental")
+    assert "FORA d'abast" not in "\n".join(informe)
+    # a les frases on un instrument porta la melodia (i no és el seu rol de sempre), cau dins del perfil
+    parts = _parts(r)
+    for s in pla:
+        r_ = rols[s.portador]
+        if r_.rol == "melodia":
+            continue
+        lo, hi = nivells.rang_midi(nivells.perfil(r_.instr.clau, "4t elemental")["tessitura"])
+        mids = [p.midi for m in parts[r_.instr.nom].getElementsByClass(stream.Measure) if s.num0 <= m.number <= s.num1
+                for n in m.recurse().notes if not isinstance(n, harmony.Harmony) for p in n.pitches]
+        assert mids and sum(lo <= x <= hi for x in mids) / len(mids) >= 0.85
+
+
+def test_rotacio_sense_rotacio_es_com_abans(ragtime, bressol):
+    a, _ = arr.arranjar(musica.carregar(ragtime), arr.parse_rols(ROLS_BAIX), estil="ragtime", curs="4t elemental",
+                        rotacio=False)
+    assert _resum(a) == RESUM_RAG_FIX
+    b, _ = arr.arranjar(musica.carregar(bressol), arr.parse_rols(
+        "melodia=clarinet-sib,contracant=flauta,acompanyament=lamines,baix=fagot,percussio=caixa"), estil="swing",
+        rotacio=False)
+    assert _resum(b) == RESUM_BRESSOL_FIX
+
+
+def test_rotacio_per_defecte_i_flag_al_cli(ragtime, capsys):
+    assert executar("arranja", ragtime, "--rols", ROLS_BAIX, "--estil", "ragtime") == 0
+    _, out = actual(capsys)
+    assert "Qui porta la melodia" in out
+    assert executar("arranja", ragtime, "--rols", ROLS_BAIX, "--estil", "ragtime", "--sense-rotacio") == 0
+    _, out = actual(capsys)
+    assert "Qui porta la melodia" not in out
+
+
+def test_rotacio_determinista(ragtime):
+    a, ia, _, _ = _pla(ragtime, curs="4t elemental")
+    b, ib, _, _ = _pla(ragtime, curs="4t elemental")
+    assert _resum(a) == _resum(b) and ia == ib
+
+
+def test_rotacio_no_augmenta_les_quintes_paral_leles(ragtime):
+    _, informe, _, _ = _pla(ragtime, curs="4t elemental")
+    assert any("paral·leles del contracant: cap" in x for x in informe)
+
+
+def test_rotacio_tutti_final(ragtime):
+    r, informe, pla, rols = _pla(ragtime, curs="4t elemental", tutti_final=True)
+    assert pla[-1].tutti
+    assert sum(v == "melodia" for v in pla[-1].funcions.values()) == 2
+    assert "tot el conjunt amb la melodia" in "\n".join(informe)
+    assert not any(s.tutti for s in _pla(ragtime)[2])        # per defecte, no
+
+
+def test_rotacio_peca_curta_i_sense_baix(bressol):
+    s = musica.carregar(bressol)
+    r, informe = arr.arranjar(s, arr.parse_rols("melodia=flauta,contracant=clarinet-sib"), estil="pop",
+                              compassos_sel=(1, 5))
+    assert len(r.parts) == 2 and "massa curta" in "\n".join(informe)
+    # amb dos instruments de melodia no es reparteix
+    r, informe = arr.arranjar(s, arr.parse_rols("melodia=flauta,melodia=oboe,baix=fagot"), estil="pop")
+    assert "dos instruments amb la melodia" in "\n".join(informe)
+
+
+def test_rotacio_trio_de_canyes_i_mallets(ragtime):
+    s = musica.carregar(ragtime)
+    rols = arr.parse_rols("melodia=oboe,contracant=clarinet-sib,baix=fagot")
+    r, informe = arr.arranjar(s, rols, estil="classic")
+    pla = arr.arranjar.pla
+    claus = [rols[x.portador].instr.clau for x in pla]
+    assert claus[0] == claus[-1] == "oboe"
+    assert len(r.parts) == 3
+
+
+def test_baix_viu_segons_l_estil(ragtime):
+    """El baix ja no és només rodones i rodones partides: patró de l'estil i notes dins de la seua zona."""
+    s = musica.carregar(ragtime)
+    for estil, esperat in (("ragtime", {1.0}), ("swing", {1.0}), ("classic", {1.0})):
+        r, _ = arr.arranjar(s, arr.parse_rols("melodia=trompeta-sib,baix=trombo"), estil=estil)
+        durs = {n.quarterLength for n in _notes(_parts(r)["Trombó"]) if n.quarterLength <= 1}
+        assert esperat <= durs
+        mids = [p.midi for n in _notes(_parts(r)["Trombó"]) for p in n.pitches]
+        assert min(mids) >= 28 and max(mids) <= 77    # dins de l'abast del trombó (Mi1-Fa4)
+    # amb --sense-rotacio, el baix és el de sempre (mitges i rodones)
+    r, _ = arr.arranjar(s, arr.parse_rols("melodia=trompeta-sib,baix=trombo"), estil="swing", rotacio=False)
+    assert {n.quarterLength for n in _notes(_parts(r)["Trombó"])} <= {1.0, 2.0, 4.0}

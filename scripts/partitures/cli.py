@@ -68,7 +68,8 @@ def cmd_arranja(a):
         print(x)
     s = musica.carregar(a.fitxer)
     r, informe = arr.arranjar(s, rols, estil=a.estil, curs=a.nivell, compassos_sel=arr.parse_compassos(a.compassos),
-                              melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo)
+                              melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo,
+                              rotacio=not a.sense_rotacio, tutti_final=a.tutti_final)
     ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     print("\n".join(informe))
     _actual(ruta)
@@ -387,6 +388,10 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--to", help='Transporta abans a esta tonalitat, per exemple "Sol major"')
     s.add_argument("--simplifica", action="store_true", help="Simplifica el ritme de la melodia a les figures del nivell")
     s.add_argument("--bordo", action="store_true", help="Acompanyament amb bordó (tònica i quinta), estil Orff")
+    s.add_argument("--sense-rotacio", action="store_true", dest="sense_rotacio",
+                   help="La melodia, el contracant i el baix es queden sempre en el mateix instrument (per defecte van canviant)")
+    s.add_argument("--tutti-final", action="store_true", dest="tutti_final",
+                   help="L'última frase, la melodia també en el contracant (tot el conjunt)")
     s.add_argument("--nova-versio", action="store_true", dest="nova_versio",
                    help="Conserva la versió anterior i crea una carpeta nova (peça-2)")
     s.add_argument("--eixida"); s.set_defaults(f=cmd_arranja)
