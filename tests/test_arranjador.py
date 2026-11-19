@@ -367,9 +367,11 @@ def test_arranjament_s_exporta_a_pdf(ragtime, capsys, projecte):
 # --------------------------------------------------------------------------- repartiment de la melodia (rotació)
 
 ROLS_BAIX = "melodia=trompeta-sib,contracant=flauta,acompanyament=xilofon,baix=trombo,percussio=bateria"
-# resum (notes, durades, altures) de la sortida de sempre: --sense-rotacio no l'ha de canviar
-RESUM_RAG_FIX = "20571e1d18df7d80"
-RESUM_BRESSOL_FIX = "c82a837541747b99"
+# resum (notes, durades, altures) de la sortida de --sense-rotacio. Paquets 8 i 11 (19/11/2026): el contracant ara depèn
+# del curs (terceres, complementari, guia) i la melodia canvia d'octava per frases, també sense rotació; per això es
+# van actualitzar els dos resums (abans "20571e1d18df7d80" i "c82a837541747b99").
+RESUM_RAG_FIX = "9a9f6c95096b626f"
+RESUM_BRESSOL_FIX = "81449efffdad135f"
 
 
 def _resum(s):
