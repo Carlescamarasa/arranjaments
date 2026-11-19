@@ -69,7 +69,8 @@ def cmd_arranja(a):
     s = musica.carregar(a.fitxer)
     r, informe = arr.arranjar(s, rols, estil=a.estil, curs=a.nivell, compassos_sel=arr.parse_compassos(a.compassos),
                               melodia_part=a.melodia_part, a_tonalitat=a.to, simplifica=a.simplifica, bordo=a.bordo,
-                              rotacio=not a.sense_rotacio, tutti_final=a.tutti_final)
+                              rotacio=not a.sense_rotacio, tutti_final=a.tutti_final,
+                              harmonia=a.harmonia)
     ruta = musica.desar(r, rutes.eixida_peca(a.fitxer, a.eixida, a.nova_versio))
     print("\n".join(informe))
     _actual(ruta)
@@ -80,7 +81,7 @@ def cmd_harmonia(a):
     if a.accio == "fitxa":
         print(harmonia.text_fitxa(a.tema) if a.tema else harmonia.llista_temes())
     else:
-        print(harmonia.comprova(musica.carregar(a.fitxer), a.veus, a.tonalitat))
+        print(harmonia.comprova(musica.carregar(a.fitxer), a.veus, a.tonalitat, a.perfil))
 
 
 def cmd_nivell(a):
@@ -388,6 +389,8 @@ def crear_parser() -> argparse.ArgumentParser:
     s.add_argument("--to", help='Transporta abans a esta tonalitat, per exemple "Sol major"')
     s.add_argument("--simplifica", action="store_true", help="Simplifica el ritme de la melodia a les figures del nivell")
     s.add_argument("--bordo", action="store_true", help="Acompanyament amb bordó (tònica i quinta), estil Orff")
+    s.add_argument("--harmonia", choices=("auto", "simple", "modal"), default="auto",
+                   help="Si la melodia va sola: auto (segons el nivell), simple (un acord per compàs: I, IV, V) o modal")
     s.add_argument("--sense-rotacio", action="store_true", dest="sense_rotacio",
                    help="La melodia, el contracant i el baix es queden sempre en el mateix instrument (per defecte van canviant)")
     s.add_argument("--tutti-final", action="store_true", dest="tutti_final",
@@ -403,6 +406,8 @@ def crear_parser() -> argparse.ArgumentParser:
     x = h.add_parser("comprova", help="Comprova un coral a 4 veus (o menys), compàs a compàs")
     x.add_argument("fitxer"); x.add_argument("--veus", default="SATB", help="Veus, de dalt a baix (per defecte SATB)")
     x.add_argument("--tonalitat", help="Si l'armadura no ho diu (per exemple «la menor»)")
+    x.add_argument("--perfil", choices=("escolar", "arranjament"), default="escolar",
+                   help="escolar (estricte, per defecte) o arranjament (més permissiu)")
     s.set_defaults(f=cmd_harmonia)
 
     s = sub.add_parser("nivell", help="Perfils de nivell (curs i instrument) que l'ajudant va aprenent")

@@ -33,6 +33,7 @@ Opcions:
 - `--to "Sol major"`: transporta abans a una tonalitat més fàcil.
 - `--simplifica`: simplifica el ritme de la melodia a les figures del nivell (només si el perfil té les figures).
 - `--bordo`: acompanyament amb bordó Orff (tònica i quinta).
+- `--harmonia simple|modal`: només si la melodia va sola. `simple` fa un acord per compàs (I, IV, V); `modal` és per a cançons sense sensible (la detecta sola).
 - `--sense-rotacio`: la melodia, el contracant i el baix es queden sempre en el mateix instrument. Per defecte la melodia va canviant de veu cada frase (8 compassos, 4 si la peça és curta): comença i acaba l'instrument de la melodia, el baix la porta una vegada si hi cap, i quan un altre la porta, qui feia la melodia passa al contracant. Els instruments de percussió sense altura mai la porten. L'informe diu «Qui porta la melodia: c. 1-8 trompeta; c. 9-16 flauta...» i a cada particel·la ix la paraula «melodia» on l'instrument la comença. El baix també toca patrons de l'estil, amb respostes curtes en les notes llargues de la melodia.
 - `--tutti-final`: en l'última frase, el contracant també porta la melodia.
 - `--melodia-part 2`: si la melodia no és a la part més aguda.

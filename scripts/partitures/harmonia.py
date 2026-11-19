@@ -4,6 +4,9 @@ Les fitxes són a `referencies/harmonia/<tema>/fitxa.md` (resums propis amb cite
 Les comprovacions miren, a cada pols, la sonoritat de totes les veus i la comparen amb la següent:
 quintes i octaves paral·leles (totes les parelles), quintes i octaves directes, sensible i 7a del V7,
 sisena augmentada, i creuament, separació i tessitura. Convenció: solfeig, Do central = Do3.
+Les notes estranyes a l'acord (de pas, bordadures, anticipacions...) es reconeixen amb `classifica_notes` i no
+compten com a parelles reals. Els dominants secundaris s'avaluen contra el seu objectiu. Cada incidència porta
+un pes i un nivell (error, avís, info) que depèn del perfil: `escolar` (estricte) o `arranjament` (permissiu).
 """
 from __future__ import annotations
 
@@ -30,6 +33,10 @@ TEMA_DE = {
     "sensible_duplicada": "sensible-i-setena-v7",
     "setena": "sensible-i-setena-v7",
     "sisena_augmentada": "sisena-augmentada",
+    "dominant_secundari": "dominants-secundaris",
+    "setena_duplicada": "sensible-i-setena-v7",
+    "falsa_relacio": None,
+    "registre_greu": None,
     "escriptura": None,
 }
 
@@ -153,6 +160,11 @@ def _nom_quinta(i) -> str:
     return {"P5": "5a justa", "d5": "5a disminuïda", "A5": "5a augmentada"}.get(i.simpleName, i.simpleName)
 
 
+def _toca(ignora, a, b, i) -> bool:
+    """Alguna de les quatre notes de la parella (veus a i b, sonoritats i i i+1) és una nota estranya."""
+    return any((v, j) in ignora for v in (a, b) for j in (i, i + 1))
+
+
 def _parelles(vs):
     for a in range(len(vs)):
         for b in range(a + 1, len(vs)):
@@ -194,7 +206,7 @@ def _alemanya(veus, i, k) -> str | None:
     return None
 
 
-def paraleles(veus, k=None):
+def paraleles(veus, k=None, ignora=None):
     """Quintes i octaves/unísons successius, per a totes les parelles de veus (Zamacois I, §§79-81).
     Excepcions: 5a justa seguida de 5a no justa (si no és entre S i B); 5a disminuïda seguida de 5a justa
     amb el segon acord en 1a inversió (II, §78); quintes de la 6a augmentada alemanya (III, §38)."""
@@ -204,6 +216,8 @@ def paraleles(veus, k=None):
     exterior = (vs[0], vs[-1])
     for i in range(n - 1):
         for a, b in _parelles(vs):
+            if ignora and _toca(ignora, a, b, i):
+                continue
             p1, p2, q1, q2 = veus[a][i], veus[a][i + 1], veus[b][i], veus[b][i + 1]
             if p1.ps == p2.ps and q1.ps == q2.ps:
                 continue
@@ -222,7 +236,7 @@ def paraleles(veus, k=None):
     return err
 
 
-def directes(veus, k=None):
+def directes(veus, k=None, ignora=None):
     """Quinta i octava directes (Zamacois I, §83): entre S i B només si el Soprano va per grau conjunt;
     amb una veu interior, si una de les dues va per grau conjunt (i, per a la 5a, si una nota ja sonava abans)."""
     err = []
@@ -231,6 +245,8 @@ def directes(veus, k=None):
     for i in range(n - 1):
         anterior = {veus[v][i].name for v in vs}
         for a, b in _parelles(vs):
+            if ignora and _toca(ignora, a, b, i):
+                continue
             p1, p2, q1, q2 = veus[a][i], veus[a][i + 1], veus[b][i], veus[b][i + 1]
             ma, mb = _semi(p1, p2), _semi(q1, q2)
             if ma == 0 or mb == 0 or (ma > 0) != (mb > 0):
@@ -257,21 +273,59 @@ def _dominant(veus, i, k) -> bool:
     return g[7] in noms and noms <= {g[5], g[7], g[2], g[4]}
 
 
+def _dominant_secundari(veus, i, k) -> key.Key | None:
+    """Si la sonoritat i és un V7 d'un grau diatònic (no la tònica) i la i+1 és eixe grau, la tonalitat
+    d'eixe grau (Herrera TEN-03). Cal el baix. La sensible del dominant secundari s'avalua contra el seu objectiu."""
+    n = len(veus[next(iter(veus))])
+    if "B" not in veus or i + 1 >= n:
+        return None
+    arrel = veus["B"][i + 1]
+    escala = {pitch.Pitch(x).pitchClass for x in _graus(k).values()}
+    if arrel.pitchClass not in escala or arrel.pitchClass == pitch.Pitch(_graus(k)[1]).pitchClass:
+        return None
+    noms = {veus[v][i].name for v in veus}
+    seguent = {veus[v][i + 1].name for v in veus}
+    for mode, tercera in (("major", "M3"), ("minor", "m3")):
+        if arrel.transpose(tercera).name not in seguent:
+            continue
+        kt = key.Key(arrel.name, mode)
+        g = _graus(kt)
+        if {g[7], g[4]} <= noms <= {g[5], g[7], g[2], g[4]} and not _dominant(veus, i, k):
+            return kt
+    return None
+
+
+def _objectiu(veus, i, k) -> key.Key | None:
+    """Tonalitat contra la qual s'avalua el V7 de la sonoritat i: la global, la del dominant secundari o res."""
+    if _dominant(veus, i, k):
+        return k
+    return _dominant_secundari(veus, i, k)
+
+
+def _nom_tonalitat(kt: key.Key) -> str:
+    alt = kt.tonic.accidental.modifier.replace("-", "b") if kt.tonic.accidental else ""
+    return f"{_INVERS[kt.tonic.step]}{alt} {'menor' if kt.mode == 'minor' else 'major'}"
+
+
 def sensible_duplicada(veus, k):
-    g = _graus(k)
-    return [(i, "sensible duplicada") for i in range(len(veus[list(veus)[0]]))
-            if _dominant(veus, i, k) and sum(veus[v][i].name == g[7] for v in veus) > 1]
+    err = []
+    for i in range(len(veus[list(veus)[0]])):
+        kt = _objectiu(veus, i, k)
+        if kt is not None and sum(veus[v][i].name == _graus(kt)[7] for v in veus) > 1:
+            err.append((i, "sensible duplicada"))
+    return err
 
 
 def sensible(veus, k):
-    """Sensible del V (o V7) cap a una sonoritat amb la tònica (Zamacois I, §§98-102): S i B pugen a la tònica;
-    una veu interior, tònica o baixar a la 5a de l'acord de tònica."""
-    g = _graus(k)
+    """Sensible del V (o V7, també el dominant d'un altre grau) cap a una sonoritat amb la tònica d'eixe grau
+    (Zamacois I, §§98-102): S i B pugen a la tònica; una veu interior, tònica o baixar a la 5a de l'acord."""
     err = []
     vs = list(veus)
     for i in range(len(veus[vs[0]]) - 1):
-        if not _dominant(veus, i, k):
+        kt = _objectiu(veus, i, k)
+        if kt is None:
             continue
+        g = _graus(kt)
         seguent = {veus[v][i + 1].name for v in vs}
         if g[1] not in seguent:
             continue
@@ -287,12 +341,15 @@ def sensible(veus, k):
 
 def setena(veus, k, excepcio_43=True):
     """7a del V7: baixa per grau conjunt o es manté. Excepció: V 4/3 a I6 (el baix fa 2 a 3), pot pujar."""
-    g = _graus(k)
     err = []
     vs = list(veus)
     for i in range(len(veus[vs[0]]) - 1):
+        kt = _objectiu(veus, i, k)
+        if kt is None:
+            continue
+        g = _graus(kt)
         noms = {veus[v][i].name for v in vs}
-        if not (g[4] in noms and g[7] in noms and _dominant(veus, i, k)):
+        if not (g[4] in noms and g[7] in noms):
             continue
         for v in vs:
             p, q = veus[v][i], veus[v][i + 1]
@@ -306,6 +363,53 @@ def setena(veus, k, excepcio_43=True):
                 if b1.name == g[2] and b2.name == g[3] and _semi(b1, b2) > 0:
                     continue
             err.append((i, f"la 7a del V7 ({nom_nota(p)}) del {v} no baixa per grau conjunt (va a {nom_nota(q)})"))
+    return err
+
+
+def setena_duplicada(veus, k):
+    """La 7a de la dominant no es duplica (Zamacois II, B04 a B06)."""
+    err = []
+    for i in range(len(veus[list(veus)[0]])):
+        kt = _objectiu(veus, i, k)
+        if kt is not None and sum(veus[v][i].name == _graus(kt)[4] for v in veus) > 1:
+            err.append((i, "7a de la dominant duplicada"))
+    return err
+
+
+def dominant_secundari(veus, k):
+    """Avís de perfil escolar: un acord fora de la tonalitat (V7 d'un altre grau) és vàlid, però cal que siga intencionat."""
+    return [(i, f"acord fora de la tonalitat: dominant de {_nom_tonalitat(kt)}; comprova que és intencionat")
+            for i in range(len(veus[list(veus)[0]]) - 1) if (kt := _dominant_secundari(veus, i, k)) is not None]
+
+
+def falsa_relacio(veus, k):
+    """Una nota i, a la sonoritat següent, la mateixa nota alterada en una altra veu (Zamacois II, R04)."""
+    err = []
+    vs = list(veus)
+    for i in range(len(veus[vs[0]]) - 1):
+        for a in vs:
+            for b in vs:
+                p, q = veus[a][i], veus[b][i + 1]
+                if a != b and p.step == q.step and abs(p.ps - q.ps) == 1:
+                    err.append((i, f"falsa relació entre {nom_nota(p)} ({a}) i {nom_nota(q)} ({b})"))
+    return err
+
+
+LIMIT_GREU_PAR = "Do2"    # sota d'ací, dues notes a 2a o 7a s'embruten (Zamacois III, Z5-14)
+LIMIT_GREU_NOTA = "Fa1"   # sota d'ací, qualsevol 2a o 7a
+
+
+def registre_greu(veus, k):
+    err = []
+    vs = list(veus)
+    par, sol = a_pitch(LIMIT_GREU_PAR).ps, a_pitch(LIMIT_GREU_NOTA).ps
+    for i in range(len(veus[vs[0]])):
+        for a, b in _parelles(vs):
+            p, q = veus[a][i], veus[b][i]
+            if interval.Interval(q, p).generic.simpleUndirected not in (2, 7) or p.ps == q.ps:
+                continue
+            if max(p.ps, q.ps) < par or min(p.ps, q.ps) < sol:
+                err.append((i, f"{nom_nota(q)} ({b}) i {nom_nota(p)} ({a}) a 2a o 7a, massa greu"))
     return err
 
 
@@ -357,8 +461,119 @@ COMPROVACIONS = {
     "sensible": sensible,
     "setena": setena,
     "sisena_augmentada": lambda veus, k: sisena_augmentada(veus, k)[1],
+    "setena_duplicada": setena_duplicada,
+    "dominant_secundari": dominant_secundari,
+    "falsa_relacio": falsa_relacio,
+    "registre_greu": registre_greu,
 }
 GENERALS = ["escriptura", "paraleles", "directes", "sensible", "sensible_duplicada", "setena"]
+# comprovacions afegides al paquet 4 (Zamacois II i III); no entren a GENERALS perquè les proves antigues
+# fixen exactament quines regles falla cada exemple
+NOVES = ["setena_duplicada", "falsa_relacio", "registre_greu"]
+
+
+# ---------- notes reals i notes estranyes a l'acord ----------
+
+PLANTILLES_ACORD = ((0, 4, 7), (0, 3, 7), (0, 3, 6), (0, 4, 7, 10), (0, 4, 8))
+ESTRANYES = ("pas", "bordadura", "anticipació", "escapada", "apoiatura")   # les que no són errors per se
+ESTRANYES_ESCOLAR = ("pas", "bordadura")   # a l'escola només s'accepten les dues més clares
+
+
+def acord_de_sonoritat(veus, i) -> frozenset:
+    """Classes d'altura de l'acord que millor explica la sonoritat i (el baix pesa una mica més com a arrel).
+    Les notes de la sonoritat que no hi caben són candidates a notes estranyes."""
+    notes = [veus[v][i] for v in veus]
+    baix = veus["B"][i].pitchClass if "B" in veus else min(notes, key=lambda p: p.ps).pitchClass
+    millor = None
+    for arrel in range(12):
+        for pla in PLANTILLES_ACORD:
+            pcs = frozenset((arrel + x) % 12 for x in pla)
+            v = sum(p.pitchClass in pcs for p in notes) + (0.4 if arrel == baix else 0) - (0.3 if len(pla) == 4 else 0)
+            if millor is None or v > millor[0] + 1e-9:
+                millor = (v, pcs)
+    return millor[1]
+
+
+def _pas(d: float) -> bool:
+    return 1 <= abs(d) <= 2
+
+
+def classifica_notes(veus, acords=None, llocs=None) -> dict[str, list[str]]:
+    """Etiqueta cada nota de cada veu: real, pas, bordadura, anticipació, escapada, apoiatura o estranya.
+    Una nota és de pas o bordadura només si les tres coses van juntes (Z3-A, INF-01): no és de l'acord,
+    s'arriba i se surt per grau conjunt i va en part feble; a més ha de resoldre a una nota de l'acord següent.
+    `acords` és una llista de conjunts de classes d'altura (un per sonoritat); si falta, es dedueix.
+    `llocs[i] = (compàs, temps)`; sense això no es pot saber la part feble i se suposa que ho és."""
+    n = len(veus[next(iter(veus))])
+    acords = acords or [acord_de_sonoritat(veus, i) for i in range(n)]
+    res = {}
+    for v, notes in veus.items():
+        etiq = []
+        for i, p in enumerate(notes):
+            if p.pitchClass in acords[i]:
+                etiq.append("real")
+                continue
+            feble = True if llocs is None else llocs[i][1] != 1
+            ant = notes[i - 1] if i > 0 else None
+            seg = notes[i + 1] if i + 1 < n else None
+            d0 = p.ps - ant.ps if ant is not None else None
+            d1 = seg.ps - p.ps if seg is not None else None
+            resol = seg is not None and seg.pitchClass in acords[i + 1]
+            tipus = "estranya"
+            if seg is not None and d1 == 0 and resol and feble:
+                tipus = "anticipació"
+            elif ant is not None and seg is not None and _pas(d0) and _pas(d1) and resol and feble:
+                tipus = "pas" if d0 * d1 > 0 else "bordadura" if ant.ps == seg.ps else "estranya"
+            elif ant is not None and seg is not None and _pas(d0) and abs(d1) >= 3 and d0 * d1 < 0 and feble:
+                tipus = "escapada"
+            elif seg is not None and _pas(d1) and resol and llocs is not None and not feble:
+                tipus = "apoiatura"
+            etiq.append(tipus)
+        res[v] = etiq
+    return res
+
+
+def solidifica(veu: list, finestra: int) -> list[tuple]:
+    """Acord solidificat (Z4-02): les notes d'un arpegi, agrupades de `finestra` en `finestra`, com un sol acord."""
+    if finestra < 1:
+        raise ValueError("La finestra ha de ser d'1 nota com a mínim.")
+    return [tuple(sorted({p.nameWithOctave: p for p in veu[x:x + finestra]}.values(), key=lambda p: p.ps))
+            for x in range(0, len(veu), finestra)]
+
+
+# ---------- perfils i pesos ----------
+
+PERFILS = ("escolar", "arranjament")
+# pes base de cada comprovació: >= 2 error, >= 1 avís, la resta info (Zamacois III, Z5-07)
+PES_BASE = {"escriptura": 2.0, "paraleles": 3.0, "directes": 2.0, "sensible": 2.0, "sensible_duplicada": 2.0,
+            "setena": 2.0, "sisena_augmentada": 2.0, "setena_duplicada": 1.5, "falsa_relacio": 1.0,
+            "registre_greu": 1.0, "dominant_secundari": 1.0}
+AJUST_PERFIL = {"escolar": 0.0, "arranjament": -1.0}   # l'arranjament és més permissiu (Z5-18, Z5-19)
+LLINDAR_ERROR, LLINDAR_AVIS = 2.0, 1.0
+_VEUS_EN_TEXT = re.compile(r"\b(?:entre|del|de la|al|de)\s+([SATB])(?: i ([SATB]))?\b")
+
+
+def nivell_de_pes(pes: float) -> str:
+    return "error" if pes >= LLINDAR_ERROR else "avís" if pes >= LLINDAR_AVIS else "info"
+
+
+def _veus_de_text(text: str) -> set[str]:
+    return {x for m in _VEUS_EN_TEXT.finditer(text) for x in m.groups() if x}
+
+
+def pes_incidencia(comp: str, i: int, text: str, veus, k, perfil: str) -> float:
+    """Pes base del perfil i modificadors de Z5-07 (-1 cadascun): acord següent dissonant, veu interior,
+    i, en arranjament, la melodia (S) com a protagonista. Retrocés i línies semitonals queden per a més endavant."""
+    pes = PES_BASE[comp] + AJUST_PERFIL[perfil]
+    n = len(veus[next(iter(veus))])
+    if comp in ("paraleles", "directes", "sensible", "setena") and i + 1 < n and _objectiu(veus, i + 1, k) is not None:
+        pes -= 1.0
+    implicades = _veus_de_text(text)
+    if implicades and not (implicades & {"S", "B"}):
+        pes -= 1.0
+    elif perfil == "arranjament" and implicades == {"S"}:
+        pes -= 1.0
+    return pes
 
 
 # ---------- lectura d'una partitura ----------
@@ -426,22 +641,33 @@ def _tema_cita(c: str) -> str:
     return f"referencies/harmonia/{tema}/fitxa.md (partitures harmonia fitxa {tema})" if tema else "sense fitxa (tessitures orientatives del cor)"
 
 
-def comprova_veus(veus, k, llocs=None) -> list[dict]:
-    """Totes les incidències: [{comprovacio, index, lloc, text, fitxa}] ordenades per posició."""
+def comprova_veus(veus, k, llocs=None, perfil: str = "escolar") -> list[dict]:
+    """Totes les incidències: [{comprovacio, index, lloc, text, fitxa, pes, nivell}] ordenades per posició.
+    Les parelles amb una nota estranya a l'acord (de pas, bordadura...) no compten com a paral·leles ni directes."""
+    if perfil not in PERFILS:
+        raise ErrorUsuari(f"El perfil ha de ser {' o '.join(PERFILS)}.")
+    etiquetes = classifica_notes(veus, llocs=llocs)
+    admeses = ESTRANYES if perfil == "arranjament" else ESTRANYES_ESCOLAR
+    ignora = {(v, i) for v, e in etiquetes.items() for i, t in enumerate(e) if t in admeses}
     res = []
-    comps = list(GENERALS)
+    comps = list(GENERALS) + NOVES
+    if perfil == "escolar":
+        comps.append("dominant_secundari")
     tipus, e6 = sisena_augmentada(veus, k)
     if tipus is not None or e6:
         comps.append("sisena_augmentada")
     for c in comps:
-        for i, text in COMPROVACIONS[c](veus, k):
-            res.append({"comprovacio": c, "index": i, "text": text,
+        trobats = COMPROVACIONS[c](veus, k) if c not in ("paraleles", "directes") else \
+            COMPROVACIONS[c](veus, k, ignora=ignora)
+        for i, text in trobats:
+            pes = pes_incidencia(c, i, text, veus, k, perfil)
+            res.append({"comprovacio": c, "index": i, "text": text, "pes": pes, "nivell": nivell_de_pes(pes),
                         "lloc": _lloc(llocs, i) if llocs else f"acord {i + 1}", "fitxa": _tema_cita(c)})
     res.sort(key=lambda r: (r["index"], r["comprovacio"]))
     return res
 
 
-def comprova(parts_o_score, lletres: str = "SATB", tonalitat: str | None = None) -> str:
+def comprova(parts_o_score, lletres: str = "SATB", tonalitat: str | None = None, perfil: str = "escolar") -> str:
     score = parts_o_score
     parts = list(score.parts)
     lletres = (lletres or "SATB").upper()
@@ -459,10 +685,10 @@ def comprova(parts_o_score, lletres: str = "SATB", tonalitat: str | None = None)
     n = len(llocs)
     if n < 2:
         raise ErrorUsuari("No he trobat dues sonoritats seguides amb totes les veus sonant: no hi ha res a comprovar.")
-    inc = comprova_veus(veus, k, llocs)
+    inc = comprova_veus(veus, k, llocs, perfil)
     t = k.tonic
     ext = f"{_INVERS[t.step]}{t.accidental.modifier.replace('-', 'b') if t.accidental else ''} {'menor' if k.mode == 'minor' else 'major'}"
-    out = [f"Comprovació d'harmonia: {n} sonoritats (una per pols), veus {lletres}, tonalitat {ext}"
+    out = [f"Comprovació d'harmonia (perfil {perfil}): {n} sonoritats (una per pols), veus {lletres}, tonalitat {ext}"
            + (" (llegida de l'armadura; si és menor, indica-ho amb --tonalitat \"la menor\")" if not tonalitat and k.mode == "major" else "") + "."]
     if not inc:
         out.append("No he trobat cap problema de les regles que comprovo.")
@@ -473,9 +699,13 @@ def comprova(parts_o_score, lletres: str = "SATB", tonalitat: str | None = None)
             if c != compas:
                 out.append(f"\nCompàs {c}:")
                 compas = c
-            out.append(f"  - {r['lloc'].split(', ', 1)[1]}: {r['text']}. Fitxa: {r['fitxa']}")
-        out.append(f"\n{len(inc)} possible(s) problema(es). Són regles d'escola: algunes tenen excepcions (mira la fitxa) "
-                   "i els temps no harmònics (notes de pas) poden donar avisos que no ho són. Decideix amb criteri.")
+            out.append(f"  - {r['lloc'].split(', ', 1)[1]}: {r['text']} ({r['nivell']}). Fitxa: {r['fitxa']}")
+        resum = ", ".join(f"{sum(r['nivell'] == x for r in inc)} {x}" for x in ("error", "avís", "info")
+                          if any(r["nivell"] == x for r in inc))
+        out.append(f"\n{len(inc)} possible(s) problema(es) ({resum}). Són regles d'escola: algunes tenen excepcions "
+                   "(mira la fitxa). Les notes de pas i les bordadures no compten com a parelles; el perfil "
+                   "«escolar» és estricte i «arranjament» més permissiu. Decideix amb criteri.")
     out.append("Només comprovo: quintes i octaves paral·leles i directes, sensible, 7a del V7, 6a augmentada, "
-               "creuament, separació i tessitura. No és una revisió harmònica completa.")
+               "creuament, separació i tessitura, 7a i sensible duplicades, falsa relació i registre greu. "
+               "No és una revisió harmònica completa.")
     return "\n".join(out)
