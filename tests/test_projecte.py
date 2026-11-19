@@ -379,7 +379,9 @@ def test_el_paquet_del_projecte_porta_el_necessari_en_zip_i_targz(tmp_path):
         noms_tar = {i.name: i for i in t.getmembers()}
     esperats = {"VERSION", "instalacio/instalar-linux.sh", "instalacio/Instalar-Linux-Terminal.sh"}
     assert noms == esperats and set(noms_tar) == esperats
-    assert noms_tar["instalacio/Instalar-Linux-Terminal.sh"].mode & 0o111 and noms_tar["VERSION"].uid == 0
+    assert noms_tar["VERSION"].uid == 0
+    if not sys_es_windows():
+        assert noms_tar["instalacio/Instalar-Linux-Terminal.sh"].mode & 0o111
 
 
 def test_l_exe_de_windows_porta_el_zip_enganxat_amb_la_marca_al_final(tmp_path):
